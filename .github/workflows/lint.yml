@@ -25,19 +25,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version: canary
 
       - name: Install Packages
-        run: pnpm install
+        run: bun install --frozen-lockfile
 
-      - name: Run oxlint
-        run: pnpm exec oxlint --max-warnings 0
+      - name: Run bun lint
+        run: bun lint --no-script --max-warnings 0
 
       - name: Run dprint
         if: always()
-        run: pnpm exec dprint check
+        run: bun x dprint check

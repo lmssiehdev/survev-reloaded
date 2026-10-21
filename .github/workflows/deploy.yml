@@ -35,16 +35,13 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version: canary
 
       - name: Install Packages
-        run: pnpm install --filter client --filter shared --filter server
+        run: bun install
 
       - name: Restore Atlas Cache
         id: cache-atlases-restore
@@ -57,7 +54,7 @@ jobs:
             atlas-cache
 
       - name: Build Client
-        run: pnpm run build
+        run: bun run build
         working-directory: ./client
 
       - name: Save Atlas Cache
@@ -84,8 +81,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: canary
 
       - uses: actions/download-artifact@v8
         with:
@@ -99,7 +98,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: ./client
-          packageManager: pnpm
+          packageManager: bun
           command: pages deploy ./dist --project-name=survev-deploy-test --branch=${{ github.event.pull_request.number }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 

@@ -9,7 +9,7 @@ on:
       - "server/**"
       - "shared/**"
       - "*.json"
-      - "pnpm-lock.yaml"
+      - "bun.lock"
       - ".github/workflows/tests.yml"
 
   pull_request:
@@ -24,16 +24,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version: canary
 
       - name: Install Packages
-        run: pnpm install --filter tests --filter shared --filter server
+        run: bun install --frozen-lockfile
 
       - name: Run Tests
-        run: pnpm run test
+        run: bun run test
         working-directory: ./tests

@@ -8,7 +8,7 @@ on:
       - "client/**"
       - "shared/**"
       - "*.json"
-      - "pnpm-lock.yaml"
+      - "bun.lock"
       - ".github/workflows/client.yml"
 
   pull_request:
@@ -23,18 +23,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version: canary
 
       - name: Install Packages
-        run: pnpm install --filter client --filter shared --filter server
+        run: bun install --frozen-lockfile
 
       - name: Typecheck Client
-        run: pnpm run typecheck
+        run: bun run typecheck
         working-directory: ./client
 
       - name: Restore Atlas Cache
@@ -48,7 +46,7 @@ jobs:
             atlas-cache
 
       - name: Build Client
-        run: pnpm run build
+        run: bun run build
         working-directory: ./client
         if: always()
 
