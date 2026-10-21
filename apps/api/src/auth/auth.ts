@@ -6,6 +6,7 @@ import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { lt } from "drizzle-orm";
 import { db } from "../db/index.ts";
+import { relations } from "../db/relations.ts";
 import { accountTable, sessionTable, usersTable, verificationTable } from "../db/schema.ts";
 import { generateUsername, giveNewAccountItems } from "./users.ts";
 
@@ -61,6 +62,7 @@ export const auth = betterAuth({
             session: sessionTable,
             account: accountTable,
             verification: verificationTable,
+            ...relations,
         },
     }),
 
@@ -135,6 +137,8 @@ export const auth = betterAuth({
 
     advanced: {
         cookiePrefix: "survev",
+        // session + user in one query (uses the drizzle relations)
+        database: { joins: true },
         ...(cookieDomain && { crossSubDomainCookies: { enabled: true, domain: cookieDomain } }),
         ...(Config.apiServer.proxyIPHeader && {
             ipAddress: { ipAddressHeaders: [Config.apiServer.proxyIPHeader] },
