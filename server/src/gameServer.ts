@@ -1,4 +1,3 @@
-import { Cron } from "croner";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -318,7 +317,9 @@ server.logger.info(
 server.logger.info("Press Ctrl+C to exit.");
 
 // try to save lost games every hour
-new Cron("0 * * * *", async () => {
+// Bun.cron runs in the system timezone. Keep the try/catch: a throw or rejection
+// becomes an uncaughtException/unhandledRejection, which exits the process
+Bun.cron("0 * * * *", async () => {
     try {
         await server.tryToSaveLostGames();
     } catch (err) {

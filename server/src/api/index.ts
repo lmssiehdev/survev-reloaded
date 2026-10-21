@@ -1,4 +1,3 @@
-import { Cron } from "croner";
 import { Hono } from "hono";
 import { upgradeWebSocket, websocket } from "hono/bun";
 import { getCookie } from "hono/cookie";
@@ -233,7 +232,9 @@ Bun.serve({
 });
 
 // run clean up scripts every midnight
-new Cron("0 0 * * *", async () => {
+// Bun.cron runs in the system timezone. Keep the try/catch: a throw or rejection
+// becomes an uncaughtException/unhandledRejection, which exits the process
+Bun.cron("0 0 * * *", async () => {
     try {
         await cleanupOldLogs();
         await deleteExpiredSessions();

@@ -54,7 +54,6 @@
         "@hono/zod-validator": "^0.8.0",
         "@oslojs/crypto": "^1.0.1",
         "arctic": "^3.7.0",
-        "croner": "^10.0.1",
         "drizzle-orm": "^0.45.3",
         "hono": "^4.13.8",
         "nanotimer": "^0.3.15",
@@ -481,8 +480,6 @@
     "codefend": ["codefend@3.2.0", "", { "dependencies": { "cli-table3": "0.6.5" }, "bin": { "codefend": "bin/index.js" } }, "sha512-O2vYCusIaw4CUejlTOlft7WUebL11G3/S4anL8nHfFozBq8vnRA5j4gD+GN0QQkQZYV7iDyo2y1HvU4xjodpxA=="],
 
     "commander": ["commander@11.1.0", "", {}, "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="],
-
-    "croner": ["croner@10.0.1", "", {}, "sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g=="],
 
     "css-select": ["css-select@6.0.0", "", { "dependencies": { "boolbase": "1.0.0", "css-what": "7.0.0", "domhandler": "5.0.3", "domutils": "3.2.2", "nth-check": "2.1.1" } }, "sha512-rZZVSLle8v0+EY8QAkDWrKhpgt6SA5OtHsgBnsj6ZaLb5dmDVOWUDtQitd9ydxxvEjhewNudS6eTVU7uOyzvXw=="],
 
