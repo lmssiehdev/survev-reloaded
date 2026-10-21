@@ -10,9 +10,10 @@ import z from "zod";
 import { server } from "../../apiServer.ts";
 import { auth } from "../../auth/auth.ts";
 import {
-    authMiddleware,
     databaseEnabledMiddleware,
     rateLimitMiddleware,
+    requireAuth,
+    sessionMiddleware,
     validateParams,
 } from "../../auth/middleware.ts";
 import type { AuthEnv } from "../../auth/middleware.ts";
@@ -24,7 +25,8 @@ import { PassRouter } from "./PassRouter.ts";
 export const UserRouter = new Hono<AuthEnv>()
     .use(databaseEnabledMiddleware)
     .use(rateLimitMiddleware(40, 60 * 1000))
-    .use(authMiddleware)
+    .use(sessionMiddleware)
+    .use(requireAuth)
     .route("/", PassRouter)
     .post("/profile", async (c) => {
         const user = c.get("user");

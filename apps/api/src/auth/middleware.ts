@@ -24,36 +24,28 @@ export type AuthEnv = {
     };
 };
 
-/** sets the request's user + session (null when logged out) and forwards refreshed session cookies */
-async function loadSession(c: Context) {
-    const { headers, response } = await auth.api.getSession({
-        headers: c.req.raw.headers,
-        returnHeaders: true,
-    });
-    for (const cookie of headers.getSetCookie()) {
-        c.header("set-cookie", cookie, { append: true });
-    }
-    c.set("user", response?.user ?? null);
-    c.set("session", response?.session ?? null);
-    return response;
-}
-
 /**
- * Optional session, for routes that also serve anonymous players.
- * Banned users are still set; a failing session lookup counts as logged out.
+ * better-auth's hono session middleware: sets `user` / `session` (null when logged out, banned users included).
+ * returnHeaders: getSession extends active sessions, the refreshed cookie has to reach the browser too.
  */
 export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) => {
-    c.set("user", null);
-    c.set("session", null);
-    if (Config.database.enabled) {
-        await loadSession(c).catch((err) => logger.error("Failed to load session", err));
+    const res = Config.database.enabled
+        ? await auth.api
+            .getSession({ headers: c.req.raw.headers, returnHeaders: true })
+            .catch((err) => void logger.error("Failed to load session", err))
+        : undefined;
+
+    for (const cookie of res?.headers.getSetCookie() ?? []) {
+        c.header("set-cookie", cookie, { append: true });
     }
+    c.set("user", res?.response?.user ?? null);
+    c.set("session", res?.response?.session ?? null);
     await next();
 });
 
-/** required session: 401 when logged out */
-export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
-    if (!(await loadSession(c))) {
+/** use after sessionMiddleware: 401 when logged out */
+export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
+    if (!c.get("user")) {
         return c.json({ error: "Authentication failed" }, 401);
     }
     await next();
