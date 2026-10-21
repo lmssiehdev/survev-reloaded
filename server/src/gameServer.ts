@@ -177,7 +177,7 @@ if (process.env.NODE_ENV !== "production") {
 const pingHTTPRateLimit = new HTTPRateLimit(1, 3000);
 const pingWsRateLimit = new WebSocketRateLimit(50, 1000, 10);
 
-interface pingSocketData {
+interface PingSocketData {
     rateLimit: Record<symbol, number>;
     ip: string;
 }
@@ -281,7 +281,7 @@ const app = Bun.serve({
     },
 
     websocket: {
-        data: {} as pingSocketData,
+        data: {} as PingSocketData,
         backpressureLimit: UWS_BACKPRESSURE_LIMIT,
         idleTimeout: 10,
         maxPayloadLength: 2,
