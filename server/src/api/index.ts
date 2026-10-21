@@ -1,7 +1,6 @@
-import { serve } from "@hono/node-server";
-import { createNodeWebSocket } from "@hono/node-ws";
 import { Cron } from "croner";
 import { Hono } from "hono";
+import { upgradeWebSocket, websocket } from "hono/bun";
 import { getCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
@@ -41,7 +40,6 @@ process.on("uncaughtException", async (err) => {
 });
 
 const app = new Hono();
-const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.onError((err: unknown, c) => {
     server.logger.error(`${c.req.path} Error:`, err);
@@ -226,11 +224,13 @@ setInterval(() => {
     }
 }, 60000);
 
-const honoServer = serve({
+Bun.serve({
     fetch: app.fetch,
     port: Config.apiServer.port,
+    websocket,
+    // Bun's default of 10 seconds is too short for some slow database queries
+    idleTimeout: 60,
 });
-injectWebSocket(honoServer);
 
 // run clean up scripts every midnight
 new Cron("0 0 * * *", async () => {

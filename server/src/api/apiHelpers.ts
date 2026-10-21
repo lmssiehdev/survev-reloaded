@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Context } from "hono";
+import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { db } from "../api/db/index.ts";
 import { userQuestTable, usersTable } from "../api/db/schema.ts";
@@ -9,7 +10,7 @@ import type { FindGamePrivateBody } from "../utils/types.ts";
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader
         ? c.req.header(proxyHeader)
-        : c.env?.incoming?.socket?.remoteAddress;
+        : getConnInfo(c).remote.address;
 
     if (!ip || isIP(ip) == 0) return undefined;
     if (ip.includes("::ffff:")) return ip.split("::ffff:")[1];

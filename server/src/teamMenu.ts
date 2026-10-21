@@ -441,8 +441,13 @@ export class TeamMenu {
                     closeReason = "behind_proxy";
                 }
 
+                // hono/bun creates a new WSContext for every event,
+                // so keep the one from onOpen to persist the data stored in `raw`
+                let socket: WSContext<SocketData>;
+
                 return {
                     onOpen(_event, ws) {
+                        socket = ws as WSContext<SocketData>;
                         ws.raw = {
                             ip,
                             rateLimit: {},
@@ -467,7 +472,8 @@ export class TeamMenu {
                         teamMenu.onOpen(ws as WSContext<SocketData>, userId, ip!);
                     },
 
-                    onMessage(event, ws) {
+                    onMessage(event, _ws) {
+                        const ws = socket;
                         const data = ws.raw! as SocketData;
 
                         if (wsRateLimit.isRateLimited(data.rateLimit)) {
@@ -487,7 +493,8 @@ export class TeamMenu {
                         }
                     },
 
-                    onClose(_event, ws) {
+                    onClose(_event, _ws) {
+                        const ws = socket;
                         teamMenu.onClose(ws as WSContext<SocketData>);
 
                         const data = ws.raw! as SocketData;
