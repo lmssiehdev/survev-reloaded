@@ -393,6 +393,7 @@ async function setupConfig() {
     const config: PartialConfig = {
         secrets: {
             SURVEV_API_KEY: randomBytes(64).toString("base64"),
+            BETTER_AUTH_SECRET: randomBytes(32).toString("base64"),
         },
     };
 

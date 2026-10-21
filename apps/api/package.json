@@ -21,11 +21,10 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
-    "@oslojs/crypto": "^1.0.1",
     "@survev/config": "workspace:*",
     "@survev/contracts": "workspace:*",
     "@survev/shared": "workspace:*",
-    "arctic": "^3.7.0",
+    "better-auth": "^1.7.8",
     "drizzle-orm": "^0.45.3",
     "hjson": "^3.2.2",
     "hono": "^4.13.8",

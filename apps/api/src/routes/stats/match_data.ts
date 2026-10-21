@@ -4,9 +4,8 @@ import { Hono } from "hono";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { matchDataTable, usersTable } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
 
-export const matchDataRouter = new Hono<Context>();
+export const matchDataRouter = new Hono();
 
 matchDataRouter.post(
     "/",

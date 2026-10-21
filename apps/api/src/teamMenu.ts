@@ -22,7 +22,7 @@ import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { getFindGamePlayerData, getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
 import type { ApiServer } from "./apiServer.ts";
-import { validateSessionToken } from "./auth/index.ts";
+import { getOptionalUser } from "./auth/middleware.ts";
 import { hashIp, isBanned } from "./routes/private/ModerationRouter.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
 
@@ -420,22 +420,7 @@ export class TeamMenu {
 
                 wsRateLimit.ipConnected(ip!);
 
-                let userId: string | null = null;
-                const sessionId = getCookie(c, "session") ?? null;
-
-                if (sessionId) {
-                    try {
-                        const account = await validateSessionToken(sessionId);
-                        userId = account.user?.id || null;
-
-                        if (account.user?.banned) {
-                            userId = null;
-                        }
-                    } catch (err) {
-                        this.logger.error(`Failed to validate session:`, err);
-                        userId = null;
-                    }
-                }
+                const userId = (await getOptionalUser(c.req.raw.headers))?.id ?? null;
 
                 if (!closeReason && (await isBehindProxy(ip!, !userId))) {
                     closeReason = "behind_proxy";

@@ -256,6 +256,13 @@ export interface ConfigType {
         SURVEV_IP_SECRET: string;
 
         /**
+         * Signs session cookies and encrypts stored oauth tokens (better-auth).
+         * A default random one is generated when creating the config file.
+         * Changing it logs everyone out.
+         */
+        BETTER_AUTH_SECRET: string;
+
+        /**
          * Discord client ID.
          * If this and the secret ID are present the discord login button will be enabled client-side.
          */

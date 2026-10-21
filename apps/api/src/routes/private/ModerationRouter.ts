@@ -18,16 +18,24 @@ import {
     zUnbanIpParams,
 } from "@survev/shared/types/moderation.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import { and, desc, eq, inArray, lt, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
+import { sanitizeSlug } from "../../auth/users.ts";
 import { db, rowCount } from "../../db/index.ts";
-import { bannedIpsTable, ipLogsTable, itemsTable, matchDataTable, userPassTable, usersTable } from "../../db/schema.ts";
-import { sanitizeSlug } from "../user/auth/authUtils.ts";
+import {
+    accountTable,
+    bannedIpsTable,
+    ipLogsTable,
+    itemsTable,
+    matchDataTable,
+    userPassTable,
+    usersTable,
+} from "../../db/schema.ts";
 import { incrementPassXp } from "./passXp.ts";
 
 export const ModerationRouter = new Hono()
@@ -252,8 +260,8 @@ export const ModerationRouter = new Hono()
         const result = await db
             .select({
                 slug: usersTable.slug,
-                authId: usersTable.authId,
-                linkedDiscord: usersTable.linkedDiscord,
+                authId: accountTable.accountId,
+                linkedDiscord: sql<boolean>`${accountTable.accountId} is not null`,
                 ip: ipLogsTable.encodedIp,
                 findGameIp: ipLogsTable.findGameEncodedIp,
                 username: ipLogsTable.username,
@@ -272,6 +280,10 @@ export const ModerationRouter = new Hono()
                 ),
             )
             .leftJoin(usersTable, eq(ipLogsTable.userId, usersTable.id))
+            .leftJoin(
+                accountTable,
+                and(eq(accountTable.userId, usersTable.id), eq(accountTable.providerId, "discord")),
+            )
             .orderBy(desc(ipLogsTable.createdAt))
             .limit(10);
 
@@ -364,15 +376,11 @@ export const ModerationRouter = new Hono()
         async (c) => {
             const { discord_user } = c.req.valid("json");
 
-            const user = await db.query.usersTable.findFirst({
-                where: and(
-                    eq(usersTable.linkedDiscord, true),
-                    eq(usersTable.authId, discord_user),
-                ),
-                columns: {
-                    slug: true,
-                },
-            });
+            const [user] = await db
+                .select({ slug: usersTable.slug })
+                .from(accountTable)
+                .innerJoin(usersTable, eq(accountTable.userId, usersTable.id))
+                .where(and(eq(accountTable.providerId, "discord"), eq(accountTable.accountId, discord_user)));
 
             if (!user?.slug) {
                 return c.json(

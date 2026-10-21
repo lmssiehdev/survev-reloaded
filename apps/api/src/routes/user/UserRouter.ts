@@ -3,36 +3,37 @@ import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
 import { Constants } from "@survev/shared/net/net.ts";
 import { loadoutSchema } from "@survev/shared/types/api.ts";
 import { type ProfileResponse, type UsernameResponse } from "@survev/shared/types/user.ts";
-import loadout, { ItemStatus } from "@survev/shared/utils/loadout.ts";
+import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.ts";
 import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
+import { deleteCookie } from "hono/cookie";
 import z from "zod";
 import { server } from "../../apiServer.ts";
+import { auth, loggedInHint } from "../../auth/auth.ts";
 import {
     authMiddleware,
     databaseEnabledMiddleware,
     rateLimitMiddleware,
     validateParams,
 } from "../../auth/middleware.ts";
+import type { AuthEnv } from "../../auth/middleware.ts";
+import { getTimeUntilNextUsernameChange, sanitizeSlug } from "../../auth/users.ts";
 import { db } from "../../db/index.ts";
 import { itemsTable, matchDataTable, usersTable } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
-import { getTimeUntilNextUsernameChange, logoutUser, sanitizeSlug } from "./auth/authUtils.ts";
 import { PassRouter } from "./PassRouter.ts";
 
-export const UserRouter = new Hono<Context>()
+export const UserRouter = new Hono<AuthEnv>()
     .use(databaseEnabledMiddleware)
     .use(rateLimitMiddleware(40, 60 * 1000))
     .use(authMiddleware)
     .route("/", PassRouter)
     .post("/profile", async (c) => {
-        const user = c.get("user")!;
+        const user = c.get("user");
 
         const {
             loadout,
             slug,
-            linked,
-            username,
+            name: username,
             usernameSet,
             lastUsernameChangeTime,
             banned,
@@ -40,8 +41,7 @@ export const UserRouter = new Hono<Context>()
         } = user;
 
         if (banned) {
-            const session = c.get("session")!;
-            await logoutUser(c, session.id);
+            await logout(c);
 
             return c.json<ProfileResponse>({
                 banned: true,
@@ -73,12 +73,13 @@ export const UserRouter = new Hono<Context>()
                 success: true,
                 profile: {
                     slug,
-                    linked,
+                    // every account is created through a login provider
+                    linked: true,
                     username,
                     usernameSet,
                     usernameChangeTime: timeUntilNextChange,
                 },
-                loadout,
+                loadout: loadout as Loadout,
                 items: items,
             },
             200,
@@ -93,7 +94,7 @@ export const UserRouter = new Hono<Context>()
             { result: "invalid" } satisfies UsernameResponse,
         ),
         async (c) => {
-            const user = c.get("user")!;
+            const user = c.get("user");
             const { username } = c.req.valid("json");
             const timeUntilNextChange = getTimeUntilNextUsernameChange(
                 user.lastUsernameChangeTime,
@@ -141,7 +142,7 @@ export const UserRouter = new Hono<Context>()
         },
     )
     .post("/loadout", validateParams(z.object({ loadout: loadoutSchema })), async (c) => {
-        const user = c.get("user")!;
+        const user = c.get("user");
         const { loadout: userLoadout } = c.req.valid("json");
 
         const items = await db
@@ -169,27 +170,22 @@ export const UserRouter = new Hono<Context>()
         );
     })
     .post("/logout", async (c) => {
-        const session = c.get("session")!;
-
-        await logoutUser(c, session.id);
-
+        await logout(c);
         return c.json({}, 200);
     })
     .post("/delete", async (c) => {
-        const user = c.get("user")!;
-        const session = c.get("session")!;
+        const user = c.get("user");
 
-        // logout out the user
-        await logoutUser(c, session.id);
+        await logout(c);
 
-        // delete the account
-        await db.delete(usersTable).where(eq(usersTable.id, user.id));
-
-        // remove reference to the user from match data
-        await db
-            .update(matchDataTable)
-            .set({ userId: null })
-            .where(eq(matchDataTable.userId, user.id));
+        // sessions, accounts, items and pass data cascade with the user row
+        await db.transaction(async (tx) => {
+            await tx.delete(usersTable).where(eq(usersTable.id, user.id));
+            await tx
+                .update(matchDataTable)
+                .set({ userId: null })
+                .where(eq(matchDataTable.userId, user.id));
+        });
 
         return c.json({}, 200);
     })
@@ -200,7 +196,7 @@ export const UserRouter = new Hono<Context>()
             itemTypes: z.array(z.string()).max(50),
         })),
         async (c) => {
-            const user = c.get("user")!;
+            const user = c.get("user");
             const { itemTypes, status } = c.req.valid("json");
 
             await db
@@ -214,7 +210,7 @@ export const UserRouter = new Hono<Context>()
         },
     )
     .post("/reset_stats", async (c) => {
-        const user = c.get("user")!;
+        const user = c.get("user");
 
         await db
             .update(matchDataTable)
@@ -225,3 +221,12 @@ export const UserRouter = new Hono<Context>()
     });
 
 export type UserRouterApp = typeof UserRouter;
+
+/** ends the current session and clears the client's logged-in hint */
+async function logout(c: Context) {
+    const res = await auth.api.signOut({ headers: c.req.raw.headers, returnHeaders: true });
+    for (const cookie of res.headers.getSetCookie()) {
+        c.header("set-cookie", cookie, { append: true });
+    }
+    deleteCookie(c, loggedInHint.name, loggedInHint.attributes);
+}

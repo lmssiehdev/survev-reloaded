@@ -6,9 +6,8 @@ import { Hono } from "hono";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { matchDataTable, usersTable } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
 
-export const matchHistoryRouter = new Hono<Context>();
+export const matchHistoryRouter = new Hono();
 
 const aliased = aliasedTable(matchDataTable, "aliased");
 

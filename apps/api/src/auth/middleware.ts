@@ -1,51 +1,52 @@
 import { zValidator } from "@hono/zod-validator";
 import { Config } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { Context, Next } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { createMiddleware } from "hono/factory";
 import type { z } from "zod";
 import { getHonoIp } from "../apiHelpers.ts";
-import { server } from "../apiServer.ts";
-import { cookieDomain, deleteSessionTokenCookie } from "../routes/user/auth/authUtils.ts";
-import { validateSessionToken } from "./index.ts";
+import { auth, type AuthSession, type AuthUser } from "./auth.ts";
 
-export const authMiddleware = async (c: Context, next: Next) => {
-    try {
-        const sessionToken = getCookie(c, "session") ?? null;
+const logger = new ServerLogger("Auth");
 
-        if (!sessionToken) {
-            c.set("user", null);
-            c.set("session", null);
-            return c.json({ error: "Authentication failed" }, 401);
-        }
-        const { session, user } = await validateSessionToken(sessionToken);
-
-        if (!user) {
-            return c.json({ error: "Authentication failed" }, 401);
-        }
-
-        if (session) {
-            setCookie(c, "session", sessionToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path: "/",
-                expires: session.expiresAt,
-                domain: cookieDomain,
-            });
-        } else {
-            deleteSessionTokenCookie(c);
-            deleteCookie(c, "app-data");
-        }
-
-        c.set("user", user);
-        c.set("session", session);
-        return next();
-    } catch (err) {
-        server.logger.error("Error trying to authenticate user", err);
-        return c.json({ error: "Authentication failed" }, 500);
-    }
+export type AuthEnv = {
+    Variables: {
+        user: AuthUser;
+        session: AuthSession;
+    };
 };
+
+/** rejects requests without a valid session; forwards refreshed session cookies */
+export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
+    const { headers, response } = await auth.api.getSession({
+        headers: c.req.raw.headers,
+        returnHeaders: true,
+    });
+    for (const cookie of headers.getSetCookie()) {
+        c.header("set-cookie", cookie, { append: true });
+    }
+
+    if (!response) {
+        return c.json({ error: "Authentication failed" }, 401);
+    }
+
+    c.set("user", response.user);
+    c.set("session", response.session);
+    await next();
+});
+
+/** the logged in, non banned user of a request, if any; never throws */
+export async function getOptionalUser(headers: Headers): Promise<AuthUser | null> {
+    if (!Config.database.enabled) return null;
+    try {
+        const res = await auth.api.getSession({ headers });
+        return res && !res.user.banned ? res.user : null;
+    } catch (err) {
+        logger.error("Failed to validate session", err);
+        return null;
+    }
+}
 
 /**
  * middleware for validating JSON request parameters against a Zod schema.

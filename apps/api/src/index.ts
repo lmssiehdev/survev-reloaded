@@ -5,7 +5,6 @@ import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import { type FindGameResponse, type SiteInfoRes, zFindGameBody } from "@survev/shared/types/api.ts";
 import { Hono } from "hono";
 import { upgradeWebSocket, websocket } from "hono/bun";
-import { getCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { randomUUID } from "node:crypto";
@@ -13,22 +12,14 @@ import pkgJson from "../../../package.json" with { type: "json" };
 import { getFindGamePlayerData } from "./apiHelpers.ts";
 import { getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
 import { server } from "./apiServer.ts";
-import { deleteExpiredSessions, validateSessionToken } from "./auth/index.ts";
-import { rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
-import type { SessionTableSelect, UsersTableSelect } from "./db/schema.ts";
+import { deleteExpiredSessions } from "./auth/auth.ts";
+import { getOptionalUser, rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
 import { cleanupOldLogs, isBanned } from "./routes/private/ModerationRouter.ts";
 import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
 import { AuthRouter } from "./routes/user/AuthRouter.ts";
 import { UserRouter } from "./routes/user/UserRouter.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
-
-export type Context = {
-    Variables: {
-        user: UsersTableSelect | null;
-        session: SessionTableSelect | null;
-    };
-};
 
 process.on("uncaughtException", async (err) => {
     console.error(err);
@@ -120,23 +111,7 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
     }
 
     const joinToken = randomUUID();
-    let user: UsersTableSelect | null = null;
-
-    const sessionId = getCookie(c, "session") ?? null;
-
-    if (sessionId) {
-        try {
-            const account = await validateSessionToken(sessionId);
-            user = account.user;
-
-            if (account.user?.banned) {
-                user = null;
-            }
-        } catch (err) {
-            server.logger.error("/api/find_game: Failed to validate session", err);
-            user = null;
-        }
-    }
+    const user = await getOptionalUser(c.req.raw.headers);
 
     if (await isBehindProxy(ip, !user)) {
         return c.json<FindGameResponse>({ type: "error", error: "behind_proxy" });

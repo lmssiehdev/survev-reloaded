@@ -10,14 +10,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { server } from "../../apiServer.ts";
+import { MOCK_USER_ID } from "../../auth/auth.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
 import { getRedisClient } from "../../cache/index.ts";
 import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
 import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable, usersTable } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
-import { MOCK_USER_ID } from "../user/auth/mock.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
 
@@ -29,7 +28,7 @@ type _SaveGameMatchDataFitsTable = AssertAssignable<
     (MatchDataTable & { ip: string; findGameIp: string })[]
 >;
 
-export const PrivateRouter = new Hono<Context>()
+export const PrivateRouter = new Hono()
     .use(privateMiddleware)
     .route("/moderation", ModerationRouter)
     .post("/update_region", validateParams(zUpdateRegionBody), (c) => {

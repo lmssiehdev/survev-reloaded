@@ -62,6 +62,7 @@ export function getConfig(isProduction: boolean, dir: string) {
         secrets: {
             SURVEV_API_KEY: "",
             SURVEV_IP_SECRET: "",
+            BETTER_AUTH_SECRET: "",
         },
         captchaEnabled: false,
         cachingEnabled: false,
@@ -93,6 +94,7 @@ export function getConfig(isProduction: boolean, dir: string) {
             secrets: {
                 SURVEV_API_KEY: randomBytes(64).toString("base64"),
                 SURVEV_IP_SECRET: randomBytes(32).toString("base64"),
+                BETTER_AUTH_SECRET: randomBytes(32).toString("base64"),
             },
         };
 

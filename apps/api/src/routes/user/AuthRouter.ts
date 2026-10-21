@@ -1,29 +1,37 @@
 import { Config } from "@survev/config/serverConfig.ts";
-import { OAuth2RequestError } from "arctic";
 import { Hono } from "hono";
-import { server } from "../../apiServer.ts";
+import { auth, isProviderEnabled, type SocialProvider } from "../../auth/auth.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware } from "../../auth/middleware.ts";
-import { DiscordRouter } from "./auth/discord.ts";
-import { GoogleRouter } from "./auth/google.ts";
-import { MockRouter } from "./auth/mock.ts";
 
-export const AuthRouter = new Hono();
+/**
+ * Keeps the client facing URLs from before better-auth:
+ * GET /api/auth/{discord,google} starts a login, GET /api/auth/{discord,google}/callback finishes it.
+ * Everything else under /api/auth is better-auth's own handler (sign-out, mock login, ...).
+ */
+export const AuthRouter = new Hono()
+    .use(databaseEnabledMiddleware)
+    .use(rateLimitMiddleware(5, 60 * 1000))
+    .get("/:provider{discord|google}", async (c) => {
+        const provider = c.req.param("provider") as SocialProvider;
+        if (!isProviderEnabled(provider)) {
+            return c.text(`${provider} login is not supported`, 500);
+        }
 
-AuthRouter.onError((err, c) => {
-    server.logger.error(`${c.req.path} Error:`, err);
-    if (err instanceof OAuth2RequestError && err.message === "bad_verification_code") {
-        // invalid code
-        return c.json({ error: "bad_verification_code" }, 400);
-    }
-    return c.json({ error: "Internal Server Error" }, 500);
-});
+        const res = await auth.api.signInSocial({
+            body: { provider, callbackURL: Config.oauthBasePath, errorCallbackURL: Config.oauthBasePath },
+            headers: c.req.raw.headers,
+            returnHeaders: true,
+        });
 
-AuthRouter.use(databaseEnabledMiddleware);
-AuthRouter.use(rateLimitMiddleware(5, 60 * 1000));
-
-AuthRouter.route("/discord", DiscordRouter);
-AuthRouter.route("/google", GoogleRouter);
-
-if (Config.debug.allowMockAccount) {
-    AuthRouter.route("/mock", MockRouter);
-}
+        // the oauth state cookie has to reach the browser together with the redirect
+        for (const cookie of res.headers.getSetCookie()) {
+            c.header("set-cookie", cookie, { append: true });
+        }
+        return c.redirect(res.response.url!);
+    })
+    .get("/:provider{discord|google}/callback", (c) => {
+        const url = new URL(c.req.url);
+        url.pathname = `/api/auth/callback/${c.req.param("provider")}`;
+        return auth.handler(new Request(url, c.req.raw));
+    })
+    .on(["GET", "POST"], "/*", (c) => auth.handler(c.req.raw));

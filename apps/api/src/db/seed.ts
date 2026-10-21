@@ -1,14 +1,14 @@
 import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { generateUsername } from "unique-username-generator";
-import { createNewUser, generateId } from "../routes/user/auth/authUtils.ts";
+import { giveNewAccountItems, randomId } from "../auth/users.ts";
 import { db } from "./index.ts";
 import type { MatchDataTable } from "./schema.ts";
-import { matchDataTable } from "./schema.ts";
+import { accountTable, matchDataTable, usersTable } from "./schema.ts";
 
 const playersWithAccounts = Array.from({ length: 3000 }, (_, _idx) => ({
     slug: generateUsername(),
-    userId: generateId(15),
+    userId: randomId(15),
 }));
 
 interface Player {
@@ -109,7 +109,7 @@ function generateMatchHistory(
             ? loggedInUsersInGame.pop()!
             : {
                 slug: null,
-                userId: generateId(15),
+                userId: randomId(15),
             };
         const playerUserId = Math.random() < 0.3 ? loggedInUser?.userId : null;
         const playerSlug = Math.random() < 0.3 ? loggedInUser?.slug : null;
@@ -158,13 +158,20 @@ function getRandomData() {
 
 try {
     for (const { slug, userId } of playersWithAccounts) {
-        await createNewUser({
+        await db.insert(usersTable).values({
             id: userId,
-            authId: generateId(15),
+            email: `${slug}@seed.local`,
+            emailVerified: true,
             username: slug,
-            linked: true,
             slug: slug,
         });
+        await db.insert(accountTable).values({
+            id: randomId(32),
+            userId,
+            providerId: "discord",
+            accountId: randomId(18),
+        });
+        await giveNewAccountItems(userId);
         for (let j = 0; j < util.randomInt(50, 100); j++) {
             const data = generateMatchHistory(userId, slug, util.randomInt(60, 80));
             await db.insert(matchDataTable).values(data);

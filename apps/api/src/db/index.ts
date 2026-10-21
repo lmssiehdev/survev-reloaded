@@ -1,8 +1,10 @@
 import { Config } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { SQL } from "bun";
 import { drizzle } from "drizzle-orm/bun-sql";
-import { server } from "../apiServer.ts";
 import * as schema from "./schema.ts";
+
+const logger = new ServerLogger("Database");
 
 const client = new SQL({
     hostname: Config.database.host,
@@ -13,10 +15,10 @@ const client = new SQL({
     idleTimeout: 60,
     onconnect: (err) => {
         if (err) {
-            server.logger.error("database connection error:", err);
+            logger.error("database connection error:", err);
             return;
         }
-        server.logger.info("Connected to database");
+        logger.info("Connected to database");
     },
 });
 

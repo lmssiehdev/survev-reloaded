@@ -7,9 +7,8 @@ import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "
 import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
 import { matchDataTable, usersTable } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
 
-export const leaderboardRouter = new Hono<Context>();
+export const leaderboardRouter = new Hono();
 
 const MinGames = {
     kpg: {

@@ -15,37 +15,81 @@ import {
     uuid,
 } from "drizzle-orm/pg-core";
 
-export const sessionTable = pgTable("session", {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-        .notNull()
-        .references(() => usersTable.id, {
-            onDelete: "cascade",
-            onUpdate: "cascade",
-        }),
-    expiresAt: timestamp("expires_at").notNull(),
-});
-
-export type SessionTableSelect = typeof sessionTable.$inferSelect;
-
+//
+// AUTH (shape owned by better-auth, see auth/auth.ts)
+//
 export const usersTable = pgTable("users", {
     id: text("id").notNull().primaryKey(),
-    authId: text("auth_id").notNull(),
+    // better-auth core fields
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    userCreated: timestamp("user_created", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // game fields
     slug: text("slug").notNull().unique(),
     banned: boolean("banned").notNull().default(false),
     banReason: text("ban_reason").notNull().default(""),
     bannedBy: text("banned_by").notNull().default(""),
     username: text("username").notNull().default(""),
     usernameSet: boolean("username_set").notNull().default(false),
-    userCreated: timestamp("user_created", { withTimezone: true }).notNull().defaultNow(),
     lastUsernameChangeTime: timestamp("last_username_change_time"),
-    linked: boolean("linked").notNull().default(false),
-    linkedGoogle: boolean("linked_google").notNull().default(false),
-    linkedDiscord: boolean("linked_discord").notNull().default(false),
     loadout: json("loadout")
         .notNull()
         .default(loadout.validate({} as Loadout))
         .$type<Loadout>(),
+});
+
+export const sessionTable = pgTable(
+    "session",
+    {
+        id: text("id").primaryKey(),
+        token: text("token").notNull().unique(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+        ipAddress: text("ip_address"),
+        userAgent: text("user_agent"),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [index("session_user_id_idx").on(table.userId), index("session_expires_at_idx").on(table.expiresAt)],
+);
+
+/** one row per linked login provider (discord / google) */
+export const accountTable = pgTable(
+    "account",
+    {
+        id: text("id").primaryKey(),
+        accountId: text("account_id").notNull(),
+        providerId: text("provider_id").notNull(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+        accessToken: text("access_token"),
+        refreshToken: text("refresh_token"),
+        idToken: text("id_token"),
+        accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+        refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+        scope: text("scope"),
+        password: text("password"),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex("account_provider_account_idx").on(table.providerId, table.accountId),
+        index("account_user_id_idx").on(table.userId),
+    ],
+);
+
+export const verificationTable = pgTable("verification", {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type UsersTableInsert = typeof usersTable.$inferInsert;

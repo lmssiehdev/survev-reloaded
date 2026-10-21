@@ -8,9 +8,9 @@ import { Hono } from "hono";
 import z from "zod";
 import { server } from "../../apiServer.ts";
 import { validateParams } from "../../auth/middleware.ts";
+import type { AuthEnv } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { userPassTable, type UserPassTableSelect, userQuestTable, type UserQuestTableSelect } from "../../db/schema.ts";
-import type { Context } from "../../index.ts";
 import { questHelpers } from "../../utils/questHelpers.ts";
 
 // hardcoded for now
@@ -158,14 +158,14 @@ async function rerollSlot(
     return questType;
 }
 
-export const PassRouter = new Hono<Context>()
+export const PassRouter = new Hono<AuthEnv>()
     .post(
         "/get_pass",
         validateParams(z.object({
             tryRefreshQuests: z.boolean(),
         })),
         async (c) => {
-            const user = c.get("user")!;
+            const user = c.get("user");
             const { tryRefreshQuests } = c.req.valid("json");
             const now = Date.now();
 
@@ -256,7 +256,7 @@ export const PassRouter = new Hono<Context>()
          *  - Server writes new quest for request with quest IDX 0
          *  - The request with IDX 1 now has outdated quests and can end up choosing the same quest as IDX 0
          */
-        const user = c.get("user")!;
+        const user = c.get("user");
         const { idx } = c.req.valid("json");
 
         const success = await db.transaction(async (transaction) => {
