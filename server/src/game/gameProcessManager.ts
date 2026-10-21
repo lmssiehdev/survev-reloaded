@@ -14,7 +14,7 @@ let procArgv: string[];
 
 if (import.meta.filename.endsWith(".ts")) {
     procFile = "src/game/gameProcess.ts";
-    procArgv = ["--expose-gc", "--import", "tsx"];
+    procArgv = ["--expose-gc"];
 } else {
     procArgv = [];
     procFile = "dist/gameProcess.js";

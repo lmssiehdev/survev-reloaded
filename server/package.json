@@ -7,15 +7,15 @@
     "typecheck": "tsc",
     "start:api": "node --enable-source-maps dist/index.js",
     "start:game": "node --enable-source-maps dist/gameServer.js",
-    "dev": "concurrently \"bun run dev:api\" \"bun run dev:game\"",
-    "dev:api": "tsx watch --clear-screen=false --include ../survev-config.hjson src/api/index.ts",
-    "dev:game": "tsx watch --clear-screen=false --include ../survev-config.hjson --include ./src/game --include ../shared src/gameServer.ts",
+    "dev": "bun run --parallel dev:api dev:game",
+    "dev:api": "bun --watch --no-clear-screen src/api/index.ts",
+    "dev:game": "bun scripts/devWatch.ts src/gameServer.ts ../shared ../survev-config.hjson",
     "db:generate": "drizzle-kit generate --config=src/api/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=src/api/drizzle.config.ts",
-    "db:seed": "tsx src/api/db/seed.ts",
+    "db:seed": "bun src/api/db/seed.ts",
     "db:studio": "drizzle-kit studio --config=src/api/drizzle.config.ts",
-    "db:wipe": "tsx src/api/db/wipe.ts",
-    "stressTest": "tsx src/stressTest.ts",
+    "db:wipe": "bun src/api/db/wipe.ts",
+    "stressTest": "bun src/stressTest.ts",
     "lint": "cd .. && bun run lint"
   },
   "dependencies": {
@@ -40,10 +40,8 @@
     "@types/nanotimer": "^0.3.2",
     "@types/node": "~22.12.0",
     "@types/pg": "^8.23.1",
-    "concurrently": "^10.0.5",
     "drizzle-kit": "^0.31.11",
     "rolldown": "^1.2.9",
-    "tsx": "^4.23.15",
     "unique-username-generator": "^1.5.1"
   }
 }

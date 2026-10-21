@@ -17,8 +17,8 @@
 <br />
 
 ## Development
-Start the client dev server using `pnpm dev:client` and API / game servers with `pnpm dev:server`,  
-or traverse into client and server directories individually to run `pnpm dev` in each.
+Start the client dev server using `bun dev:client` and API / game servers with `bun dev:server`,  
+or traverse into client and server directories individually to run `bun dev` in each.
 
 ### Database and accounts
 Accounts are optional, they require a PostgreSQL database, to disable them add `database: { enabled: false }` to `survev-config.hjson`.
@@ -38,19 +38,19 @@ Then populate the database with the schema:
 cd server
 
 # Run this everytime you make changes to schema.ts.
-pnpm run db:generate
-pnpm run db:migrate
+bun run db:generate
+bun run db:migrate
 
 # Start the server
-pnpm run dev
+bun run dev
 # or
-# pnpm run dev:api
-# pnpm run dev:game
+# bun run dev:api
+# bun run dev:game
 ```
 
 To interact with the database through an interface:
 ```sh
-pnpm run db:studio 
+bun run db:studio 
 ```
 
 To wipe the database and start over:
@@ -59,7 +59,7 @@ To wipe the database and start over:
 sudo -u postgres psql -c "ALTER USER survev WITH PASSWORD 'survev';"
 
 # Wipe database.
-pnpm run db:wipe
+bun run db:wipe
 ```
 
 **NOTE:** Do not run this in production!

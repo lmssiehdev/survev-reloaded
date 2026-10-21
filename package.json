@@ -11,8 +11,8 @@
     "tests"
   ],
   "scripts": {
-    "survev-setup": "bun install && tsx setup.ts",
-    "dev": "concurrently \"bun run dev:api\" \"bun run dev:game\" \"bun run dev:client\"",
+    "survev-setup": "bun install && bun setup.ts",
+    "dev": "bun run --parallel dev:api dev:game dev:client",
     "dev:server": "cd server && bun run dev",
     "dev:api": "cd server && bun run dev:api",
     "dev:game": "cd server && bun run dev:game",
@@ -30,15 +30,13 @@
   "devDependencies": {
     "@types/hjson": "^2.4.6",
     "@types/node": "~22.12.0",
-    "concurrently": "^10.0.5",
     "dprint": "^0.55.2",
     "oxlint": "^1.85.0",
     "typescript": "^6.0.3"
   },
   "dependencies": {
     "enquirer": "^2.4.1",
-    "hjson": "^3.2.2",
-    "tsx": "^4.23.15"
+    "hjson": "^3.2.2"
   },
   "packageManager": "bun@1.4.4-canary.1",
   "trustedDependencies": [
