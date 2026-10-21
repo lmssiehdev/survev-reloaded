@@ -4,6 +4,7 @@
     "locale": "en"
   },
   "word-order": "svo",
+  "all": "All modes",
   "index-go": "Go",
   "index-leaderboards": "Leaderboards",
   "index-my-stats": "My Stats",
@@ -29,6 +30,7 @@
   "stats-win-streak": "Win streak",
   "stats-kdr": "K/D",
   "stats-kpg": "K/G",
+  "stats-kg": "K/G",
   "stats-kpg-full": "Kills per game",
   "stats-most-damage": "Most damage",
   "stats-avg-damage": "Avg damage",
@@ -48,6 +50,7 @@
   "stats-team-kills": "Team Kills",
   "stats-kill": "Kill",
   "stats-kills": "Kills",
+  "stats-damage": "Damage",
   "stats-damage-dealt": "Damage Dealt",
   "stats-damage-taken": "Damage Taken",
   "stats-survived": "Survived",

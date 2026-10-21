@@ -5,7 +5,6 @@ import { type Connect, defineConfig, loadEnv, PluginOption, type ServerOptions }
 import pkgJson from "../../package.json" with { type: "json" };
 import { atlasBuilderPlugin } from "./atlas-builder/vitePlugin.ts";
 import { codefendPlugin } from "./vite-plugins/codefendPlugin.ts";
-import { ejsPlugin } from "./vite-plugins/ejsPlugin.ts";
 import { stripBlockPlugin } from "./vite-plugins/stripBlockPlugin.ts";
 import { svgoPlugin } from "./vite-plugins/svgoPlugin.ts";
 
@@ -41,7 +40,6 @@ export default defineConfig(({ mode }) => {
 
     const plugins: PluginOption[] = [
         statsRedirectPlugin(),
-        ejsPlugin(),
         solidPlugin(),
         ...atlasBuilderPlugin(mode === "production"),
         svgoPlugin(),
