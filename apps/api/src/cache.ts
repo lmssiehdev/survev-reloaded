@@ -36,7 +36,7 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
         if (!redis) return undefined;
         const res = await Result.tryPromise(() => op(redis));
         return res
-            .tapError((err) => logger.warn("Redis command failed:", err.cause))
+            .tapError((err) => logger.warn("Redis command failed:", err))
             .unwrapOr(undefined);
     }
 
@@ -47,10 +47,12 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
         shouldCache: (data: T) => boolean = () => true,
     ): Promise<T> {
         const hit = await run((r) => r.get(PREFIX + key));
-        if (hit) {
+        const parsed = hit ? Result.try((): unknown => JSON.parse(hit)) : undefined;
+        if (parsed?.isOk()) {
             logger.debug(`[CACHE HIT] -> ${key}`);
-            return JSON.parse(hit) as T;
+            return parsed.value as T;
         }
+        // a corrupt entry is just a miss; the set below overwrites it
 
         const data = await load();
         if (shouldCache(data)) {
@@ -75,7 +77,8 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
                 const raw = await run((r) => r.get(PREFIX + key));
                 if (!raw) continue;
 
-                const board = JSON.parse(raw) as LeaderboardResponse[];
+                // an unreadable board is treated as stale, never as a save_game failure
+                const board = Result.try(() => JSON.parse(raw) as LeaderboardResponse[]).unwrapOr([]);
                 const lowest = board.at(-1)?.val ?? 0;
                 if (board.length >= LEADERBOARD_SIZE && best[type] < lowest) continue;
 

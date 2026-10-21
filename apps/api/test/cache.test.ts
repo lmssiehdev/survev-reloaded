@@ -92,6 +92,14 @@ describe.skipIf(!process.env.TEST_REDIS_URL)("cache with redis", () => {
         expect(await redis.get(`survev:${key}`)).toBeNull();
     });
 
+    test("corrupt entries are a miss, not an error", async () => {
+        await redis.set(`survev:${key}`, "{not json");
+        expect(await cache.cached(key, 60, async () => board([7]))).toEqual(board([7]));
+        await redis.set(`survev:${key}`, "{not json");
+        await cache.invalidateLeaderboards(match(0));
+        expect(await redis.get(`survev:${key}`)).toBeNull();
+    });
+
     test("clearCache leaves keys outside the prefix alone", async () => {
         await redis.set("other-app:key", "keep");
         await cache.cached(key, 60, async () => board([1]));
