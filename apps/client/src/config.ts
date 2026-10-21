@@ -118,7 +118,6 @@ const defaultConfig = {
     profile: null as { slug: string } | null,
     region: "na",
     regionSelected: false,
-    sessionCookie: "" as string | null,
 
     gameModeIdx: 2,
     teamAutoFill: true,

@@ -6,10 +6,9 @@ import { type ProfileResponse, type UsernameResponse } from "@survev/shared/type
 import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.ts";
 import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";
-import { deleteCookie } from "hono/cookie";
 import z from "zod";
 import { server } from "../../apiServer.ts";
-import { auth, loggedInHint } from "../../auth/auth.ts";
+import { auth } from "../../auth/auth.ts";
 import {
     authMiddleware,
     databaseEnabledMiddleware,
@@ -222,11 +221,10 @@ export const UserRouter = new Hono<AuthEnv>()
 
 export type UserRouterApp = typeof UserRouter;
 
-/** ends the current session and clears the client's logged-in hint */
+/** ends the current session and clears its cookies */
 async function logout(c: Context) {
     const res = await auth.api.signOut({ headers: c.req.raw.headers, returnHeaders: true });
     for (const cookie of res.headers.getSetCookie()) {
         c.header("set-cookie", cookie, { append: true });
     }
-    deleteCookie(c, loggedInHint.name, loggedInHint.attributes);
 }

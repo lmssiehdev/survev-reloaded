@@ -5,7 +5,6 @@ import { util } from "@survev/shared/utils/util.ts";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { errorLogManager } from "./errorLogs.ts";
-import { helpers } from "./helpers.ts";
 import { proxy } from "./proxy.ts";
 
 import type { UserRouterApp } from "@survev/api/types";
@@ -105,44 +104,23 @@ export class Account {
     }
 
     init() {
-        if (this.config.get("sessionCookie")) {
-            this.setSessionCookies();
-        }
+        // logged out players use their local loadout until the profile says otherwise
+        const storedLoadout = this.config.get("loadout")!;
+        this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
+        this.emit("loadout", this.loadout);
 
-        if (helpers.getCookie("app-data")) {
-            this.login();
+        // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
+        if (proxy.anyLoginSupported()) {
+            this.loadProfile();
             return;
         }
 
         this.emit("request", this);
         this.emit("items", []);
-
-        const storedLoadout = this.config.get("loadout")!;
-        this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
-        this.emit("loadout", this.loadout);
-    }
-
-    setSessionCookies() {
-        this.clearSessionCookies();
-        document.cookie = this.config.get("sessionCookie")!;
-        document.cookie = `app-data=${Date.now()}`;
-    }
-
-    clearSessionCookies() {
-        document.cookie = "app-sid=;expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-        document.cookie = "app-data=;expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    }
-
-    login() {
-        if (helpers.getCookie("app-data")) {
-            this.loadProfile();
-            this.getPass(true);
-        }
     }
 
     logout() {
         this.config.set("profile", null);
-        this.config.set("sessionCookie", null);
         this.config.set("loadout", loadouts.defaultLoadout());
         this.fetchApi("logout", {}, () => {
             window.location.reload();
@@ -170,11 +148,9 @@ export class Account {
                 profile.slug = data.profile.slug;
                 this.config.set("profile", profile);
             }
-            if (!this.loggedIn) {
-                this.config.set("sessionCookie", null);
-            }
             if (wasLogginIn && this.loggedIn) {
                 this.emit("login", this);
+                this.getPass(true);
             }
             this.emit("items", this.items);
             this.emit("loadout", this.loadout);
@@ -198,7 +174,6 @@ export class Account {
                 return;
             }
             this.config.set("profile", null);
-            this.config.set("sessionCookie", null);
             window.location.reload();
         });
     }
@@ -226,7 +201,7 @@ export class Account {
         this.emit("loadout", this.loadout);
         this.config.set("loadout", loadout);
 
-        if (!helpers.getCookie("app-data")) return;
+        if (!this.loggedIn) return;
 
         this.fetchApi("loadout", { json: { loadout } }, (err, res) => {
             if (err) {

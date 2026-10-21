@@ -10,6 +10,13 @@ import { auth, type AuthSession, type AuthUser } from "./auth.ts";
 
 const logger = new ServerLogger("Auth");
 
+export type SessionEnv = {
+    Variables: {
+        user: AuthUser | null;
+        session: AuthSession | null;
+    };
+};
+
 export type AuthEnv = {
     Variables: {
         user: AuthUser;
@@ -17,8 +24,8 @@ export type AuthEnv = {
     };
 };
 
-/** rejects requests without a valid session; forwards refreshed session cookies */
-export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
+/** sets the request's user + session (null when logged out) and forwards refreshed session cookies */
+async function loadSession(c: Context) {
     const { headers, response } = await auth.api.getSession({
         headers: c.req.raw.headers,
         returnHeaders: true,
@@ -26,27 +33,31 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
     for (const cookie of headers.getSetCookie()) {
         c.header("set-cookie", cookie, { append: true });
     }
+    c.set("user", response?.user ?? null);
+    c.set("session", response?.session ?? null);
+    return response;
+}
 
-    if (!response) {
-        return c.json({ error: "Authentication failed" }, 401);
+/**
+ * Optional session, for routes that also serve anonymous players.
+ * Banned users are still set; a failing session lookup counts as logged out.
+ */
+export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) => {
+    c.set("user", null);
+    c.set("session", null);
+    if (Config.database.enabled) {
+        await loadSession(c).catch((err) => logger.error("Failed to load session", err));
     }
-
-    c.set("user", response.user);
-    c.set("session", response.session);
     await next();
 });
 
-/** the logged in, non banned user of a request, if any; never throws */
-export async function getOptionalUser(headers: Headers): Promise<AuthUser | null> {
-    if (!Config.database.enabled) return null;
-    try {
-        const res = await auth.api.getSession({ headers });
-        return res && !res.user.banned ? res.user : null;
-    } catch (err) {
-        logger.error("Failed to validate session", err);
-        return null;
+/** required session: 401 when logged out */
+export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
+    if (!(await loadSession(c))) {
+        return c.json({ error: "Authentication failed" }, 401);
     }
-}
+    await next();
+});
 
 /**
  * middleware for validating JSON request parameters against a Zod schema.

@@ -2,7 +2,7 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { createAuthEndpoint, createAuthMiddleware } from "better-auth/api";
+import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { lt } from "drizzle-orm";
 import { db } from "../db/index.ts";
@@ -17,13 +17,6 @@ const clientUrl = Config.oauthBasePath;
 /** set when the client is on another subdomain than the API, so cookies are shared */
 const cookieDomain = URL.canParse(clientUrl) ? new URL(clientUrl).hostname : undefined;
 
-/**
- * Non-httpOnly hint the client reads to know it is logged in
- * without a request (apps/client/src/account.ts).
- */
-const LOGGED_IN_HINT = "app-data";
-const loggedInHintAttributes = { maxAge: 30 * DAY, path: "/", domain: cookieDomain };
-
 export const MOCK_USER_ID = "MOCK_USER_ID";
 
 /** GET /api/auth/mock: dev-only login as a fixed test account, no oauth keys needed */
@@ -31,22 +24,17 @@ const mockLogin = {
     id: "mock-login",
     endpoints: {
         mockLogin: createAuthEndpoint("/mock", { method: "GET" }, async (ctx) => {
-            const adapter = ctx.context.internalAdapter;
-            let user = await adapter.findUserById(MOCK_USER_ID);
-            if (!user) {
-                await db.insert(usersTable).values({
+            const users = ctx.context.internalAdapter;
+            // created through the normal hooks, so it gets a generated name and the starter items
+            const user = (await users.findUserById(MOCK_USER_ID))
+                ?? (await users.createUser({
                     id: MOCK_USER_ID,
                     email: "mock@survev.local",
+                    name: MOCK_USER_ID,
                     emailVerified: true,
-                    username: MOCK_USER_ID,
-                    slug: MOCK_USER_ID,
-                }).onConflictDoNothing();
-                await giveNewAccountItems(MOCK_USER_ID);
-                user = await adapter.findUserById(MOCK_USER_ID);
-            }
-            const session = await adapter.createSession(user!.id);
-            await setSessionCookie(ctx, { session, user: user! });
-            ctx.setCookie(LOGGED_IN_HINT, "1", loggedInHintAttributes);
+                }, { method: "mock" }));
+            const session = await users.createSession(user.id);
+            await setSessionCookie(ctx, { session, user });
             throw ctx.redirect(clientUrl);
         }),
     },
@@ -150,14 +138,6 @@ export const auth = betterAuth({
         },
     },
 
-    hooks: {
-        after: createAuthMiddleware(async (ctx) => {
-            if (ctx.path.startsWith("/callback/") && ctx.context.newSession) {
-                ctx.setCookie(LOGGED_IN_HINT, "1", loggedInHintAttributes);
-            }
-        }),
-    },
-
     advanced: {
         cookiePrefix: "survev",
         ...(cookieDomain && { crossSubDomainCookies: { enabled: true, domain: cookieDomain } }),
@@ -181,8 +161,6 @@ export function isProviderEnabled(provider: SocialProvider) {
         ? !!(DISCORD_CLIENT_ID && DISCORD_SECRET_ID)
         : !!(GOOGLE_CLIENT_ID && GOOGLE_SECRET_ID);
 }
-
-export const loggedInHint = { name: LOGGED_IN_HINT, attributes: loggedInHintAttributes };
 
 /** better-auth only removes expired sessions when they are looked up again */
 export async function deleteExpiredSessions() {

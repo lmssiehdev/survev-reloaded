@@ -13,7 +13,7 @@ import { getFindGamePlayerData } from "./apiHelpers.ts";
 import { getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
 import { server } from "./apiServer.ts";
 import { deleteExpiredSessions } from "./auth/auth.ts";
-import { getOptionalUser, rateLimitMiddleware, validateParams } from "./auth/middleware.ts";
+import { rateLimitMiddleware, sessionMiddleware, validateParams } from "./auth/middleware.ts";
 import { cleanupOldLogs, isBanned } from "./routes/private/ModerationRouter.ts";
 import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
@@ -89,7 +89,7 @@ app.post("/api/find_game", (c) => {
     return c.json({ error: "invalid_protocol" });
 });
 
-app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
+app.post("/api/find_game_v2", validateParams(zFindGameBody), sessionMiddleware, async (c) => {
     const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
 
     if (!ip) {
@@ -111,7 +111,8 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), async (c) => {
     }
 
     const joinToken = randomUUID();
-    const user = await getOptionalUser(c.req.raw.headers);
+    // banned accounts can still play, just not as their account
+    const user = c.var.user?.banned ? null : c.var.user;
 
     if (await isBehindProxy(ip, !user)) {
         return c.json<FindGameResponse>({ type: "error", error: "behind_proxy" });

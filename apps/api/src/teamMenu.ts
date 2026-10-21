@@ -22,7 +22,7 @@ import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { getFindGamePlayerData, getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
 import type { ApiServer } from "./apiServer.ts";
-import { getOptionalUser } from "./auth/middleware.ts";
+import { sessionMiddleware } from "./auth/middleware.ts";
 import { hashIp, isBanned } from "./routes/private/ModerationRouter.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
 
@@ -402,6 +402,7 @@ export class TeamMenu {
 
         app.get(
             "/team_v2",
+            sessionMiddleware,
             upgradeWebSocket(async (c) => {
                 const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
 
@@ -420,7 +421,8 @@ export class TeamMenu {
 
                 wsRateLimit.ipConnected(ip!);
 
-                const userId = (await getOptionalUser(c.req.raw.headers))?.id ?? null;
+                const user = c.var.user;
+                const userId = user && !user.banned ? user.id : null;
 
                 if (!closeReason && (await isBehindProxy(ip!, !userId))) {
                     closeReason = "behind_proxy";
