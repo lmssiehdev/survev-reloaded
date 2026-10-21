@@ -34,6 +34,40 @@ export interface SaveGameBody {
     matchData: (MatchDataTable & { ip: string; findGameIp: string })[];
 }
 
+/**
+ * Runtime validator for SaveGameBody["matchData"], used to check lost game files before retrying them
+ */
+export const zSaveGameMatchData = z.array(
+    z.object({
+        userId: z.string().nullish(),
+        userBanned: z.boolean().nullish(),
+        // dates are serialized as strings in the JSON files
+        createdAt: z.coerce.date().optional(),
+        region: z.string(),
+        mapId: z.number().int(),
+        gameId: z.guid(),
+        mapSeed: z.number().int(),
+        username: z.string(),
+        playerId: z.number().int(),
+        teamMode: z.enum(TeamMode),
+        teamCount: z.number().int(),
+        teamTotal: z.number().int(),
+        teamId: z.number().int(),
+        timeAlive: z.number().int(),
+        rank: z.number().int(),
+        died: z.boolean(),
+        kills: z.number().int(),
+        teamKills: z.number().int().optional(),
+        damageDealt: z.number().int(),
+        damageTaken: z.number().int(),
+        killerId: z.number().int(),
+        killedIds: z.array(z.number().int()),
+        role: z.string().optional(),
+        ip: z.string(),
+        findGameIp: z.string(),
+    }),
+) satisfies z.ZodType<SaveGameBody["matchData"]>;
+
 export interface ServerGameConfig {
     readonly mapName: MapDefKey;
     readonly teamMode: TeamMode;

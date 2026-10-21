@@ -2,7 +2,7 @@ import { Cron } from "croner";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { z, ZodObject } from "zod";
+import { z, type ZodObject } from "zod";
 import pkgJson from "../../package.json" with { type: "json" };
 import { GameConfig } from "../../shared/gameConfig.ts";
 import { Config } from "./config.ts";
@@ -20,6 +20,7 @@ import {
     type SpectateGamePrivateBody,
     type SpectateGamePrivateRes,
     zFindGamePrivateBody,
+    zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "./utils/types.ts";
 
@@ -117,12 +118,28 @@ class GameServer {
 
         if (!existsSync(dir)) return;
 
-        const files = await fs.readdir(dir);
+        // only the files that were loaded get deleted after a successful save
+        const files: string[] = [];
 
-        for (const fileName of files) {
+        for (const fileName of await fs.readdir(dir)) {
             const filePath = path.resolve(dir, fileName);
-            const data = JSON.parse(await fs.readFile(filePath, "utf8"));
-            games.push(...data);
+
+            let data: unknown;
+            try {
+                data = await Bun.file(filePath).json();
+            } catch (err) {
+                this.logger.warn(`Skipping unreadable lost game file ${fileName}:`, err);
+                continue;
+            }
+
+            const parsed = zSaveGameMatchData.safeParse(data);
+            if (!parsed.success) {
+                this.logger.warn(`Skipping invalid lost game file ${fileName}:`, z.prettifyError(parsed.error));
+                continue;
+            }
+
+            games.push(...parsed.data);
+            files.push(fileName);
         }
 
         if (games.length < 2) return;
