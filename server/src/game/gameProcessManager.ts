@@ -9,16 +9,8 @@ import { type FindGamePrivateBody, type ServerGameConfig, type SpectateGamePriva
 import type { SpectateTokenData } from "./game.ts";
 import { type GameData, type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
-let procFile: string;
-let procArgv: string[];
-
-if (import.meta.filename.endsWith(".ts")) {
-    procFile = "src/game/gameProcess.ts";
-    procArgv = ["--expose-gc"];
-} else {
-    procArgv = [];
-    procFile = "dist/gameProcess.js";
-}
+// run the source in dev, the bundled build in production
+const procFile = import.meta.filename.endsWith(".ts") ? "src/game/gameProcess.ts" : "dist/gameProcess.js";
 
 export enum ProcState {
     Idle,
@@ -68,7 +60,8 @@ export class GameProcess {
 
         this.process = fork(procFile, [port.toString()], {
             serialization: "advanced",
-            execArgv: procArgv,
+            // don't inherit the parent's runtime flags
+            execArgv: [],
         });
 
         this.process.on("message", (msg: ProcessMsg) => {

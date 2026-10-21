@@ -49,13 +49,11 @@ process.on("uncaughtException", async (err) => {
 function stopGame() {
     game = undefined;
 
-    // make sure game is properly free'd
-    // we expose the gc on dev builds
-    if (global.gc) {
-        setImmediate(async () => {
-            await global.gc!({
-                execution: "async",
-            });
+    // make sure game is properly free'd (dev only, Bun.gc(true) is a blocking full collection)
+    if (process.env.NODE_ENV !== "production") {
+        // defer so the current stack no longer holds the game
+        setImmediate(() => {
+            Bun.gc(true);
             if (gameWeakRef?.deref()) {
                 procLogger.warn("Possible memory leak found, something is keeping a reference to the game object!");
             }
