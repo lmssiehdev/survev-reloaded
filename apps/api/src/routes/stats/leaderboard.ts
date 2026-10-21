@@ -4,7 +4,7 @@ import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
-import { leaderboardCache } from "../../cache/leaderboard.ts";
+import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { matchData, users } from "../../db/schema.ts";
 
@@ -25,36 +25,33 @@ leaderboardRouter.post(
     validateParams(zLeaderboardsRequest),
     async (c) => {
         const params = c.req.valid("json");
-        const { type, teamMode, mapId } = params;
-        const cachedResult = await leaderboardCache.get(params);
-
-        if (cachedResult) {
-            server.logger.debug(
-                `[CACHE HIT] -> ${leaderboardCache.getCacheKey("leaderboard", params)}`,
-            );
-            return c.json(cachedResult, 200);
-        }
-
-        const startTime = performance.now();
-
-        const isFaction = mapId === MapId.Faction || mapId === MapId.FactionPotato;
-
-        const data = type === "most_kills" && teamMode !== TeamMode.Solo && !isFaction
-            ? await multiplePlayersQuery(params)
-            : await soloLeaderboardQuery(params);
-        logQueryPerformance(startTime, params);
-
-        // TODO: decide if we should cache empty results;
-        if (data.length != 0) {
-            await leaderboardCache.set(params, data);
-        }
+        const data = await cache.cached(
+            leaderboardKey(params),
+            leaderboardTtl(params.type),
+            () => queryLeaderboard(params),
+            // TODO: decide if we should cache empty results;
+            (data) => data.length != 0,
+        );
 
         return c.json<LeaderboardResponse[]>(data, 200);
     },
 );
 
+async function queryLeaderboard(params: LeaderboardRequest) {
+    const { type, teamMode, mapId } = params;
+    const startTime = performance.now();
+
+    const isFaction = mapId === MapId.Faction || mapId === MapId.FactionPotato;
+
+    const data = type === "most_kills" && teamMode !== TeamMode.Solo && !isFaction
+        ? await multiplePlayersQuery(params)
+        : await soloLeaderboardQuery(params);
+    logQueryPerformance(startTime, params);
+    return data;
+}
+
 // we don't use the one sent by the client lol.
-const MAX_RESULT_COUNT = 100;
+const MAX_RESULT_COUNT = LEADERBOARD_SIZE;
 
 const typeToQuery: Record<LeaderboardRequest["type"], string> = {
     kills: "SUM(match_data.kills)",
@@ -197,6 +194,6 @@ function logQueryPerformance(startTime: number, params: LeaderboardRequest) {
         ? `${(executionTime / 1000).toFixed(2)}s`
         : `${executionTime.toFixed(2)}ms`;
     server.logger[executionTime > 1000 ? "warn" : "debug"](
-        `leaderboard | Execution time: ${timeString} | ${leaderboardCache.getCacheKey("debug" as any, params)}`,
+        `leaderboard | Execution time: ${timeString} | ${leaderboardKey(params)}`,
     );
 }

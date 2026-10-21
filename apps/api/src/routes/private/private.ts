@@ -12,8 +12,7 @@ import { z } from "zod";
 import { server } from "../../apiServer.ts";
 import { MOCK_USER_ID } from "../../auth/auth.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
-import { getRedisClient } from "../../cache/index.ts";
-import { leaderboardCache } from "../../cache/leaderboard.ts";
+import { cache } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { items, matchData, type MatchDataTable, userQuests } from "../../db/schema.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
@@ -114,11 +113,7 @@ export const PrivateRouter = new Hono()
         await db.insert(matchData).values(rows).onConflictDoNothing();
 
         await logPlayerIPs(rows);
-        try {
-            await leaderboardCache.invalidateCache(rows);
-        } catch (e) {
-            server.logger.error("Failed to invalidate leaderboard cache", e);
-        }
+        await cache.invalidateLeaderboards(rows);
         server.logger.info(`Saved game data for ${rows[0].gameId}`);
         return c.json({}, 200);
     })
@@ -264,9 +259,8 @@ export const PrivateRouter = new Hono()
         },
     )
     .post("/clear_cache", async (c) => {
-        const client = await getRedisClient();
-        await client.send("FLUSHALL", []);
-        return c.json({ message: "Successfully cleared leaderboard cache" }, 200);
+        const removed = await cache.clearCache();
+        return c.json({ message: `Successfully cleared leaderboard cache (${removed} keys)` }, 200);
     })
     .post(
         "/check_ip",
@@ -333,7 +327,7 @@ export const PrivateRouter = new Hono()
                 ],
                 ...data,
             };
-            await leaderboardCache.invalidateCache([row]);
+            await cache.invalidateLeaderboards([row]);
             await db.insert(matchData).values(row);
             return c.json({ success: true }, 200);
         },

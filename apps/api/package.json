@@ -26,6 +26,7 @@
     "@survev/contracts": "workspace:*",
     "@survev/shared": "workspace:*",
     "better-auth": "^1.7.8",
+    "better-result": "^3.0.1",
     "drizzle-orm": "1.0.0-rc.4",
     "hjson": "^3.2.2",
     "hono": "^4.13.8",
