@@ -75,6 +75,9 @@
       "dependencies": {
         "zod": "^4.6.5",
       },
+      "devDependencies": {
+        "rolldown": "^1.2.9",
+      },
     },
     "tests": {
       "name": "@survev/tests",
