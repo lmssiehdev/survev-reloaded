@@ -42,9 +42,6 @@ const mockLogin = {
 
 const { DISCORD_CLIENT_ID, DISCORD_SECRET_ID, GOOGLE_CLIENT_ID, GOOGLE_SECRET_ID } = Config.secrets;
 
-/** keeps the redirect URIs already registered on the discord / google apps */
-const legacyRedirectUri = (provider: string) => `${Config.oauthRedirectURI}/api/auth/${provider}/callback`;
-
 export const auth = betterAuth({
     appName: "survev",
     baseURL: Config.oauthRedirectURI,
@@ -72,7 +69,6 @@ export const auth = betterAuth({
             discord: {
                 clientId: DISCORD_CLIENT_ID,
                 clientSecret: DISCORD_SECRET_ID,
-                redirectURI: legacyRedirectUri("discord"),
                 prompt: "none",
                 requireEmailVerification: true,
             },
@@ -81,7 +77,6 @@ export const auth = betterAuth({
             google: {
                 clientId: GOOGLE_CLIENT_ID,
                 clientSecret: GOOGLE_SECRET_ID,
-                redirectURI: legacyRedirectUri("google"),
                 // no profile scope: we never use the google name or picture
                 disableDefaultScope: true,
                 scope: ["openid", "email"],
