@@ -1,7 +1,7 @@
 import "./testHelpers.ts";
+import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, test } from "vitest";
 import { Atlases } from "../../client/atlas-builder/atlasDefs.ts";
 import { type MapDef, type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
 import { Constants } from "../../shared/net/net.ts";

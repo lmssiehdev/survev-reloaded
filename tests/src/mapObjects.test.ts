@@ -1,5 +1,5 @@
 import "./testHelpers.ts";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 import type { BuildingDef } from "../../shared/defs/mapObjects/buildings/buildingDefs.ts";
 import type { ObstacleDef } from "../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";

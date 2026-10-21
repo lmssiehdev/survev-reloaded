@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest"
+    "test": "bun test"
   },
   "dependencies": {
     "@types/svg-parser": "^2.0.6",
-    "svg-parser": "^2.1.0",
-    "vitest": "^4.1.11"
+    "svg-parser": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
   }
 }

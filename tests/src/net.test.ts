@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test } from "bun:test";
 import { Main } from "../../shared/defs/maps/baseDefs.ts";
 import { GameConfig, GasMode } from "../../shared/gameConfig.ts";
 import * as net from "../../shared/net/net.ts";

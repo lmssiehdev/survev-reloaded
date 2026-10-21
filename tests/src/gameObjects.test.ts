@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import "./testHelpers.ts";
 
 import { BulletDefs } from "../../shared/defs/gameObjects/bulletDefs.ts";

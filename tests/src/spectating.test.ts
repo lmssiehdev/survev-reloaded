@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
 import { MsgType, SpectateMsg } from "../../shared/net/net.ts";
 import { SpectateAction } from "../../shared/net/spectateMsg.ts";

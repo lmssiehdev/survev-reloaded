@@ -1,4 +1,4 @@
-import { expect } from "vitest";
+import { afterEach, type AsymmetricMatcher, describe, expect, test, type TestOptions } from "bun:test";
 
 import type { GameObjectDef } from "../../shared/defs/gameObjectDefs.ts";
 
@@ -24,9 +24,26 @@ interface GameTestHelpers<R = unknown> {
     toBeSamePlayer: (expected: Player) => R;
 }
 
-declare module "vitest" {
-    interface Assertion<T = any> extends GameTestHelpers<T> {}
-    interface AsymmetricMatchersContaining extends GameTestHelpers {}
+declare module "bun:test" {
+    interface Matchers<T> extends GameTestHelpers<T> {}
+    interface AsymmetricMatchers extends GameTestHelpers<AsymmetricMatcher> {}
+    interface Expect {
+        /** vitest-style soft assertion, polyfilled below */
+        soft: Expect;
+        /** vitest-style explicit failure, polyfilled below */
+        fail: (message?: string) => never;
+    }
+    interface Test<T extends ReadonlyArray<unknown>> {
+        /** vitest-style test.for (cases are not spread), polyfilled below */
+        for<C>(cases: ReadonlyArray<C>): {
+            (name: string, fn: (item: C) => unknown): void;
+            (name: string, options: TestOptions, fn: (item: C) => unknown): void;
+        };
+    }
+    interface Describe<T extends Readonly<any[]>> {
+        /** vitest-style describe.for (cases are not spread), polyfilled below */
+        for<C>(cases: ReadonlyArray<C>): (name: string, fn: (item: C) => void) => void;
+    }
 }
 
 export const predicates: {
@@ -275,3 +292,90 @@ export const predicates: {
 };
 
 expect.extend(predicates);
+
+//
+// bun:test has no expect.soft / expect.fail (vitest APIs) so polyfill them.
+// Soft assertion failures are collected and reported after the test finishes.
+//
+
+let softErrors: unknown[] = [];
+
+function softMatchers(matchers: object): object {
+    return new Proxy(matchers, {
+        get(target, prop) {
+            const value = Reflect.get(target, prop, target);
+            if (prop === "not" || prop === "resolves" || prop === "rejects") {
+                return softMatchers(value);
+            }
+            if (typeof value !== "function") return value;
+            return (...args: unknown[]) => {
+                try {
+                    const res = value.apply(target, args);
+                    if (res instanceof Promise) return res.catch((err) => void softErrors.push(err));
+                    return res;
+                } catch (err) {
+                    softErrors.push(err);
+                }
+            };
+        },
+    });
+}
+
+expect.soft = ((actual: unknown, message?: string) => softMatchers(expect(actual, message))) as typeof expect;
+
+expect.fail = (message?: string): never => {
+    throw new Error(message ?? "expect.fail()");
+};
+
+/**
+ * Format a test title like vitest: printf-style %s/%d/%i/%f/%j/%o/%O consume the case items,
+ * %# is the case index, %$ the 1-based case index, $key / $0 / $a.b index into object cases.
+ */
+function formatTitle(title: string, item: unknown, idx: number): string {
+    const items = Array.isArray(item) ? item : [item];
+    let argIdx = 0;
+    let out = title.replace(/%[sdifjoOp#$%]/g, (m) => {
+        if (m === "%%") return "%";
+        if (m === "%#") return String(idx);
+        if (m === "%$") return String(idx + 1);
+        return String(items[argIdx++]);
+    });
+    if (item !== null && typeof item === "object") {
+        out = out.replace(/\$([\w.]+)/g, (_m, path: string) => {
+            let value: unknown = item;
+            for (const key of path.split(".")) value = (value as Record<string, unknown>)?.[key];
+            return String(value);
+        });
+    }
+    return out;
+}
+
+type TestFn = (name: string, fn: () => unknown, options?: TestOptions) => void;
+
+function forPolyfill(base: TestFn) {
+    return <C>(cases: ReadonlyArray<C>) =>
+    (
+        name: string,
+        optionsOrFn: TestOptions | ((item: C) => unknown),
+        maybeFn?: (item: C) => unknown,
+    ) => {
+        const options = typeof optionsOrFn === "function" ? undefined : optionsOrFn;
+        const fn = typeof optionsOrFn === "function" ? optionsOrFn : maybeFn!;
+        cases.forEach((item, idx) => {
+            const title = formatTitle(name, item, idx);
+            if (options) base(title, () => fn(item), options);
+            else base(title, () => fn(item));
+        });
+    };
+}
+
+test.for = forPolyfill(test as TestFn);
+describe.for = forPolyfill(describe as TestFn);
+
+afterEach(() => {
+    if (!softErrors.length) return;
+    const errors = softErrors;
+    softErrors = [];
+    if (errors.length === 1) throw errors[0];
+    throw new AggregateError(errors, `${errors.length} soft assertions failed`);
+});

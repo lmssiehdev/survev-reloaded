@@ -1,7 +1,7 @@
+import { expect, test } from "bun:test";
 import fs from "node:fs";
 import npath from "node:path";
 import * as svgParser from "svg-parser";
-import { expect, test } from "vitest";
 
 const MAX_SIZES: Record<string, number> = {
     map: 300_000,

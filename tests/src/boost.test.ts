@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
 import { createGame } from "./gameTestHelpers.ts";
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { questHelpers } from "../../server/src/utils/questHelpers.ts";
 import { exclusivityGroups } from "../../shared/defs/gameObjects/questDefs.ts";
 import { GameObjectDefs, MapObjectDefs } from "../../shared/defs/register.ts";
