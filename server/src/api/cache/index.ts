@@ -1,20 +1,19 @@
-import { createClient } from "redis";
+import { RedisClient } from "bun";
 import { Config } from "../../config.ts";
 import { server } from "../apiServer.ts";
 
 export const CACHE_TTL = 3 * 24 * 60 * 60;
 
-type RedisClientType = ReturnType<typeof createClient>;
-
-let redisClient: RedisClientType;
+let redisClient: RedisClient;
 
 export async function getRedisClient() {
     if (redisClient || !Config.cachingEnabled) {
         return redisClient;
     }
-    const cacheInstance = createClient();
+    // defaults to $REDIS_URL / $VALKEY_URL or redis://localhost:6379
+    const cacheInstance = new RedisClient();
 
-    cacheInstance.on("connect", () => server.logger.info("Connected to redis"));
+    cacheInstance.onconnect = () => server.logger.info("Connected to redis");
     process.on("exit", () => cleanupRedis);
 
     await cacheInstance.connect();
@@ -24,14 +23,14 @@ export async function getRedisClient() {
 
 export async function cleanupRedis() {
     if (redisClient) {
-        await redisClient
-            .close()
-            .catch((err) =>
-                server.logger.info(
-                    `CacheStore - Error while disconnecting from redis: ${
-                        err instanceof Error ? err.message : "Unknown error"
-                    }`,
-                )
+        try {
+            redisClient.close();
+        } catch (err) {
+            server.logger.info(
+                `CacheStore - Error while disconnecting from redis: ${
+                    err instanceof Error ? err.message : "Unknown error"
+                }`,
             );
+        }
     }
 }

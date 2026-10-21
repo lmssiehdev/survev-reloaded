@@ -1,22 +1,23 @@
-import pg from "pg";
+import { SQL } from "bun";
 import { Config } from "../../config.ts";
 
-const pool = new pg.Pool({
-    ...Config.database,
-    user: "postgres",
+const sql = new SQL({
+    hostname: Config.database.host,
+    port: Config.database.port,
+    username: "postgres",
     password: "postgres",
     database: "postgres",
 });
 
 try {
-    await pool.query(
+    await sql.unsafe(
         `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'survev'`,
     );
-    await pool.query(`DROP DATABASE IF EXISTS survev`);
-    await pool.query(`CREATE DATABASE survev OWNER survev`);
+    await sql.unsafe(`DROP DATABASE IF EXISTS survev`);
+    await sql.unsafe(`CREATE DATABASE survev OWNER survev`);
     console.log("Database wiped successfully");
 } catch (error) {
     console.error("Error dropping database:", error);
 } finally {
-    await pool.end();
+    await sql.close();
 }

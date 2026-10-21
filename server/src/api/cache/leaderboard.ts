@@ -17,11 +17,11 @@ class LeaderBoardCache {
         const client = await getRedisClient();
         const cacheKey = this.getCacheKey("leaderboard", params);
         const cacheTTL = this._getCacheTTL(params.type);
-        await client.setEx(cacheKey, cacheTTL, JSON.stringify(data));
+        await client.set(cacheKey, JSON.stringify(data), "EX", cacheTTL);
 
         if (params.type !== "most_damage_dealt" && params.type !== "most_kills") return;
         const lowestValue = data[data.length - 1].val;
-        await client.set(this.getCacheKey("lowestscore", params), lowestValue);
+        await client.set(this.getCacheKey("lowestscore", params), String(lowestValue));
     }
 
     async get(params: LeaderboardRequest): Promise<LeaderboardResponse[] | null> {

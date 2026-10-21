@@ -25,7 +25,7 @@ import { validateUserName } from "../../../utils/badWords.ts";
 import type { ModRouterSpectateGameRes, SaveGameBody, SpectateGamePrivateRes } from "../../../utils/types.ts";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
-import { db } from "../../db/index.ts";
+import { db, rowCount } from "../../db/index.ts";
 import { bannedIpsTable, ipLogsTable, itemsTable, matchDataTable, userPassTable, usersTable } from "../../db/schema.ts";
 import { sanitizeSlug } from "../user/auth/authUtils.ts";
 import { incrementPassXp } from "./passXp.ts";
@@ -310,7 +310,7 @@ export const ModerationRouter = new Hono()
                 })
                 .where(eq(matchDataTable.username, current_name));
 
-            return c.json({ message: `Updated ${res.rowCount} rows` }, 200);
+            return c.json({ message: `Updated ${rowCount(res)} rows` }, 200);
         },
     )
     .post("/set_account_name", validateParams(zSetAccountNameParams), async (c) => {
@@ -332,7 +332,7 @@ export const ModerationRouter = new Hono()
             })
             .where(eq(usersTable.slug, current_slug));
 
-        if (res.rowCount) {
+        if (rowCount(res)) {
             return c.json(
                 { message: `updated ${current_slug}'s name to ${sanitized.validName}` },
                 200,
@@ -355,7 +355,7 @@ export const ModerationRouter = new Hono()
                 .delete(matchDataTable)
                 .where(eq(matchDataTable.gameId, gameId));
 
-            return c.json({ message: `Deleted ${res.rowCount} rows` }, 200);
+            return c.json({ message: `Deleted ${rowCount(res)} rows` }, 200);
         },
     )
     .post(
@@ -470,7 +470,7 @@ export const ModerationRouter = new Hono()
                 ),
             );
 
-        if (!result.rowCount) {
+        if (!rowCount(result)) {
             return c.json(
                 { message: `User ${slug} was not found on game ${game_id}` },
                 404,
@@ -505,7 +505,7 @@ export const ModerationRouter = new Hono()
 
         return c.json(
             {
-                message: `Successfully reset stats for ${slug} (${result.rowCount} games affected).`,
+                message: `Successfully reset stats for ${slug} (${rowCount(result)} games affected).`,
             },
             200,
         );
