@@ -521,8 +521,7 @@ export class TeamMenu {
         let msg: ClientToServerTeamMsg;
         try {
             assert(data.length < 1024);
-            msg = JSON.parse(data);
-            zTeamClientMsg.parse(msg);
+            msg = zTeamClientMsg.parse(JSON.parse(data));
         } catch (e) {
             this.logger.warn("Failed to parse message, closing socket.", e);
             ws.close();
