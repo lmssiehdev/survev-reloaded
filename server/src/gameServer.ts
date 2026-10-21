@@ -32,6 +32,13 @@ process.on("uncaughtException", async (err) => {
     process.exit(1);
 });
 
+// Bun keeps an inherited "ignore SIGINT" disposition (e.g. when started as a background
+// job by a script), Node resets it to the default. Exit on SIGINT like Node does by default,
+// game processes then get "disconnect" and close their sockets with "server_restart"
+process.on("SIGINT", () => {
+    process.exit(130);
+});
+
 class GameServer {
     readonly logger = new ServerLogger("GameServer");
 

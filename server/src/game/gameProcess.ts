@@ -12,6 +12,7 @@ import { LOST_GAME_DATA_DIR, type SaveGameBody } from "../utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import type { Client } from "./client.ts";
 import { Game } from "./game.ts";
+import { type IdleSocketData, IdleSocketMonitor } from "./idleSockets.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 import { ClientSocket } from "./socket.ts";
 
@@ -252,7 +253,7 @@ setGameInterval(() => {
     game?.netSync();
 }, 1000 / Config.netSyncTps);
 
-interface GameSocketData {
+interface GameSocketData extends IdleSocketData {
     ip: string;
     rateLimit: Record<symbol, number>;
     disconnectReason?: GameWsDisconnectReason;
@@ -293,6 +294,10 @@ class BunSocket extends ClientSocket<Client> {
         }
     }
 }
+
+// uWS-like idle timeout for game sockets, see IdleSocketMonitor.
+// uWS pings ~8s before closing an idle socket
+const idleSockets = new IdleSocketMonitor<GameSocketData>(30_000, 22_000).start(1000);
 
 const gameHTTPRateLimit = new HTTPRateLimit(5, 1000);
 const gameWsRateLimit = new WebSocketRateLimit(500, 1000, 5);
@@ -346,6 +351,7 @@ const app = Bun.serve({
                     ip,
                     disconnectReason,
                     clientSocket: undefined,
+                    ...IdleSocketMonitor.initialData(),
                 },
             });
             if (!upgraded) {
@@ -379,9 +385,19 @@ const app = Bun.serve({
             }
 
             data.clientSocket = new BunSocket(socket, data.ip);
+            idleSockets.add(socket);
+        },
+
+        ping(socket) {
+            idleSockets.received(socket);
+        },
+
+        pong(socket) {
+            idleSockets.received(socket);
         },
 
         message(socket, message) {
+            idleSockets.received(socket);
             const data = socket.data;
             if (!game || !data.clientSocket) {
                 if (data.clientSocket) {
@@ -404,6 +420,7 @@ const app = Bun.serve({
         },
 
         close(socket) {
+            idleSockets.delete(socket);
             const data = socket.data;
             gameWsRateLimit.ipDisconnected(data.ip);
             if (data.clientSocket) {
