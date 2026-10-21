@@ -148,3 +148,5 @@ export type LeaderboardResponse =
     );
 
 export type LeaderboardRequest = z.infer<typeof zLeaderboardsRequest>;
+/** what the client sends; the server maps teamMode/mapId to numbers */
+export type LeaderboardParams = z.input<typeof zLeaderboardsRequest>;
