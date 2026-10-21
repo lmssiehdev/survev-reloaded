@@ -1,3 +1,4 @@
+import solidPlugin from "@solidjs/vite-plugin";
 import { getConfig } from "@survev/config/config.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { stripBlockPlugin } from "@survev/shared/utils/stripBlockPlugin.ts";
@@ -31,6 +32,7 @@ export default defineConfig(({ mode }) => {
 
     const plugins: PluginOption[] = [
         ejsPlugin(),
+        solidPlugin(),
         ...atlasBuilderPlugin(mode === "production"),
         svgoPlugin(),
     ];
@@ -104,7 +106,7 @@ export default defineConfig(({ mode }) => {
             },
         },
         resolve: {
-            extensions: [".ts", ".js"],
+            extensions: [".ts", ".tsx", ".js"],
             alias: {
                 "@/sdk.ts": viteEnv?.VITE_ENABLE_SURVEV_ADS === "true"
                     ? "./sdk-manager.prod"
