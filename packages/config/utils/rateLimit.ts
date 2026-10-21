@@ -1,51 +1,44 @@
 import { Config } from "../serverConfig.ts";
 
+/**
+ * fixed window counter: true once more than `limit` hits land in the same `interval` ms window.
+ * windows are timestamps, no timers
+ */
+function hit(window: { start: number; count: number }, limit: number, interval: number, now: number) {
+    if (now - window.start >= interval) {
+        window.start = now;
+        window.count = 1;
+        return false;
+    }
+    return ++window.count > limit;
+}
+
 // modified version of https://github.com/uNetworking/uWebSockets.js/blob/master/examples/RateLimit.js
 // also wraps simultaneous connections rate limit not just messages
 export class WebSocketRateLimit {
-    // for messages rate limit
-    private _last = Symbol();
+    // per socket message window, stored on the socket's data
+    private _start = Symbol();
     private _count = Symbol();
 
-    private _now = 0;
-    private limit: number;
+    // open connections per IP, an entry is removed when its last connection closes
+    private _connections = new Map<string, number>();
 
-    // for simultaneous connections rate limit
-    private _IPsData = new Map<
-        string,
-        {
-            connections: number;
-        }
-    >();
-    readonly maxConnections: number;
-
-    constructor(limit: number, interval: number, maxConnections: number) {
-        this.limit = limit;
-        this.maxConnections = maxConnections;
-
-        setInterval(() => ++this._now, interval);
-
-        // clear ips every hour to not leak memory ig
-        // probably not an issue but why not /shrug
-        setInterval(
-            () => {
-                this._IPsData.clear();
-            },
-            1000 * 60 * 60,
-        );
-    }
+    constructor(
+        readonly limit: number,
+        readonly interval: number,
+        readonly maxConnections: number,
+    ) {}
 
     /**
      * Returns true if a websocket is being rate limited by sending too many messages
      */
-    isRateLimited(wsData: Record<symbol, number>) {
+    isRateLimited(wsData: Record<symbol, number>): boolean {
         if (!Config.rateLimitsEnabled) return false;
-        if (wsData[this._last] != this._now) {
-            wsData[this._last] = this._now;
-            wsData[this._count] = 1;
-        } else {
-            return ++wsData[this._count] > this.limit;
-        }
+        const window = { start: wsData[this._start] ?? -Infinity, count: wsData[this._count] ?? 0 };
+        const limited = hit(window, this.limit, this.interval, Date.now());
+        wsData[this._start] = window.start;
+        wsData[this._count] = window.count;
+        return limited;
     }
 
     /**
@@ -54,82 +47,47 @@ export class WebSocketRateLimit {
      */
     isIpRateLimited(ip: string): boolean {
         if (!Config.rateLimitsEnabled) return false;
-
-        let data = this._IPsData.get(ip);
-        if (!data) {
-            data = {
-                connections: 0,
-            };
-            this._IPsData.set(ip, data);
-        }
-
-        if (data.connections + 1 > this.maxConnections) {
-            return true;
-        }
-        return false;
+        return (this._connections.get(ip) ?? 0) + 1 > this.maxConnections;
     }
 
     ipConnected(ip: string) {
-        let data = this._IPsData.get(ip);
-        if (!data) {
-            data = {
-                connections: 0,
-            };
-            this._IPsData.set(ip, data);
-        }
-        data.connections++;
+        this._connections.set(ip, (this._connections.get(ip) ?? 0) + 1);
     }
 
     ipDisconnected(ip: string) {
-        const data = this._IPsData.get(ip);
-        if (!data) return;
-        data.connections--;
+        const count = this._connections.get(ip);
+        if (count === undefined) return;
+        if (count <= 1) this._connections.delete(ip);
+        else this._connections.set(ip, count - 1);
     }
 }
 
 export class HTTPRateLimit {
-    private _IPsData = new Map<
-        string,
-        {
-            last: number;
-            count: number;
-        }
-    >();
+    private _windows = new Map<string, { start: number; count: number }>();
 
-    private _now = 0;
-
-    limit: number;
-
-    constructor(limit: number, interval: number) {
-        this.limit = limit;
-        setInterval(() => ++this._now, interval);
-
-        // clear ips every hour to not leak memory ig
-        // probably not an issue but why not /shrug
-        setInterval(
-            () => {
-                this._IPsData.clear();
-            },
-            1000 * 60 * 60,
-        );
+    constructor(
+        readonly limit: number,
+        readonly interval: number,
+    ) {
+        // drop finished windows so the map doesn't grow with every IP ever seen
+        setInterval(() => {
+            const now = Date.now();
+            for (const [ip, window] of this._windows) {
+                if (now - window.start >= interval) this._windows.delete(ip);
+            }
+        }, Math.max(interval, 60_000)).unref();
     }
 
     /**
      * Checks if an IP is rate limited
      */
-    isRateLimited(ip: string) {
+    isRateLimited(ip: string): boolean {
         if (!Config.rateLimitsEnabled) return false;
-        let ipData = this._IPsData.get(ip);
-        if (!ipData) {
-            ipData = { last: this._now, count: 0 };
-            this._IPsData.set(ip, ipData);
+        let window = this._windows.get(ip);
+        if (!window) {
+            window = { start: -Infinity, count: 0 };
+            this._windows.set(ip, window);
         }
-
-        if (ipData.last != this._now) {
-            ipData.last = this._now;
-            ipData.count = 1;
-        } else {
-            return ++ipData.count > this.limit;
-        }
+        return hit(window, this.limit, this.interval, Date.now());
     }
 }
