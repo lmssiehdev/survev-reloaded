@@ -1,14 +1,13 @@
 import { z } from "zod";
 import { MapId, TeamMode } from "../gameConfig.ts";
+import { ALL_MAPS, ALL_TEAM_MODES } from "./statsFilters.ts";
+
+export { ALL_MAPS, ALL_TEAM_MODES };
 
 //
 // Match History
 //
 
-/**
- * sent by the client when to teammode filter is selected
- */
-export const ALL_TEAM_MODES = 7;
 export const zMatchHistoryRequest = z.object({
     slug: z.string(),
     offset: z.number(),
@@ -69,7 +68,6 @@ export type MatchData = {
 //
 // User Stats
 //
-export const ALL_MAPS = "-1";
 const VALID_MAP_IDS = Object.values(MapId)
     .filter((id) => typeof id === "number")
     .map((id) => id.toString()) as [string, ...string[]];

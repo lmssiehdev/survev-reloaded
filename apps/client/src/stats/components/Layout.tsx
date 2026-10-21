@@ -1,7 +1,9 @@
+import { Collapsible } from "@kobalte/core/collapsible";
+import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import type { JSX } from "@solidjs/web";
 import slugify from "slugify";
-import { createEffect, createMemo, createSignal, For, onSettled } from "solid-js";
+import { createEffect, createMemo, createSignal, For } from "solid-js";
 import { device } from "../../device.ts";
 import { SDK } from "../../sdk/sdk.ts";
 import { config } from "../config.ts";
@@ -20,55 +22,28 @@ const adSlots = {
 };
 type Page = keyof typeof adSlots;
 
-/** runs `handler` on clicks outside `el` while mounted */
-function onClickOutside(el: () => HTMLElement | undefined, handler: () => void) {
-    onSettled(() => {
-        const listener = (e: MouseEvent) => {
-            if (!el()?.contains(e.target as Node)) handler();
-        };
-        document.addEventListener("click", listener);
-        return () => document.removeEventListener("click", listener);
-    });
-}
-
 function LanguageSelect() {
-    const [open, setOpen] = createSignal(false);
-    let el: HTMLLIElement | undefined;
-    onClickOutside(() => el, () => setOpen(false));
-
     return (
-        <li ref={(e) => (el = e)} id="language-select" class={["nav-item", "dropdown", { show: open() }]}>
-            <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                id="selected-language"
-                role="button"
-                aria-haspopup="true"
-                aria-expanded={open() ? "true" : "false"}
-                onClick={(e) => {
-                    e.preventDefault();
-                    setOpen((v) => !v);
-                }}
-            >
-                {locale().toUpperCase()}
-            </a>
-            <div class={["dropdown-menu", { show: open() }]} aria-labelledby="navbarDropdown">
-                <For each={Object.keys(statsLocales) as StatsLocale[]}>
-                    {(code) => (
-                        <a
-                            class="dropdown-item dropdown-language"
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                setOpen(false);
-                                void setLocale(code);
-                            }}
-                        >
-                            {statsLocales[code]}
-                        </a>
-                    )}
-                </For>
-            </div>
+        <li id="language-select" class="nav-item dropdown">
+            <DropdownMenu modal={false}>
+                <DropdownMenu.Trigger id="selected-language" class="nav-link dropdown-toggle">
+                    {locale().toUpperCase()}
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                    <DropdownMenu.Content class="dropdown-menu">
+                        <For each={Object.keys(statsLocales) as StatsLocale[]}>
+                            {(code) => (
+                                <DropdownMenu.Item
+                                    class="dropdown-item dropdown-language"
+                                    onSelect={() => void setLocale(code)}
+                                >
+                                    {statsLocales[code]}
+                                </DropdownMenu.Item>
+                            )}
+                        </For>
+                    </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+            </DropdownMenu>
         </li>
     );
 }
@@ -80,24 +55,15 @@ function Navbar() {
 
     return (
         <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-            <div class="container">
-                <button class="btn btn-outline-success my-2 my-sm-0" type="button">
-                    <a class="nav-link-bright" href="/">{t("index-play-survevio")}</a>
-                </button>
-                <button
-                    class="navbar-toggler"
-                    type="button"
-                    aria-controls="navbarSupportedContent"
-                    aria-expanded={menuOpen() ? "true" : "false"}
-                    aria-label="Toggle navigation"
-                    onClick={() => setMenuOpen((v) => !v)}
-                >
+            <Collapsible class="container" open={menuOpen()} onOpenChange={setMenuOpen} forceMount>
+                <a class="btn btn-outline-success btn-play my-2 my-sm-0" href="/">{t("index-play-survevio")}</a>
+                <Collapsible.Trigger class="navbar-toggler" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
-                </button>
+                </Collapsible.Trigger>
 
-                <div
-                    class={["collapse", "navbar-collapse", "ml-lg-2", { show: menuOpen() }]}
+                <Collapsible.Content
                     id="navbarSupportedContent"
+                    class={["collapse", "navbar-collapse", "ml-lg-2", { show: menuOpen() }]}
                 >
                     <ul class="navbar-nav mr-auto">
                         <li class="nav-item m-lg-auto m-1">
@@ -106,9 +72,8 @@ function Navbar() {
                         <li class="nav-item my-profile m-lg-auto m-1">
                             <a
                                 id="my-profile"
-                                class="nav-link-bright"
+                                class={["nav-link-bright", { "d-block": !!mySlug }]}
                                 href={mySlug ? `/stats/?slug=${mySlug}` : "/stats/"}
-                                style={mySlug ? { display: "block" } : undefined}
                                 link
                             >
                                 {t("index-my-stats")}
@@ -132,14 +97,14 @@ function Navbar() {
                             type="search"
                             name="name"
                             placeholder={t("index-search-players")}
-                            aria-label="Search"
+                            aria-label={t("index-search-players")}
                         />
                         <button class="btn btn-outline-success my-2 my-sm-0" type="submit">
                             {t("index-go")}
                         </button>
                     </form>
-                </div>
-            </div>
+                </Collapsible.Content>
+            </Collapsible>
         </nav>
     );
 }
@@ -199,7 +164,7 @@ export function Layout(props: { children?: JSX.Element }) {
                 <div id="leaderboard-bg" class="stats-bg"></div>
 
                 <div id="adsLeaderBoardTop" style={{ display: shown("leaderboard", "top") ? "block" : "none" }}>
-                    <div id="ad-block-top" class="container mt-3">
+                    <div class="ad-block-top container mt-3">
                         <div class="ad-block-top-leaderboard">
                             <AdSlot id="survevio_728x90_leaderboard_top" />
                         </div>
@@ -210,7 +175,7 @@ export function Layout(props: { children?: JSX.Element }) {
                 </div>
 
                 <div id="adsPlayerTop" style={{ display: shown("player", "top") ? "block" : "none" }}>
-                    <div id="ad-block-top" class="container mt-3">
+                    <div class="ad-block-top container mt-3">
                         <div class="ad-block-top-leaderboard">
                             <AdSlot id="survevio_728x90_playerprofile_top" />
                         </div>

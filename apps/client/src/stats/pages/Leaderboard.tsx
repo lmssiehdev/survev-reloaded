@@ -70,7 +70,7 @@ export function Leaderboard() {
                         <div class="row card-row-top">
                             <div class="col-12">
                                 <div class="leaderboard-title ml-sm-3 ml-0 mr-0 mt-3">
-                                    {t("index-leaderboards").toUpperCase()}
+                                    {t("index-leaderboards")}
                                 </div>
                             </div>
                         </div>
@@ -126,7 +126,7 @@ export function Leaderboard() {
                             <Errored
                                 fallback={
                                     <div class="leaderboard-error">
-                                        <h2>Unable to load, please try again.</h2>
+                                        <h2>{t("stats-leaderboard-error")}</h2>
                                     </div>
                                 }
                             >
@@ -179,13 +179,13 @@ function LeaderboardTable(props: { type: LeaderboardParams["type"]; rows: Leader
         <table id="leaderboard-table">
             <thead>
                 <tr class="leaderboard-headers">
-                    <th class="header-rank" scope="col">{t("stats-rank").toUpperCase()}</th>
-                    <th class="header-player" scope="col">{t("stats-player").toUpperCase()}</th>
-                    <th class="header-stat" scope="col">{t(statNames[props.type]).toUpperCase()}</th>
+                    <th class="header-rank" scope="col">{t("stats-rank")}</th>
+                    <th class="header-player" scope="col">{t("stats-player")}</th>
+                    <th class="header-stat" scope="col">{t(statNames[props.type])}</th>
                     <Show when={showGames()}>
-                        <th class="header-games" scope="col">{t("stats-games").toUpperCase()}</th>
+                        <th class="header-games" scope="col">{t("stats-games")}</th>
                     </Show>
-                    <th class="header-region" scope="col">{t("stats-region").toUpperCase()}</th>
+                    <th class="header-region" scope="col">{t("stats-region")}</th>
                 </tr>
             </thead>
             <tbody class="leaderboard-values">
@@ -206,7 +206,7 @@ function LeaderboardTable(props: { type: LeaderboardParams["type"]; rows: Leader
                             <Show when={showGames()}>
                                 <td>{row.games}</td>
                             </Show>
-                            <td class="data-region">{row.region ? row.region.toUpperCase() : ""}</td>
+                            <td class="data-region">{row.region}</td>
                         </tr>
                     )}
                 </For>

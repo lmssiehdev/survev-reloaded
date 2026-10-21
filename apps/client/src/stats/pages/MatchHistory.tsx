@@ -1,73 +1,71 @@
+import { ToggleGroup } from "@kobalte/core/toggle-group";
 import type { JSX } from "@solidjs/web";
-import { createMemo, Errored, For, Loading, Show } from "solid-js";
+import { createMemo, createSignal, Errored, For, Loading, onSettled, Repeat, Show } from "solid-js";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
-import { ALL_TEAM_MODES, type MatchData, type MatchHistory } from "@survev/shared/types/stats.ts";
-import { getMatchData } from "../api.ts";
+import type { MatchData, MatchHistory } from "@survev/shared/types/stats.ts";
+import { ALL_TEAM_MODES } from "@survev/shared/types/statsFilters.ts";
+import { getMatchData, getMatchHistory } from "../api.ts";
 import { Spinner } from "../components/Spinner.tsx";
 import { formatTime, gameModes, teamModeNames, timeAgo } from "../format.ts";
-import { t } from "../i18n.ts";
+import { type StatsKey, t } from "../i18n.ts";
 
 export type TeamModeFilter = TeamMode | typeof ALL_TEAM_MODES;
 
-export interface HistoryState {
-    games: MatchHistory[];
-    loading: boolean;
-    error: boolean;
-    moreAvailable: boolean;
-    teamModeFilter: TeamModeFilter;
+export const PAGE_SIZE = 10;
+
+const filters = [
+    [ALL_TEAM_MODES, "stats-all"],
+    [1, "stats-solo"],
+    [2, "stats-duo"],
+    [4, "stats-squad"],
+] satisfies [TeamModeFilter, StatsKey][];
+
+interface MatchListProps {
+    slug: string;
+    /** the open match, from ?gameId= */
+    expandedId?: string;
+    /** the match linked when the page opened; it's scrolled into view once */
+    scrollToId?: string;
+    onToggle: (gameId: string) => void;
 }
 
-const filters: [TeamModeFilter, string][] = [[ALL_TEAM_MODES, "All"], [1, "Solo"], [2, "Duo"], [4, "Squad"]];
-
 /** team mode filter, "Matches" tab and the match list */
-export function ExtraStats(props: {
-    slug: string;
-    history: HistoryState;
-    expandedId?: string;
-    onFilter: (filter: TeamModeFilter) => void;
-    onToggle: (gameId: string) => void;
-    onMore: () => void;
-}) {
+export function MatchHistorySection(props: MatchListProps) {
+    const [filter, setFilter] = createSignal<TeamModeFilter>(ALL_TEAM_MODES);
+
     return (
         <>
-            <div class="container mt-3">
+            <ToggleGroup
+                class="container mt-3"
+                value={String(filter())}
+                onChange={(value) => {
+                    if (value) setFilter(Number(value) as TeamModeFilter);
+                }}
+            >
                 <div class="row m-0">
                     <For each={filters}>
-                        {([filter, label], i) => (
-                            <div class={i() === 0 ? "offset-0 offset-md-8 col-3 col-md-1 p-0" : "col-3 col-md-1 p-0"}>
-                                <div
-                                    class={[
-                                        "extra-team-mode-filter",
-                                        "btn-darken",
-                                        { "extra-team-mode-filter-selected": props.history.teamModeFilter === filter },
-                                    ]}
-                                    data-filter={filter}
-                                    onClick={() =>
-                                        props.onFilter(filter)}
-                                >
-                                    {label}
-                                </div>
+                        {([value, label], i) => (
+                            <div class={["col-3 col-md-1 p-0", { "offset-0 offset-md-8": i() === 0 }]}>
+                                <ToggleGroup.Item class="extra-team-mode-filter btn-darken" value={String(value)}>
+                                    {t(label)}
+                                </ToggleGroup.Item>
                             </div>
                         )}
                     </For>
                 </div>
-            </div>
+            </ToggleGroup>
             <div class="container mt-3">
                 <div class="row">
-                    <div class="offset-8 col-4"></div>
-                </div>
-                <div class="row">
                     <div class="col-12 col-md-2">
-                        <div id="selector-extra-matches" class="extra-matches selector-extra col-2 col-md-12 p-0">
-                            Matches<span class="selected-extra"></span>
+                        <div class="extra-matches selector-extra col-2 col-md-12 p-0">
+                            {t("stats-matches")}
+                            <span class="selected-extra"></span>
                         </div>
                     </div>
                     <div id="match-history" class="col-12 col-md-10">
-                        <Show
-                            when={props.history.games.length > 0 || !props.history.loading}
-                            fallback={<Spinner kind="match-history" />}
-                        >
-                            <MatchList {...props} />
+                        {/* a new filter starts over from the first page */}
+                        <Show when={filter()} keyed>
+                            {(teamModeFilter) => <MatchList {...props} teamModeFilter={teamModeFilter} />}
                         </Show>
                     </div>
                 </div>
@@ -76,48 +74,82 @@ export function ExtraStats(props: {
     );
 }
 
-function MatchList(props: {
-    slug: string;
-    history: HistoryState;
-    expandedId?: string;
-    onToggle: (gameId: string) => void;
-    onMore: () => void;
-}) {
+function Message(props: { children: JSX.Element }) {
+    return (
+        <div class="col-lg-10">
+            <div class="m-3">{props.children}</div>
+        </div>
+    );
+}
+
+/** pages of matches; each page fetches itself, "More" adds one */
+function MatchList(props: MatchListProps & { teamModeFilter: TeamModeFilter }) {
+    const [pageCount, setPageCount] = createSignal(1);
+
+    return (
+        <Loading fallback={<Spinner kind="match-history" />}>
+            <div class="header-extra">{t("stats-match-history")}</div>
+            <Repeat count={pageCount()}>
+                {(index) => {
+                    const page = (
+                        <Errored fallback={<Message>{t("stats-error-loading")}</Message>}>
+                            <MatchPage
+                                {...props}
+                                index={index}
+                                last={index === pageCount() - 1}
+                                onMore={() => setPageCount((n) => n + 1)}
+                            />
+                        </Errored>
+                    );
+                    // the first page shows the list's spinner, later ones show their own under the list
+                    return index === 0 ? page : <Loading fallback={<Spinner kind="match-data" />}>{page}</Loading>;
+                }}
+            </Repeat>
+        </Loading>
+    );
+}
+
+function MatchPage(
+    props: MatchListProps & {
+        teamModeFilter: TeamModeFilter;
+        index: number;
+        last: boolean;
+        onMore: () => void;
+    },
+) {
+    const games = createMemo(async () =>
+        (await getMatchHistory({
+            slug: props.slug,
+            offset: props.index * PAGE_SIZE,
+            count: PAGE_SIZE,
+            teamModeFilter: props.teamModeFilter,
+        })) ?? []
+    );
+
     return (
         <>
-            <div class="header-extra">MATCH HISTORY</div>
             <Show
-                when={!props.history.error && props.history.games.length > 0}
-                fallback={
-                    <div class="col-lg-10">
-                        <div class="m-3">
-                            {props.history.error
-                                ? "Error loading content, please try again."
-                                : "No recent games played."}
-                        </div>
-                    </div>
-                }
+                when={games().length > 0 || props.index > 0}
+                fallback={<Message>{t("stats-no-recent-games")}</Message>}
             >
                 <div class="col-lg-12">
-                    <For each={props.history.games}>
+                    <For each={games()}>
                         {(game) => (
                             <MatchRow
                                 game={game}
                                 slug={props.slug}
                                 expanded={game.guid === props.expandedId}
+                                scrollIntoView={game.guid === props.scrollToId}
                                 onToggle={() => props.onToggle(game.guid)}
                             />
                         )}
                     </For>
                 </div>
-                <Show when={props.history.moreAvailable}>
-                    <Show
-                        when={!props.history.loading}
-                        fallback={<Spinner kind="match-data" />}
-                    >
-                        <div class="col-12 js-match-load-more btn-darken" onClick={() => props.onMore()}>More</div>
-                    </Show>
-                </Show>
+            </Show>
+            <Show when={props.last && games().length >= PAGE_SIZE}>
+                <button type="button" class="col-12 match-load-more btn-darken" onClick={() => props.onMore()}>
+                    {t("stats-more")}
+                </button>
             </Show>
         </>
     );
@@ -132,13 +164,25 @@ function MatchStat(props: { name: string; size: "md" | "lg"; children: JSX.Eleme
     );
 }
 
-function MatchRow(props: { game: MatchHistory; slug: string; expanded: boolean; onToggle: () => void }) {
+function MatchRow(props: {
+    game: MatchHistory;
+    slug: string;
+    expanded: boolean;
+    scrollIntoView: boolean;
+    onToggle: () => void;
+}) {
     const mode = () => teamModeNames[props.game.team_mode as TeamMode];
     const icon = () => gameModes.find((m) => m.mapId == props.game.map_id)?.desc.icon;
 
+    let el!: HTMLDivElement;
+    onSettled(() => {
+        if (props.scrollIntoView) el.scrollIntoView();
+    });
+
     return (
         <div
-            class={["row row-match match-link js-match-data", { "match-link-expanded": props.expanded }]}
+            ref={(e) => (el = e)}
+            class={["row row-match match-link", { "match-link-expanded": props.expanded }]}
             data-game-id={props.game.guid}
             onClick={(e) => {
                 // links to other players don't toggle the row
@@ -148,15 +192,15 @@ function MatchRow(props: { game: MatchHistory; slug: string; expanded: boolean; 
             <div class={`match-link-mode-color match-link-mode-${mode()}`}></div>
             <div class="hide-xs col-2">
                 <div class="match-link-player-icons">
-                    {/* inline-block icons, separated by spaces like the old template */}
-                    <For each={Array.from({ length: props.game.team_count })}>
+                    {/* inline-block icons: the spaces between them are part of the layout */}
+                    <Repeat count={props.game.team_count}>
                         {() => (
                             <>
                                 <div class="match-link-player-icon"></div>
                                 {" "}
                             </>
                         )}
-                    </For>
+                    </Repeat>
                 </div>
                 <div class="match-link-start-time">{timeAgo(props.game.end_time)}</div>
             </div>
@@ -194,23 +238,20 @@ function MatchRow(props: { game: MatchHistory; slug: string; expanded: boolean; 
                 </Show>
             </div>
             <div class="offset-0 col-1 pl-0 pr-0">
-                <div class={["match-link-expand", props.expanded ? "match-link-expand-up" : "match-link-expand-down"]}>
-                </div>
+                <button
+                    type="button"
+                    class={["match-link-expand", props.expanded ? "match-link-expand-up" : "match-link-expand-down"]}
+                    aria-expanded={props.expanded ? "true" : "false"}
+                    aria-label={t("stats-match-details")}
+                >
+                </button>
             </div>
 
             <Show when={props.expanded}>
-                <div id="match-data" class="col-lg-12">
+                <div class="match-data col-lg-12">
                     <MatchDetails gameId={props.game.guid} slug={props.slug} />
                 </div>
             </Show>
-        </div>
-    );
-}
-
-function MatchDataError() {
-    return (
-        <div class="col-lg-10">
-            <div class="m-3">Error loading content, please try again.</div>
         </div>
     );
 }
@@ -222,11 +263,40 @@ function MatchDetails(props: { gameId: string; slug: string }) {
         return data;
     });
     return (
-        <Errored fallback={<MatchDataError />}>
+        <Errored fallback={<Message>{t("stats-error-loading")}</Message>}>
             <Loading fallback={<Spinner kind="match-data" />}>
                 <MatchTable players={players()} slug={props.slug} />
             </Loading>
         </Errored>
+    );
+}
+
+const columns: { class: string; label?: StatsKey }[] = [
+    { class: "match-header-rank", label: "stats-rank" },
+    { class: "match-header-icon hide-xs" },
+    { class: "match-header-player", label: "stats-player" },
+    { class: "match-header-stat", label: "stats-kills" },
+    { class: "match-header-stat hide-xs", label: "stats-damage" },
+    { class: "match-header-stat", label: "stats-survived" },
+];
+
+/**
+ * the header sits above the scrolling body in its own table; the body repeats it
+ * without labels so both tables get the same column widths
+ */
+function MatchHeaders(props: { labels: boolean }) {
+    return (
+        <thead>
+            <tr class="match-headers">
+                <For each={columns}>
+                    {(column) => (
+                        <th class={column.class} scope="col">
+                            {props.labels && column.label ? t(column.label) : ""}
+                        </th>
+                    )}
+                </For>
+            </tr>
+        </thead>
     );
 }
 
@@ -246,36 +316,17 @@ function MatchTable(props: { players: MatchData[]; slug: string }) {
             return { player, firstOfTeam, dark: teamIdx % 2 == 0 };
         });
     });
-    const headers = (
-        <tr class="match-headers">
-            <th class="match-header-rank" scope="col">{t("stats-rank").toUpperCase()}</th>
-            <th class="match-header-icon hide-xs" scope="col"></th>
-            <th class="match-header-player" scope="col">{t("stats-player").toUpperCase()}</th>
-            <th class="match-header-stat" scope="col">{t("stats-kills").toUpperCase()}</th>
-            <th class="match-header-stat hide-xs" scope="col">{t("stats-damage").toUpperCase()}</th>
-            <th class="match-header-stat" scope="col">{t("stats-survived").toUpperCase()}</th>
-        </tr>
-    );
 
     return (
         <>
             <div class="match-header-wrapper">
                 <table class="match-table">
-                    <thead>{headers}</thead>
+                    <MatchHeaders labels />
                 </table>
             </div>
             <div class="match-table-wrapper">
                 <table class="match-table">
-                    <thead>
-                        <tr class="match-headers">
-                            <th class="match-header-rank"></th>
-                            <th class="match-header-icon hide-xs"></th>
-                            <th class="match-header-player"></th>
-                            <th class="match-header-stat"></th>
-                            <th class="match-header-stat hide-xs"></th>
-                            <th class="match-header-stat"></th>
-                        </tr>
-                    </thead>
+                    <MatchHeaders labels={false} />
                     <tbody class="match-values">
                         <For each={rows()}>
                             {(row) => (
