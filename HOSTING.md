@@ -108,7 +108,7 @@ If you are only hosting a game server you can skip this.
 
 Make sure the build directory has the proper permissions:
 ```sh
-sudo chown -R www-data:www-data /opt/survev/client/dist
+sudo chown -R www-data:www-data /opt/survev/apps/client/dist
 ```
 
 First, remove the default file:
@@ -136,18 +136,18 @@ server {
         etag off;
         if_modified_since off;
         add_header Cache-Control "public, no-transform";
-        root /opt/survev/client/dist;
+        root /opt/survev/apps/client/dist;
     }
 
     location ~* \.(html)$ {
         etag on;
         add_header Cache-Control "no-cache";
-        root /opt/survev/client/dist;
+        root /opt/survev/apps/client/dist;
     }
 
     # Client build
     location / {
-        root /opt/survev/client/dist;
+        root /opt/survev/apps/client/dist;
     }
 
     # API server
@@ -219,8 +219,8 @@ Description=survev dedicated game server.
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/survev/server
-ExecStart=/usr/bin/pnpm start:game
+WorkingDirectory=/opt/survev/apps/server
+ExecStart=/usr/bin/pnpm start
 Restart=on-failure
 
 [Install]
@@ -247,8 +247,8 @@ Description=survev dedicated API server.
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/survev/server
-ExecStart=/usr/bin/pnpm start:api
+WorkingDirectory=/opt/survev/apps/api
+ExecStart=/usr/bin/pnpm start
 Restart=on-failure
 
 [Install]
@@ -279,7 +279,7 @@ Description=survev bot.
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/survev/bot
+WorkingDirectory=/opt/survev/apps/bot
 ExecStart=/usr/bin/pnpm start
 Restart=on-failure
 

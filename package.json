@@ -4,21 +4,31 @@
   "type": "module",
   "description": "Open Source Surviv.io Server",
   "workspaces": [
-    "server",
-    "shared",
-    "client",
-    "bot",
-    "tests"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "survev-setup": "bun install && bun setup.ts",
     "dev": "bun run --parallel dev:api dev:game dev:client",
-    "dev:server": "cd server && bun run dev",
-    "dev:api": "cd server && bun run dev:api",
-    "dev:game": "cd server && bun run dev:game",
-    "dev:client": "cd client && bun run dev",
-    "build": "cd server && bun run build && cd ../client && bun run build",
-    "stressTest": "cd server && bun run stressTest",
+    "dev:server": "bun run --parallel dev:api dev:game",
+    "dev:api": "bun run --filter @survev/api dev",
+    "dev:game": "bun run --filter @survev/server dev",
+    "dev:client": "bun run --filter @survev/client dev",
+    "dev:bot": "bun run --filter @survev/bot dev",
+    "build": "bun run build:api && bun run build:game && bun run build:client",
+    "build:api": "bun run --filter @survev/api build",
+    "build:game": "bun run --filter @survev/server build",
+    "build:client": "bun run --filter @survev/client build",
+    "start:api": "bun run --filter @survev/api start",
+    "start:game": "bun run --filter @survev/server start",
+    "stressTest": "bun run --filter @survev/server stressTest",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "db:generate": "bun run --filter @survev/api db:generate",
+    "db:migrate": "bun run --filter @survev/api db:migrate",
+    "db:seed": "bun run --filter @survev/api db:seed",
+    "db:studio": "bun run --filter @survev/api db:studio",
+    "db:wipe": "bun run --filter @survev/api db:wipe",
     "lint": "bun lint --fix && dprint fmt",
     "lint:ci": "bun lint --no-script && dprint check"
   },
@@ -34,6 +44,8 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@survev/config": "workspace:*",
+    "@survev/shared": "workspace:*",
     "enquirer": "^2.4.1",
     "hjson": "^3.2.2"
   },

@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "typecheck": "bun check",
-    "dev": "vite dev",
-    "preview": "vite preview",
-    "lint": "cd .. && bun run lint"
+    "build": "bun --bun vite build",
+    "typecheck": "bun check && bun check -p test",
+    "dev": "bun --bun vite dev",
+    "preview": "bun --bun vite preview",
+    "lint": "cd ../.. && bun run lint"
   },
   "dependencies": {
+    "@survev/shared": "workspace:*",
     "@taufik-nurrohman/color-picker": "1.4.2",
     "bootstrap": "^4.6.2",
     "ejs": "^4.0.1",
@@ -19,13 +20,18 @@
     "slugify": "^1.6.9"
   },
   "devDependencies": {
+    "@survev/api": "workspace:*",
+    "@survev/config": "workspace:*",
     "@tweakpane/core": "^2.0.5",
+    "@types/bun": "^1.4.3",
     "@types/ejs": "^3.1.5",
     "@types/jquery": "^3.5.34",
+    "@types/svg-parser": "^2.0.6",
     "canvas": "^3.2.3",
     "codefend": "^3.2.0",
     "maxrects-packer": "^2.7.3",
     "sharp": "^0.35.4",
+    "svg-parser": "^2.1.0",
     "svgo": "^4.1.0",
     "turnstile-types": "^1.2.3",
     "tweakpane": "^4.0.5",

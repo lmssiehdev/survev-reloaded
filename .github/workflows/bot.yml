@@ -5,9 +5,9 @@ on:
     branches:
       - master
     paths: &paths
-      - "bot/**"
-      - "server/**"
-      - "shared/**"
+      - "apps/bot/**"
+      - "apps/api/**"
+      - "packages/**"
       - "*.json"
       - "bun.lock"
       - ".github/workflows/bot.yml"
@@ -34,4 +34,4 @@ jobs:
 
       - name: Typecheck Bot
         run: bun run typecheck
-        working-directory: ./bot
+        working-directory: ./apps/bot

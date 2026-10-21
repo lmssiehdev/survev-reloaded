@@ -5,9 +5,9 @@ on:
     branches:
       - master
     paths: &paths
-      - "tests/**"
-      - "server/**"
-      - "shared/**"
+      - "apps/**"
+      - "packages/**"
+      - "bunfig.toml"
       - "*.json"
       - "bun.lock"
       - ".github/workflows/tests.yml"
@@ -34,4 +34,3 @@ jobs:
 
       - name: Run Tests
         run: bun run test
-        working-directory: ./tests

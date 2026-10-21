@@ -1,0 +1,41 @@
+{
+  "name": "@survev/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": {
+      "types": "./src/types.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/buildApp.ts src/index.ts",
+    "typecheck": "bun check",
+    "start": "bun dist/index.js",
+    "dev": "bun --watch --no-clear-screen src/index.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "bun src/db/migrate.ts",
+    "db:seed": "bun src/db/seed.ts",
+    "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "db:wipe": "bun src/db/wipe.ts",
+    "lint": "cd ../.. && bun run lint"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.8.0",
+    "@oslojs/crypto": "^1.0.1",
+    "@survev/config": "workspace:*",
+    "@survev/contracts": "workspace:*",
+    "@survev/shared": "workspace:*",
+    "arctic": "^3.7.0",
+    "drizzle-orm": "^0.45.3",
+    "hjson": "^3.2.2",
+    "hono": "^4.13.8",
+    "obscenity": "^0.4.6",
+    "slugify": "^1.6.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3",
+    "drizzle-kit": "^0.31.11",
+    "unique-username-generator": "^1.5.1"
+  }
+}

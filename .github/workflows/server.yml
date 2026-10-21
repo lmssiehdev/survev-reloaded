@@ -5,8 +5,10 @@ on:
     branches:
       - master
     paths: &paths
-      - "server/**"
-      - "shared/**"
+      - "apps/api/**"
+      - "apps/server/**"
+      - "packages/**"
+      - "scripts/**"
       - "*.json"
       - "bun.lock"
       - ".github/workflows/server.yml"
@@ -31,10 +33,21 @@ jobs:
       - name: Install Packages
         run: bun install --frozen-lockfile
 
-      - name: Typecheck Server
+      - name: Typecheck API
         run: bun run typecheck
-        working-directory: ./server
+        working-directory: ./apps/api
 
-      - name: Build Server
+      - name: Typecheck Game Server
+        run: bun run typecheck
+        working-directory: ./apps/server
+
+      - name: Typecheck Packages
+        run: bun run --filter './packages/*' typecheck
+
+      - name: Build API
         run: bun run build
-        working-directory: ./server
+        working-directory: ./apps/api
+
+      - name: Build Game Server
+        run: bun run build
+        working-directory: ./apps/server

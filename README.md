@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./client/public/img/survev_logo_full.png" alt="Survev logo" style="height: 200px;">
+    <img src="./apps/client/public/img/survev_logo_full.png" alt="Survev logo" style="height: 200px;">
 </div>
 <hr />
 <div align="center">
@@ -17,8 +17,20 @@
 <br />
 
 ## Development
-Start the client dev server using `bun dev:client` and API / game servers with `bun dev:server`,  
-or traverse into client and server directories individually to run `bun dev` in each.
+Run `bun dev` at the repo root to start the API server, game server and client dev server together.
+Use `bun dev:client`, `bun dev:api`, `bun dev:game` (or `bun dev:server` for API + game) to start them separately,
+or run `bun dev` inside an app directory.
+
+The repo is a Bun workspace:
+- `apps/api`: API server (accounts, stats, matchmaking, team menu)
+- `apps/server`: game server
+- `apps/client`: Vite client
+- `apps/bot`: Discord bot
+- `packages/shared`: game code shared by the client and servers (`@survev/shared`)
+- `packages/contracts`: zod schemas and types exchanged between apps (`@survev/contracts`)
+- `packages/config`: `survev-config.hjson` loader and shared server utils (`@survev/config`)
+
+Apps may import packages, but not each other (except the type-only `@survev/api/types`).
 
 ### Database and accounts
 Accounts are optional, they require a PostgreSQL database, to disable them add `database: { enabled: false }` to `survev-config.hjson`.
@@ -35,8 +47,6 @@ sudo -u postgres createdb survev -O survev
 
 Then populate the database with the schema:
 ```sh
-cd server
-
 # Run this everytime you make changes to schema.ts.
 bun run db:generate
 bun run db:migrate
