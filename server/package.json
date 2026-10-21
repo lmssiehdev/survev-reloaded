@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "rolldown -c rolldown.config.ts",
+    "build": "bun scripts/build.ts",
     "typecheck": "bun check",
-    "start:api": "node --enable-source-maps dist/index.js",
-    "start:game": "node --enable-source-maps dist/gameServer.js",
+    "start:api": "bun dist/index.js",
+    "start:game": "bun dist/gameServer.js",
     "dev": "bun run --parallel dev:api dev:game",
     "dev:api": "bun --watch --no-clear-screen src/api/index.ts",
     "dev:game": "bun scripts/devWatch.ts src/gameServer.ts ../shared ../survev-config.hjson",
@@ -35,7 +35,6 @@
     "@types/bun": "^1.4.3",
     "@types/nanotimer": "^0.3.2",
     "drizzle-kit": "^0.31.11",
-    "rolldown": "^1.2.9",
     "unique-username-generator": "^1.5.1"
   }
 }

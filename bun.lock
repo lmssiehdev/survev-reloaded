@@ -67,7 +67,6 @@
         "@types/bun": "^1.4.3",
         "@types/nanotimer": "^0.3.2",
         "drizzle-kit": "^0.31.11",
-        "rolldown": "^1.2.9",
         "unique-username-generator": "^1.5.1",
       },
     },
@@ -75,9 +74,6 @@
       "name": "@survev/shared",
       "dependencies": {
         "zod": "^4.6.5",
-      },
-      "devDependencies": {
-        "rolldown": "^1.2.9",
       },
     },
     "tests": {
