@@ -1,4 +1,4 @@
-import type { ProxyDef } from "../../shared/types/api.ts";
+import type { ProxyDef } from "@survev/shared/types/api.ts";
 
 declare const PROXY_DEFS: Record<string, ProxyDef>;
 

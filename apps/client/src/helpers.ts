@@ -1,8 +1,8 @@
-import type { MeleeDef } from "../../shared/defs/gameObjects/meleeDefs.ts";
-import { type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import { GameObjectDefs } from "../../shared/defs/register.ts";
-import * as net from "../../shared/net/net.ts";
-import { util } from "../../shared/utils/util.ts";
+import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import * as net from "@survev/shared/net/net.ts";
+import { util } from "@survev/shared/utils/util.ts";
 
 const truncateCanvas = document.createElement("canvas");
 

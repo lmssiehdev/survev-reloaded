@@ -1,6 +1,6 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { OAuth2RequestError } from "arctic";
 import { Hono } from "hono";
-import { Config } from "../../../config.ts";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware } from "../../auth/middleware.ts";
 import { DiscordRouter } from "./auth/discord.ts";

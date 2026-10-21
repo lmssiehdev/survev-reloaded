@@ -1,8 +1,8 @@
+import type { PrivateRouteApp } from "@survev/api/types";
+import { Config } from "@survev/config/serverConfig.ts";
+import { fetchWithRetry } from "@survev/config/utils/fetchWithRetry.ts";
+import { defaultLogger } from "@survev/config/utils/logger.ts";
 import { hc } from "hono/client";
-import type { PrivateRouteApp } from "../api/routes/private/private.ts";
-import { Config } from "../config.ts";
-import { fetchWithRetry } from "./fetchWithRetry.ts";
-import { defaultLogger } from "./logger.ts";
 
 export const apiPrivateRouter = hc<PrivateRouteApp>(
     `${Config.gameServer.apiServerUrl}/private`,

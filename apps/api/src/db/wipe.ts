@@ -1,5 +1,5 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { SQL } from "bun";
-import { Config } from "../../config.ts";
 
 const sql = new SQL({
     hostname: Config.database.host,

@@ -1,7 +1,7 @@
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { FactionTeam, GameConfig } from "../../../shared/gameConfig.ts";
-import type { Bullet } from "../../../shared/net/updateMsg.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { FactionTeam, GameConfig } from "@survev/shared/gameConfig.ts";
+import type { Bullet } from "@survev/shared/net/updateMsg.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { ParticleBarn } from "./particles.ts";
 import type { PlayerBarn } from "./player.ts";

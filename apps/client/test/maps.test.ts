@@ -1,10 +1,10 @@
-import "./testHelpers.ts";
+import "@survev/shared/test/testHelpers.ts";
+import { type MapDef, type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { Constants } from "@survev/shared/net/net.ts";
 import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { Atlases } from "../../client/atlas-builder/atlasDefs.ts";
-import { type MapDef, type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import { Constants } from "../../shared/net/net.ts";
+import { Atlases } from "../atlas-builder/atlasDefs.ts";
 import { getAllAtlasSprites, getAllMapSprites } from "./spriteHelpers.ts";
 
 const maps = Object.keys(MapDefs);
@@ -131,7 +131,7 @@ describe.for(maps)("Map %s", (map) => {
     });
 
     test("splash img exists", () => {
-        const file = path.join(import.meta.dirname, `../../client/public/${mapDef.desc.backgroundImg}`);
+        const file = path.join(import.meta.dirname, `../public/${mapDef.desc.backgroundImg}`);
         expect(fs.existsSync(file), `File ${file} should exist`).toBeTruthy();
     });
 });

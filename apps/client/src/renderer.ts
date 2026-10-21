@@ -1,6 +1,6 @@
+import { Constants } from "@survev/shared/net/net.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { Constants } from "../../shared/net/net.ts";
-import { v2 } from "../../shared/utils/v2.ts";
 import type { Camera } from "./camera.ts";
 import { errorLogManager } from "./errorLogs.ts";
 import type { Game } from "./game.ts";

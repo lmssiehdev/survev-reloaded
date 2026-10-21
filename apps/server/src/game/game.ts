@@ -1,10 +1,11 @@
-import type { MapDefKey } from "../../../shared/defs/mapDefs.ts";
-import { TeamMode } from "../../../shared/gameConfig.ts";
-import type { Loadout } from "../../../shared/utils/loadout.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { Config } from "../config.ts";
-import { ServerLogger } from "../utils/logger.ts";
-import { type FindGamePrivateBody, type ServerGameConfig } from "../utils/types.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { type FindGamePrivateBody } from "@survev/contracts";
+import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import { TeamMode } from "@survev/shared/gameConfig.ts";
+import type { Loadout } from "@survev/shared/utils/loadout.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import type { ServerGameConfig } from "../utils/types.ts";
 import { ClientBarn } from "./client.ts";
 import { GameModeManager } from "./gameModeManager.ts";
 import { Grid } from "./grid.ts";

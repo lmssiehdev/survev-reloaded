@@ -1,5 +1,5 @@
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import { expect, test } from "bun:test";
-import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
 import { createGame } from "./gameTestHelpers.ts";
 
 // i kept fucking up the logic with less and greater than while refactoring boost logic

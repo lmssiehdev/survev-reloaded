@@ -1,15 +1,15 @@
-import type { PassState, QuestState } from "../../shared/types/user.ts";
-import type { Item, ItemStatus } from "../../shared/utils/loadout.ts";
-import { type Loadout, loadout as loadouts } from "../../shared/utils/loadout.ts";
-import { util } from "../../shared/utils/util.ts";
+import type { PassState, QuestState } from "@survev/shared/types/user.ts";
+import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
+import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { errorLogManager } from "./errorLogs.ts";
 import { helpers } from "./helpers.ts";
 import { proxy } from "./proxy.ts";
 
+import type { UserRouterApp } from "@survev/api/types";
 import { hc } from "hono/client";
-import type { UserRouterApp } from "../../server/src/api/routes/user/UserRouter.ts";
 
 type UserRouter = ReturnType<typeof hc<UserRouterApp>>;
 

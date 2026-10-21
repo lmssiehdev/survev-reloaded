@@ -1,8 +1,8 @@
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import { expect, test } from "bun:test";
-import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
-import { v2 } from "../../shared/utils/v2.ts";
 import { createGame } from "./gameTestHelpers.ts";
-import "./testHelpers.ts";
+import "@survev/shared/test/testHelpers.ts";
 
 test("Killed by enemy", () => {
     const game = createGame(TeamMode.Solo, "test_normal");

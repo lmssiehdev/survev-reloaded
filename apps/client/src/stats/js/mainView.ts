@@ -1,5 +1,5 @@
+import type { LeaderboardRequest } from "@survev/shared/types/stats.ts";
 import $ from "jquery";
-import type { LeaderboardRequest } from "../../../../shared/types/stats.ts";
 import { api } from "../../api.ts";
 import { device } from "../../device.ts";
 import { helpers } from "../../helpers.ts";

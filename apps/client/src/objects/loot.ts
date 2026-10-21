@@ -1,15 +1,15 @@
 import * as PIXI from "pixi.js-legacy";
 
-import type { LootDef } from "../../../shared/defs/gameObjectDefs.ts";
-import type { AmmoDef } from "../../../shared/defs/gameObjects/gearDefs.ts";
-import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
-import type { XPDef } from "../../../shared/defs/gameObjects/xpDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { GameConfig } from "../../../shared/gameConfig.ts";
-import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import type { LootDef } from "@survev/shared/defs/gameObjectDefs.ts";
+import type { AmmoDef } from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
+import type { XPDef } from "@survev/shared/defs/gameObjects/xpDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { DebugRendererOpts } from "../config.ts";

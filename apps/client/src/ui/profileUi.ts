@@ -1,5 +1,5 @@
+import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
 import $ from "jquery";
-import loadout, { type Item } from "../../../shared/utils/loadout.ts";
 import type { Account } from "../account.ts";
 import { api } from "../api.ts";
 import { device } from "../device.ts";

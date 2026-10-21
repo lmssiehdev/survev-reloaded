@@ -1,7 +1,7 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { generateCodeVerifier, generateState, Google } from "arctic";
 import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { Config } from "../../../../config.ts";
 import { cookieDomain, getRedirectUri, handleAuthUser } from "./authUtils.ts";
 
 const google = new Google(

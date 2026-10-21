@@ -1,5 +1,5 @@
+import { util } from "@survev/shared/utils/util.ts";
 import * as PIXI from "pixi.js-legacy";
-import { util } from "../../../shared/utils/util.ts";
 
 export const defaultLabelTextOptions: Partial<PIXI.ITextStyle> = {
     fontFamily: "monospace",

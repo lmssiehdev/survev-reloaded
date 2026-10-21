@@ -1,14 +1,14 @@
 import * as PIXI from "pixi.js-legacy";
 
-import type { OutfitDef } from "../../../shared/defs/gameObjects/outfitDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { type Action, type Anim, GameConfig } from "../../../shared/gameConfig.ts";
-import type { MapMsg } from "../../../shared/net/mapMsg.ts";
-import { type ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { type Loadout, loadout as loadouts } from "../../../shared/utils/loadout.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { v2 } from "../../../shared/utils/v2.ts";
+import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { type Action, type Anim, GameConfig } from "@survev/shared/gameConfig.ts";
+import type { MapMsg } from "@survev/shared/net/mapMsg.ts";
+import { type ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import type { Account } from "../account.ts";
 import type { AudioManager } from "../audioManager.ts";
 import { Camera } from "../camera.ts";

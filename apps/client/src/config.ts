@@ -1,9 +1,9 @@
-import { GameConfig } from "../../shared/gameConfig.ts";
-import loadout from "../../shared/utils/loadout.ts";
-import { util } from "../../shared/utils/util.ts";
-import { v2 } from "../../shared/utils/v2.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import loadout from "@survev/shared/utils/loadout.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 
-import type { MapDefKey } from "../../shared/defs/mapDefs.ts";
+import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import type { Locale } from "./ui/localization.ts";
 
 type AimStyle = "locked" | "anywhere";

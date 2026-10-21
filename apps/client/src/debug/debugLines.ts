@@ -1,7 +1,7 @@
+import type { Collider } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Graphics } from "pixi.js-legacy";
-import type { Collider } from "../../../shared/utils/coldet.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
 import type { Camera } from "../camera.ts";
 
 enum kShapes {

@@ -1,7 +1,7 @@
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";

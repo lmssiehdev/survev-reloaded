@@ -1,9 +1,9 @@
-import type { DamageType } from "../../../../shared/gameConfig.ts";
-import { BitStream } from "../../../../shared/net/net.ts";
-import { ObjectSerializeFns, ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
-import { type AABB, coldet } from "../../../../shared/utils/coldet.ts";
-import { assert } from "../../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
+import type { DamageType } from "@survev/shared/gameConfig.ts";
+import { BitStream } from "@survev/shared/net/net.ts";
+import { ObjectSerializeFns, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { type AABB, coldet } from "@survev/shared/utils/coldet.ts";
+import { assert } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "../game.ts";
 import type { Grid } from "../grid.ts";
 import type { Airdrop } from "./airdrop.ts";

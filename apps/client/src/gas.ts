@@ -1,9 +1,9 @@
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { Constants } from "@survev/shared/net/net.ts";
+import type { GasData } from "@survev/shared/net/updateMsg.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { GameConfig } from "../../shared/gameConfig.ts";
-import { Constants } from "../../shared/net/net.ts";
-import type { GasData } from "../../shared/net/updateMsg.ts";
-import { math } from "../../shared/utils/math.ts";
-import { v2, type Vec2 } from "../../shared/utils/v2.ts";
 import type { Camera } from "./camera.ts";
 import { helpers } from "./helpers.ts";
 import type { UiManager } from "./ui/ui.ts";

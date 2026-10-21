@@ -1,4 +1,4 @@
-import { v2 } from "../../shared/utils/v2.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 
 class Touch {
     id = 0;

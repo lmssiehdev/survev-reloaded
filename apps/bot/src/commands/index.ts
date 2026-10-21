@@ -1,10 +1,4 @@
-import {
-    ApplicationCommandOptionType,
-    type ChatInputCommandInteraction,
-    type SlashCommandOptionsOnlyBuilder,
-} from "discord.js";
-import { z } from "zod";
-import { zSetClientThemeBody, zSetGameModeBody } from "../../../server/src/utils/types.ts";
+import { zSetClientThemeBody, zSetGameModeBody } from "@survev/contracts";
 import {
     zBanAccountParams,
     zBanIpParams,
@@ -19,7 +13,13 @@ import {
     zSetMatchDataNameParams,
     zUnbanAccountParams,
     zUnbanIpParams,
-} from "../../../shared/types/moderation.ts";
+} from "@survev/shared/types/moderation.ts";
+import {
+    ApplicationCommandOptionType,
+    type ChatInputCommandInteraction,
+    type SlashCommandOptionsOnlyBuilder,
+} from "discord.js";
+import { z } from "zod";
 import { Command } from "../utils.ts";
 import { createCommand, createSlashCommand, genericExecute } from "./helpers.ts";
 import { searchPlayersHandler } from "./search-player.ts";

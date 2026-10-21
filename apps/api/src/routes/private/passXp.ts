@@ -1,9 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 
-import { PassDefs } from "../../../../../shared/defs/gameObjects/passDefs.ts";
-import { GameObjectDefs } from "../../../../../shared/defs/register.ts";
-import { passUtil } from "../../../../../shared/utils/passUtil.ts";
-import { Config } from "../../../config.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { server } from "../../apiServer.ts";
 import type { db } from "../../db/index.ts";
 import { itemsTable, userPassTable } from "../../db/schema.ts";

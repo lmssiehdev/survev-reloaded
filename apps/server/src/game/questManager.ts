@@ -6,12 +6,12 @@ import {
     QuestDefs,
     type QuestEvent,
     type SupportedFilters,
-} from "../../../shared/defs/gameObjects/questDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import type { TeamMode } from "../../../shared/gameConfig.ts";
-import { MsgType, UpdatePassMsg } from "../../../shared/net/net.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { assert, type UnionToIntersection, util } from "../../../shared/utils/util.ts";
+} from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import type { TeamMode } from "@survev/shared/gameConfig.ts";
+import { MsgType, UpdatePassMsg } from "@survev/shared/net/net.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert, type UnionToIntersection, util } from "@survev/shared/utils/util.ts";
 import type { Game } from "./game.ts";
 import type { Player } from "./objects/player.ts";
 

@@ -1,8 +1,8 @@
-import { EmotesDefs } from "../../shared/defs/gameObjects/emoteDefs.ts";
-import { MeleeDefs } from "../../shared/defs/gameObjects/meleeDefs.ts";
-import { OutfitDefs } from "../../shared/defs/gameObjects/outfitDefs.ts";
-import { UnlockDefs } from "../../shared/defs/gameObjects/unlockDefs.ts";
-import { GameConfig, type Input } from "../../shared/gameConfig.ts";
+import { EmotesDefs } from "../defs/gameObjects/emoteDefs.ts";
+import { MeleeDefs } from "../defs/gameObjects/meleeDefs.ts";
+import { OutfitDefs } from "../defs/gameObjects/outfitDefs.ts";
+import { UnlockDefs } from "../defs/gameObjects/unlockDefs.ts";
+import { GameConfig, type Input } from "../gameConfig.ts";
 import type { Connection } from "../net/connection.ts";
 import * as net from "../net/net.ts";
 import { type ObjectData, type ObjectsPartialData, ObjectType } from "../net/objectSerializeFns.ts";

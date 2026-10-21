@@ -1,5 +1,5 @@
+import { math } from "@survev/shared/utils/math.ts";
 import * as PIXI from "pixi.js-legacy";
-import { math } from "../../../shared/utils/math.ts";
 import { Ambiance } from "../../src/ambiance.ts";
 import { AudioManager } from "../../src/audioManager.ts";
 import { ConfigManager } from "../../src/config.ts";

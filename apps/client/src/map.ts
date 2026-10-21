@@ -1,23 +1,23 @@
-import * as PIXI from "pixi.js-legacy";
-import { type MapDef, type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import type { BuildingDef } from "../../shared/defs/mapObjects/buildings/buildingDefs.ts";
-import type { ObstacleDef } from "../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
-import type { SurfaceData, SurfaceType } from "../../shared/defs/mapObjectsTyping.ts";
-import { MapObjectDefs } from "../../shared/defs/register.ts";
-import { GameConfig } from "../../shared/gameConfig.ts";
-import type { GroundPatch, MapMsg } from "../../shared/net/mapMsg.ts";
-import { coldet, type Collider } from "../../shared/utils/coldet.ts";
-import { collider } from "../../shared/utils/collider.ts";
-import { mapHelpers } from "../../shared/utils/mapHelpers.ts";
-import { math } from "../../shared/utils/math.ts";
-import type { River } from "../../shared/utils/river.ts";
+import { type MapDef, type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import type { BuildingDef } from "@survev/shared/defs/mapObjects/buildings/buildingDefs.ts";
+import type { ObstacleDef } from "@survev/shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+import type { SurfaceData, SurfaceType } from "@survev/shared/defs/mapObjectsTyping.ts";
+import { MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { GroundPatch, MapMsg } from "@survev/shared/net/mapMsg.ts";
+import { coldet, type Collider } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { mapHelpers } from "@survev/shared/utils/mapHelpers.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import type { River } from "@survev/shared/utils/river.ts";
 import {
     generateJaggedAabbPoints,
     generateJaggedCirclePoints,
     generateTerrain,
-} from "../../shared/utils/terrainGen.ts";
-import { util } from "../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../shared/utils/v2.ts";
+} from "@survev/shared/utils/terrainGen.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import * as PIXI from "pixi.js-legacy";
 import type { Ambiance } from "./ambiance.ts";
 import type { AudioManager } from "./audioManager.ts";
 import type { Camera } from "./camera.ts";

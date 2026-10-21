@@ -1,6 +1,6 @@
-import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
-import { collider } from "../../../../shared/utils/collider.ts";
-import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
+import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "../game.ts";
 import { BaseGameObject } from "./gameObject.ts";
 

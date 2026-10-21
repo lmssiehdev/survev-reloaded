@@ -1,6 +1,6 @@
-import { GameConfig } from "../../../../shared/gameConfig.ts";
-import type { LeaderboardRequest, LeaderboardResponse } from "../../../../shared/types/stats.ts";
-import { Config } from "../../config.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { LeaderboardRequest, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { server } from "../apiServer.ts";
 import type { MatchDataTable } from "../db/schema.ts";
 import { getRedisClient } from "./index.ts";

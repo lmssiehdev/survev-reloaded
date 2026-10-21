@@ -1,11 +1,11 @@
+import { GameConfig, type Plane as PlaneType } from "@survev/shared/gameConfig.ts";
+import type { Plane as PlaneData, UpdateMsg } from "@survev/shared/net/updateMsg.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import type { Vec2 } from "@survev/shared/utils/v2.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { GameConfig, type Plane as PlaneType } from "../../../shared/gameConfig.ts";
-import type { Plane as PlaneData, UpdateMsg } from "../../../shared/net/updateMsg.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import type { Vec2 } from "./../../../shared/utils/v2.ts";
-import { v2 } from "../../../shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { SoundHandle } from "../lib/createJS.ts";

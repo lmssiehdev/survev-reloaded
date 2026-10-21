@@ -1,8 +1,8 @@
-import type { MapDefKey } from "./shared/defs/mapDefs.ts";
-import type { TeamMode } from "./shared/gameConfig.ts";
-import type { ProxyDef } from "./shared/types/api.ts";
-import type { DeepPartial } from "./shared/utils/util.ts";
-import type { Vec2 } from "./shared/utils/v2.ts";
+import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import type { TeamMode } from "@survev/shared/gameConfig.ts";
+import type { ProxyDef } from "@survev/shared/types/api.ts";
+import type { DeepPartial } from "@survev/shared/utils/util.ts";
+import type { Vec2 } from "@survev/shared/utils/v2.ts";
 
 /**
  * Common keys used by both API and game server.

@@ -1,5 +1,5 @@
 import { GameConfig, type Plane as PlaneType } from "../gameConfig.ts";
-import { v2, type Vec2 } from "./../utils/v2.ts";
+import { v2, type Vec2 } from "../utils/v2.ts";
 import { type AbstractMsg, BitSizes, type BitStream, Constants } from "./net.ts";
 import {
     ObjectSerializeFns,

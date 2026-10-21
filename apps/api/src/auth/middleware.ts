@@ -1,9 +1,9 @@
 import { zValidator } from "@hono/zod-validator";
+import { Config } from "@survev/config/serverConfig.ts";
+import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { Context, Next } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { z } from "zod";
-import { Config } from "../../config.ts";
-import { HTTPRateLimit } from "../../utils/rateLimit.ts";
 import { getHonoIp } from "../apiHelpers.ts";
 import { server } from "../apiServer.ts";
 import { cookieDomain, deleteSessionTokenCookie } from "../routes/user/auth/authUtils.ts";

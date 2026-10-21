@@ -1,27 +1,27 @@
 import * as PIXI from "pixi.js-legacy";
 
-import type { LootDef } from "../../../shared/defs/gameObjectDefs.ts";
-import type { BoostDef, HealDef } from "./../../../shared/defs/gameObjects/gearDefs.ts";
-import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
-import { type MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
-import type { CookImg, ThrowableDef, ThrowableHandImgKey } from "../../../shared/defs/gameObjects/throwableDefs.ts";
-import type { ObstacleDef } from "../../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
-import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
-import { Action, Anim, GameConfig, HasteType, Input, type WeaponSlot } from "../../../shared/gameConfig.ts";
-import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
+import type { LootDef } from "@survev/shared/defs/gameObjectDefs.ts";
+import type { BoostDef, HealDef } from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
+import { type MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import type { CookImg, ThrowableDef, ThrowableHandImgKey } from "@survev/shared/defs/gameObjects/throwableDefs.ts";
+import type { ObstacleDef } from "@survev/shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+import { GameObjectDefs, MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { Action, Anim, GameConfig, HasteType, Input, type WeaponSlot } from "@survev/shared/gameConfig.ts";
+import type { ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
 import {
     getPlayerStatusUpdateRate,
     type GroupStatus,
     type LocalDataWithDirty,
     type PlayerInfo,
     type PlayerStatus,
-} from "../../../shared/net/updateMsg.ts";
-import { coldet } from "../../../shared/utils/coldet.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { collisionHelpers } from "../../../shared/utils/collisionHelpers.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { assert, util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+} from "@survev/shared/net/updateMsg.ts";
+import { coldet } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert, util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
@@ -32,7 +32,7 @@ import { errorLogManager } from "../errorLogs.ts";
 import type { Ctx } from "../game.ts";
 import { helpers } from "../helpers.ts";
 import type { InputHandler } from "../input.ts";
-import type { InputBinds } from "./../inputBinds.ts";
+import type { InputBinds } from "../inputBinds.ts";
 import type { SoundHandle } from "../lib/createJS.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";

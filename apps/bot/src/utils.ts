@@ -1,3 +1,5 @@
+import type { PrivateRouteApp } from "@survev/api/types";
+import { Logger } from "@survev/shared/utils/logger.ts";
 import type {
     ButtonInteraction,
     ComponentType,
@@ -8,8 +10,6 @@ import type {
 } from "discord.js";
 import { MessageFlags, PermissionFlagsBits } from "discord.js";
 import { hc } from "hono/client";
-import type { PrivateRouteApp } from "../../server/src/api/routes/private/private.ts";
-import { Logger } from "../../shared/utils/logger.ts";
 import { API_URL, Config, DISCORD_GUILD_ID, DISCORD_ROLE_ID } from "./config.ts";
 
 // we love enums

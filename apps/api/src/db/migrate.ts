@@ -1,11 +1,11 @@
 // Applies drizzle migrations with Bun SQL.
 // drizzle-kit migrate needs the `pg` or `postgres` driver package installed,
 // this uses the same migrations journal table without any extra dependency.
+import { Config } from "@survev/config/serverConfig.ts";
 import { SQL } from "bun";
 import { drizzle } from "drizzle-orm/bun-sql";
 import { migrate } from "drizzle-orm/bun-sql/migrator";
 import path from "node:path";
-import { Config } from "../../config.ts";
 
 const client = new SQL({
     hostname: Config.database.host,

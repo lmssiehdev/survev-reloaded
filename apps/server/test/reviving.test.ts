@@ -1,9 +1,9 @@
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
+import { InputMsg } from "@survev/shared/net/inputMsg.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import { expect, test } from "bun:test";
-import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
-import { InputMsg } from "../../shared/net/inputMsg.ts";
-import { v2 } from "../../shared/utils/v2.ts";
 import { createGame } from "./gameTestHelpers.ts";
-import "./testHelpers.ts";
+import "@survev/shared/test/testHelpers.ts";
 
 // + 0.1 to account for off by one tick on the timer system lol
 const reviveDur = GameConfig.player.reviveDuration + 0.1;

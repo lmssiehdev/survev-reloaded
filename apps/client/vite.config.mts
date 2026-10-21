@@ -1,9 +1,9 @@
+import { getConfig } from "@survev/config/config.ts";
+import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
+import { stripBlockPlugin } from "@survev/shared/utils/stripBlockPlugin.ts";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
-import { getConfig } from "../config.ts";
-import pkgJson from "../package.json" with { type: "json" };
-import { GIT_VERSION } from "../server/src/utils/gitRevision.ts";
-import { stripBlockPlugin } from "../shared/utils/stripBlockPlugin.ts";
+import pkgJson from "../../package.json" with { type: "json" };
 import { atlasBuilderPlugin } from "./atlas-builder/vitePlugin.ts";
 import { codefendPlugin } from "./vite-plugins/codefendPlugin.ts";
 import { ejsPlugin } from "./vite-plugins/ejsPlugin.ts";
@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
     const isDev = mode === "development";
 
-    const Config = getConfig(!isDev, "");
+    const Config = getConfig(!isDev, "../../");
 
     process.env.VITE_TURNSTILE_SCRIPT = "";
     if (Config.secrets.TURNSTILE_SITE_KEY) {

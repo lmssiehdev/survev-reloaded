@@ -1,7 +1,7 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { Discord, generateCodeVerifier, generateState } from "arctic";
 import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { Config } from "../../../../config.ts";
 import { cookieDomain, getRedirectUri, handleAuthUser } from "./authUtils.ts";
 
 export const discord = new Discord(

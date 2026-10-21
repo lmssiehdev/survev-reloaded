@@ -1,9 +1,7 @@
-import { and, desc, eq, inArray, lt, ne } from "drizzle-orm";
-import { Hono } from "hono";
-import { streamText } from "hono/streaming";
-import { createHash } from "node:crypto";
-import { z } from "zod";
-import { GameConfig } from "../../../../../shared/gameConfig.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { validateUserName } from "@survev/config/utils/badWords.ts";
+import type { ModRouterSpectateGameRes, SaveGameBody, SpectateGamePrivateRes } from "@survev/contracts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
 import {
     zBanAccountParams,
     zBanIpParams,
@@ -18,11 +16,13 @@ import {
     zSpectateGameParams,
     zUnbanAccountParams,
     zUnbanIpParams,
-} from "../../../../../shared/types/moderation.ts";
-import { util } from "../../../../../shared/utils/util.ts";
-import { Config } from "../../../config.ts";
-import { validateUserName } from "../../../utils/badWords.ts";
-import type { ModRouterSpectateGameRes, SaveGameBody, SpectateGamePrivateRes } from "../../../utils/types.ts";
+} from "@survev/shared/types/moderation.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { and, desc, eq, inArray, lt, ne } from "drizzle-orm";
+import { Hono } from "hono";
+import { streamText } from "hono/streaming";
+import { createHash } from "node:crypto";
+import { z } from "zod";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db, rowCount } from "../../db/index.ts";

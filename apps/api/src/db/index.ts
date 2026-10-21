@@ -1,6 +1,6 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { SQL } from "bun";
 import { drizzle } from "drizzle-orm/bun-sql";
-import { Config } from "../../config.ts";
 import { server } from "../apiServer.ts";
 import * as schema from "./schema.ts";
 

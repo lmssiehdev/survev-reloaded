@@ -1,11 +1,11 @@
-import { GameObjectDefs } from "../../../../shared/defs/register.ts";
-import { DamageType, GameConfig } from "../../../../shared/gameConfig.ts";
-import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
-import { type AABB, coldet } from "../../../../shared/utils/coldet.ts";
-import { collider } from "../../../../shared/utils/collider.ts";
-import { math } from "../../../../shared/utils/math.ts";
-import { util } from "../../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { DamageType, GameConfig } from "@survev/shared/gameConfig.ts";
+import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { type AABB, coldet } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "../game.ts";
 import { BaseGameObject } from "./gameObject.ts";
 

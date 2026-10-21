@@ -1,10 +1,10 @@
+import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
+import { assert } from "@survev/shared/utils/util.ts";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import Path from "node:path";
 import type { ISpritesheetData } from "pixi.js-legacy";
 import type { Plugin } from "vite";
-import type { Atlas } from "../../shared/defs/mapDefs.ts";
-import { assert } from "../../shared/utils/util.ts";
 import { atlasFormat, atlasLogger, AtlasManager, imageFolder } from "./atlasBuilder.ts";
 import { type AtlasRes, AtlasResolutions } from "./atlasDefs.ts";
 

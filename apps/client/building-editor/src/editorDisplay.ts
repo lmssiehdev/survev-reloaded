@@ -1,14 +1,14 @@
 import * as PIXI from "pixi.js-legacy";
 
-import { MapDefs } from "../../../shared/defs/mapDefs.ts";
-import { MapObjectDefs } from "../../../shared/defs/register.ts";
-import { MapMsg } from "../../../shared/net/mapMsg.ts";
-import { type ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import type { LocalDataWithDirty } from "./../../../shared/net/updateMsg.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { MapMsg } from "@survev/shared/net/mapMsg.ts";
+import { type ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import type { LocalDataWithDirty } from "@survev/shared/net/updateMsg.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Ambiance } from "../../src/ambiance.ts";
 import type { AudioManager } from "../../src/audioManager.ts";
 import Camera from "../../src/camera.ts";

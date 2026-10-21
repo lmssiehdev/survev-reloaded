@@ -1,15 +1,15 @@
-import $ from "jquery";
-import * as PIXI from "pixi.js-legacy";
-import { GameConfig } from "../../shared/gameConfig.ts";
-import * as net from "../../shared/net/net.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import * as net from "@survev/shared/net/net.ts";
 import type {
     FindGameBody,
     FindGameError,
     FindGameMatchData,
     FindGameResponse,
     GameWsDisconnectReason,
-} from "../../shared/types/api.ts";
-import { math } from "../../shared/utils/math.ts";
+} from "@survev/shared/types/api.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import $ from "jquery";
+import * as PIXI from "pixi.js-legacy";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
 import { api } from "./api.ts";

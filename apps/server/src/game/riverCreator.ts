@@ -1,10 +1,10 @@
-import type { MapDef } from "../../../shared/defs/mapDefs.ts";
-import { coldet } from "../../../shared/utils/coldet.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { catmullRom, getControlPoints } from "../../../shared/utils/spline.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import type { MapDef } from "@survev/shared/defs/mapDefs.ts";
+import { coldet } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { catmullRom, getControlPoints } from "@survev/shared/utils/spline.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { GameMap } from "./map.ts";
 
 export class RiverCreator {

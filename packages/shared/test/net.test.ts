@@ -1,12 +1,12 @@
 import { beforeEach, expect, test } from "bun:test";
-import { Main } from "../../shared/defs/maps/baseDefs.ts";
-import { GameConfig, GasMode } from "../../shared/gameConfig.ts";
-import * as net from "../../shared/net/net.ts";
-import { ObjectType } from "../../shared/net/objectSerializeFns.ts";
-import type { AABB, Circle } from "../../shared/utils/coldet.ts";
-import { collider } from "../../shared/utils/collider.ts";
-import { util } from "../../shared/utils/util.ts";
-import { v2 } from "../../shared/utils/v2.ts";
+import { Main } from "../defs/maps/baseDefs.ts";
+import { GameConfig, GasMode } from "../gameConfig.ts";
+import * as net from "../net/net.ts";
+import { ObjectType } from "../net/objectSerializeFns.ts";
+import type { AABB, Circle } from "../utils/coldet.ts";
+import { collider } from "../utils/collider.ts";
+import { util } from "../utils/util.ts";
+import { v2 } from "../utils/v2.ts";
 
 const stream = new net.MsgStream(new ArrayBuffer(1 << 16));
 

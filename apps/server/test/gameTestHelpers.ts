@@ -1,7 +1,7 @@
-import { Config } from "../../server/src/config.ts";
-import { Game } from "../../server/src/game/game.ts";
-import type { MapDefKey } from "../../shared/defs/mapDefs.ts";
-import type { TeamMode } from "../../shared/gameConfig.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import type { TeamMode } from "@survev/shared/gameConfig.ts";
+import { Game } from "../src/game/game.ts";
 
 export function createGame(teamMode: TeamMode, mapName: MapDefKey) {
     // we dont want vitest spammed with stdout logs so only log warns and errors

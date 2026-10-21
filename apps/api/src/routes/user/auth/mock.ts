@@ -1,7 +1,7 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
-import { Config } from "../../../../config.ts";
 import { db } from "../../../db/index.ts";
 import { usersTable } from "../../../db/schema.ts";
 import { createNewUser, generateId, setSessionTokenCookie } from "./authUtils.ts";

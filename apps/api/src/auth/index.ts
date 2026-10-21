@@ -1,6 +1,6 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { eq, lt } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { Config } from "../../config.ts";
 import { db } from "../db/index.ts";
 import { sessionTable, type SessionTableSelect, usersTable, type UsersTableSelect } from "../db/schema.ts";
 

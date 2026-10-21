@@ -1,8 +1,8 @@
+import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
 import { createCanvas, type Image } from "canvas";
 import { type Bin, MaxRectsPacker, type Rectangle } from "maxrects-packer";
 import type { ISpritesheetData } from "pixi.js-legacy";
 import sharp from "sharp";
-import type { Atlas } from "../../shared/defs/mapDefs.ts";
 import { atlasFormat, atlasLogger, ImageManager } from "./atlasBuilder.ts";
 import { type AtlasDef, Atlases, type AtlasRes, AtlasResolutions } from "./atlasDefs.ts";
 import type { Edges } from "./detectEdges.ts";

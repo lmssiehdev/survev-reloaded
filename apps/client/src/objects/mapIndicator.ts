@@ -1,10 +1,10 @@
 import * as PIXI from "pixi.js-legacy";
 
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import type { MapIndicator } from "../../../shared/net/updateMsg.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { assert } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import type { MapIndicator } from "@survev/shared/net/updateMsg.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { device } from "../device.ts";
 import type { MapSprite, MapSpriteBarn } from "./mapSprite.ts";
 

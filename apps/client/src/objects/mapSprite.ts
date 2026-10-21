@@ -1,6 +1,6 @@
+import { math } from "@survev/shared/utils/math.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { math } from "../../../shared/utils/math.ts";
-import { v2 } from "../../../shared/utils/v2.ts";
 import type { Map } from "../map.ts";
 import type { UiManager } from "../ui/ui.ts";
 

@@ -1,4 +1,4 @@
-import type { Atlas } from "../../shared/defs/mapDefs.ts";
+import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
 import { BeachAtlas } from "./defs/beach.ts";
 import { CobaltAtlas } from "./defs/cobalt.ts";
 import { DesertAtlas } from "./defs/desert.ts";

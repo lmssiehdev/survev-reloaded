@@ -1,7 +1,6 @@
-import $ from "jquery";
-import { GameConfig } from "../../../shared/gameConfig.ts";
-import * as net from "../../../shared/net/net.ts";
-import type { FindGameMatchData } from "../../../shared/types/api.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import * as net from "@survev/shared/net/net.ts";
+import type { FindGameMatchData } from "@survev/shared/types/api.ts";
 import type {
     RoomData,
     ServerToClientTeamMsg,
@@ -9,7 +8,8 @@ import type {
     TeamMenuErrorType,
     TeamPlayGameMsg,
     TeamStateMsg,
-} from "../../../shared/types/team.ts";
+} from "@survev/shared/types/team.ts";
+import $ from "jquery";
 import { api } from "../api.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { ConfigManager } from "../config.ts";

@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import "./testHelpers.ts";
 
-import { BulletDefs } from "../../shared/defs/gameObjects/bulletDefs.ts";
-import { ExplosionDefs } from "../../shared/defs/gameObjects/explosionsDefs.ts";
-import { GunDefs } from "../../shared/defs/gameObjects/gunDefs.ts";
-import { PassDefs } from "../../shared/defs/gameObjects/passDefs.ts";
-import { QuestDefs } from "../../shared/defs/gameObjects/questDefs.ts";
-import { RoleDefs } from "../../shared/defs/gameObjects/roleDefs.ts";
-import { ThrowableDefs } from "../../shared/defs/gameObjects/throwableDefs.ts";
-import { ObstacleDefs } from "../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
-import { FactionTeam, GameConfig } from "../../shared/gameConfig.ts";
+import { BulletDefs } from "../defs/gameObjects/bulletDefs.ts";
+import { ExplosionDefs } from "../defs/gameObjects/explosionsDefs.ts";
+import { GunDefs } from "../defs/gameObjects/gunDefs.ts";
+import { PassDefs } from "../defs/gameObjects/passDefs.ts";
+import { QuestDefs } from "../defs/gameObjects/questDefs.ts";
+import { RoleDefs } from "../defs/gameObjects/roleDefs.ts";
+import { ThrowableDefs } from "../defs/gameObjects/throwableDefs.ts";
+import { ObstacleDefs } from "../defs/mapObjects/obstacles/obstacleDefs.ts";
+import { FactionTeam, GameConfig } from "../gameConfig.ts";
 import { predicates } from "./testHelpers.ts";
 
 describe.for(Object.entries(GunDefs))("Gun $0", ([, def]) => {

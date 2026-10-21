@@ -1,11 +1,11 @@
+import { configFileName } from "@survev/config/config.ts";
+import type { PartialConfig } from "@survev/config/configType.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import enquirer from "enquirer";
 import hjson from "hjson";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { configFileName } from "./config.ts";
-import type { PartialConfig } from "./configType.ts";
-import { util } from "./shared/utils/util.ts";
 
 const prompt = enquirer.prompt;
 

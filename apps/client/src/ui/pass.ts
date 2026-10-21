@@ -1,16 +1,16 @@
 import $ from "jquery";
 
-import type { EmoteDef } from "../../../shared/defs/gameObjects/emoteDefs.ts";
-import type { HealEffectDef } from "../../../shared/defs/gameObjects/healEffectDefs.ts";
-import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
-import type { OutfitDef } from "../../../shared/defs/gameObjects/outfitDefs.ts";
-import { PassDefs } from "../../../shared/defs/gameObjects/passDefs.ts";
-import { QuestDefs } from "../../../shared/defs/gameObjects/questDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import type { PassState, QuestState } from "../../../shared/types/user.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { passUtil } from "../../../shared/utils/passUtil.ts";
-import { util } from "../../../shared/utils/util.ts";
+import type { EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
+import type { HealEffectDef } from "@survev/shared/defs/gameObjects/healEffectDefs.ts";
+import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
+import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import type { PassState, QuestState } from "@survev/shared/types/user.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { passUtil } from "@survev/shared/utils/passUtil.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import type { Account } from "../account.ts";
 import { helpers } from "../helpers.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";

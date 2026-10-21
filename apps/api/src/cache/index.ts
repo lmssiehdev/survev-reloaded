@@ -1,5 +1,5 @@
+import { Config } from "@survev/config/serverConfig.ts";
 import { RedisClient } from "bun";
-import { Config } from "../../config.ts";
 import { server } from "../apiServer.ts";
 
 export const CACHE_TTL = 3 * 24 * 60 * 60;

@@ -1,14 +1,14 @@
 import "@taufik-nurrohman/color-picker";
 import $ from "jquery";
 
-import type { GameObjectDef } from "../../../shared/defs/gameObjectDefs.ts";
-import { EmoteCategory, type EmoteDef } from "../../../shared/defs/gameObjects/emoteDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { EmoteSlot, Rarity } from "../../../shared/gameConfig.ts";
-import type { PassState } from "../../../shared/types/user.ts";
-import type { Item, LoadoutItemDef } from "../../../shared/utils/loadout.ts";
-import { type Crosshair, type Loadout, loadout } from "../../../shared/utils/loadout.ts";
-import { util } from "../../../shared/utils/util.ts";
+import type { GameObjectDef } from "@survev/shared/defs/gameObjectDefs.ts";
+import { EmoteCategory, type EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { EmoteSlot, Rarity } from "@survev/shared/gameConfig.ts";
+import type { PassState } from "@survev/shared/types/user.ts";
+import type { Item, LoadoutItemDef } from "@survev/shared/utils/loadout.ts";
+import { type Crosshair, type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import type { Account } from "../account.ts";
 import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";

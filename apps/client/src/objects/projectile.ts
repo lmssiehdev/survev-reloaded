@@ -1,12 +1,12 @@
 import * as PIXI from "pixi.js-legacy";
 
-import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
-import { GameConfig } from "../../../shared/gameConfig.ts";
-import type { ObjectData, ObjectType } from "./../../../shared/net/objectSerializeFns.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import { GameObjectDefs, MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { Ctx } from "../game.ts";

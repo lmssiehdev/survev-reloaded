@@ -4,11 +4,11 @@ import fs from "node:fs";
 import os from "node:os";
 import Path from "node:path";
 
+import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
+import { Logger } from "@survev/shared/utils/logger.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { loadImage } from "canvas";
 import type { ISpritesheetData } from "pixi.js-legacy";
-import type { Atlas } from "../../shared/defs/mapDefs.ts";
-import { Logger } from "../../shared/utils/logger.ts";
-import { util } from "../../shared/utils/util.ts";
 import { Atlases, type AtlasRes, scaledSprites } from "./atlasDefs.ts";
 import type { MainToWorkerMsg, WorkerToMainMsg } from "./atlasWorker.ts";
 import type { Edges } from "./detectEdges.ts";

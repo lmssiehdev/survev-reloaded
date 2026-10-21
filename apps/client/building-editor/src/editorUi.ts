@@ -1,12 +1,12 @@
+import { MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { type FolderApi, Pane, type TabPageApi } from "tweakpane";
-import { MapDefs } from "../../../shared/defs/mapDefs.ts";
 
+import { MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { mapHelpers } from "@survev/shared/utils/mapHelpers.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
-import { MapObjectDefs } from "../../../shared/defs/register.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { mapHelpers } from "../../../shared/utils/mapHelpers.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { v2 } from "../../../shared/utils/v2.ts";
 import {
     type BuildingEditorConfig,
     type ConfigKey,

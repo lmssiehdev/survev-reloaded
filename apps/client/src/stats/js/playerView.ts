@@ -1,6 +1,5 @@
-import $ from "jquery";
-import { EmotesDefs } from "../../../../shared/defs/gameObjects/emoteDefs.ts";
-import { GameConfig, type TeamMode } from "../../../../shared/gameConfig.ts";
+import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
+import { GameConfig, type TeamMode } from "@survev/shared/gameConfig.ts";
 import {
     ALL_MAPS,
     ALL_TEAM_MODES,
@@ -13,7 +12,8 @@ import {
     type MatchHistoryResponse,
     type UserStatsRequest,
     type UserStatsResponse,
-} from "../../../../shared/types/stats.ts";
+} from "@survev/shared/types/stats.ts";
+import $ from "jquery";
 import { api } from "../../api.ts";
 import { device } from "../../device.ts";
 import { helpers } from "../../helpers.ts";

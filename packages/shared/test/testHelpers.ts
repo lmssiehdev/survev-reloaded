@@ -1,12 +1,21 @@
 import { afterEach, type AsymmetricMatcher, describe, expect, test, type TestOptions } from "bun:test";
 
-import type { GameObjectDef } from "../../shared/defs/gameObjectDefs.ts";
+import type { GameObjectDef } from "../defs/gameObjectDefs.ts";
 
-import type { Player } from "../../server/src/game/objects/player.ts";
-import type { MapObjectDef } from "../../shared/defs/mapObjectDefs.ts";
-import { Main } from "../../shared/defs/maps/baseDefs.ts";
-import { GameObjectDefs, MapObjectDefs } from "../../shared/defs/register.ts";
-import { ObjectType } from "../../shared/net/objectSerializeFns.ts";
+import type { MapObjectDef } from "../defs/mapObjectDefs.ts";
+import { Main } from "../defs/maps/baseDefs.ts";
+import { GameObjectDefs, MapObjectDefs } from "../defs/register.ts";
+import { ObjectType } from "../net/objectSerializeFns.ts";
+
+/**
+ * The parts of the game server's Player that toBeSamePlayer looks at.
+ * Structural so this shared helper doesn't import from apps/server.
+ */
+interface Player {
+    __type: ObjectType;
+    __id: number;
+    name: string;
+}
 
 type IterableElement<I> = I extends Iterable<infer E> ? E : never;
 

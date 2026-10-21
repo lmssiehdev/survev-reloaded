@@ -1,3 +1,5 @@
+import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { ItemStatus, type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import {
     bigint,
     boolean,
@@ -12,8 +14,6 @@ import {
     uniqueIndex,
     uuid,
 } from "drizzle-orm/pg-core";
-import { TeamMode } from "../../../../shared/gameConfig.ts";
-import { ItemStatus, type Loadout, loadout } from "../../../../shared/utils/loadout.ts";
 
 export const sessionTable = pgTable("session", {
     id: text("id").primaryKey(),

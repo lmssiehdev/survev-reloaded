@@ -1,7 +1,8 @@
-import { getConfig } from "../../config.ts";
+import { getConfig } from "@survev/config/config.ts";
 
 const isProd = process.env["NODE_ENV"] === "production";
-export const serverConfigPath = isProd ? "../../" : "";
+// relative to packages/config, where getConfig lives
+export const serverConfigPath = isProd ? "../../../../" : "../../";
 export const Config = getConfig(isProd, serverConfigPath);
 
 // sanitiy check

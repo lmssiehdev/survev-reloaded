@@ -1,11 +1,11 @@
-import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
-import { Hono } from "hono";
 import {
     ALL_MAPS,
     type UserStatsRequest,
     type UserStatsResponse,
     zUserStatsRequest,
-} from "../../../../../shared/types/stats.ts";
+} from "@survev/shared/types/stats.ts";
+import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
+import { Hono } from "hono";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { matchDataTable, usersTable } from "../../db/schema.ts";

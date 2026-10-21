@@ -1,12 +1,12 @@
+import { validateUserName } from "@survev/config/utils/badWords.ts";
+import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
+import { Constants } from "@survev/shared/net/net.ts";
+import { loadoutSchema } from "@survev/shared/types/api.ts";
+import { type ProfileResponse, type UsernameResponse } from "@survev/shared/types/user.ts";
+import loadout, { ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
 import { Hono } from "hono";
 import z from "zod";
-import { UnlockDefs } from "../../../../../shared/defs/gameObjects/unlockDefs.ts";
-import { Constants } from "../../../../../shared/net/net.ts";
-import { loadoutSchema } from "../../../../../shared/types/api.ts";
-import { type ProfileResponse, type UsernameResponse } from "../../../../../shared/types/user.ts";
-import loadout, { ItemStatus } from "../../../../../shared/utils/loadout.ts";
-import { validateUserName } from "../../../utils/badWords.ts";
 import { server } from "../../apiServer.ts";
 import {
     authMiddleware,

@@ -1,6 +1,6 @@
-import { GameConfig } from "../../../shared/gameConfig.ts";
-import { util } from "../../../shared/utils/util.ts";
-import type { Vec2 } from "../../../shared/utils/v2.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import type { Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "./game.ts";
 import type { Player } from "./objects/player.ts";
 

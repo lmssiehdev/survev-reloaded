@@ -1,21 +1,21 @@
-import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
-import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
-import { PerkProperties } from "../../../shared/defs/gameObjects/perkDefs.ts";
-import { type ThrowableDef, ThrowableDefs } from "../../../shared/defs/gameObjects/throwableDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { GameConfig, type InventoryItem, WeaponSlot } from "../../../shared/gameConfig.ts";
-import * as net from "../../../shared/net/net.ts";
-import { ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import { coldet } from "../../../shared/utils/coldet.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { collisionHelpers } from "../../../shared/utils/collisionHelpers.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { assert, util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
-import type { BulletParams } from "../game/objects/bullet.ts";
-import type { GameObject } from "../game/objects/gameObject.ts";
-import type { Player } from "../game/objects/player.ts";
+import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
+import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import { PerkProperties } from "@survev/shared/defs/gameObjects/perkDefs.ts";
+import { type ThrowableDef, ThrowableDefs } from "@survev/shared/defs/gameObjects/throwableDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig, type InventoryItem, WeaponSlot } from "@survev/shared/gameConfig.ts";
+import * as net from "@survev/shared/net/net.ts";
+import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { coldet } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert, util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import type { BulletParams } from "./objects/bullet.ts";
+import type { GameObject } from "./objects/gameObject.ts";
 import type { Obstacle } from "./objects/obstacle.ts";
+import type { Player } from "./objects/player.ts";
 import type { Projectile } from "./objects/projectile.ts";
 
 /**

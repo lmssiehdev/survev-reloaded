@@ -1,4 +1,4 @@
-import type { LootDef } from "../../../shared/defs/gameObjectDefs.ts";
+import type { LootDef } from "@survev/shared/defs/gameObjectDefs.ts";
 import {
     type AmmoDef,
     type BackpackDef,
@@ -8,19 +8,19 @@ import {
     type HealDef,
     type HelmetDef,
     SCOPE_LEVELS,
-} from "../../../shared/defs/gameObjects/gearDefs.ts";
-import type { GunDef } from "../../../shared/defs/gameObjects/gunDefs.ts";
-import type { MeleeDef } from "../../../shared/defs/gameObjects/meleeDefs.ts";
-import type { RoleDef } from "../../../shared/defs/gameObjects/roleDefs.ts";
-import type { ObstacleDef } from "../../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+} from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
+import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import type { RoleDef } from "@survev/shared/defs/gameObjects/roleDefs.ts";
+import type { ObstacleDef } from "@survev/shared/defs/mapObjects/obstacles/obstacleDefs.ts";
 
-import { GameObjectDefs, MapObjectDefs } from "../../../shared/defs/register.ts";
-import { Action, DamageType, GameConfig, Input, type InventoryItem } from "../../../shared/gameConfig.ts";
-import { PickupMsgType } from "../../../shared/net/net.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2 } from "../../../shared/utils/v2.ts";
+import { GameObjectDefs, MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { Action, DamageType, GameConfig, Input, type InventoryItem } from "@survev/shared/gameConfig.ts";
+import { PickupMsgType } from "@survev/shared/net/net.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import type { InputBinds } from "../inputBinds.ts";

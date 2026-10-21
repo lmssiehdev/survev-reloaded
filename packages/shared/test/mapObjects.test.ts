@@ -1,12 +1,12 @@
 import "./testHelpers.ts";
 import { describe, expect, test } from "bun:test";
 
-import type { BuildingDef } from "../../shared/defs/mapObjects/buildings/buildingDefs.ts";
-import type { ObstacleDef } from "../../shared/defs/mapObjects/obstacles/obstacleDefs.ts";
-import type { StructureDef } from "../../shared/defs/mapObjects/structureDefs.ts";
-import type { LootSpawnerDef } from "../../shared/defs/mapObjectsTyping.ts";
-import { MapObjectDefs } from "../../shared/defs/register.ts";
-import { Constants } from "../../shared/net/net.ts";
+import type { BuildingDef } from "../defs/mapObjects/buildings/buildingDefs.ts";
+import type { ObstacleDef } from "../defs/mapObjects/obstacles/obstacleDefs.ts";
+import type { StructureDef } from "../defs/mapObjects/structureDefs.ts";
+import type { LootSpawnerDef } from "../defs/mapObjectsTyping.ts";
+import { MapObjectDefs } from "../defs/register.ts";
+import { Constants } from "../net/net.ts";
 
 const mapObjects = MapObjectDefs.getAllTypes();
 

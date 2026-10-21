@@ -1,3 +1,4 @@
+import { util } from "@survev/shared/utils/util.ts";
 import type { ButtonInteraction } from "discord.js";
 import {
     ActionRowBuilder,
@@ -9,7 +10,6 @@ import {
     StringSelectMenuBuilder,
     type StringSelectMenuInteraction,
 } from "discord.js";
-import { util } from "../../shared/utils/util.ts";
 import { BUTTON_PREFIXES, type SelectedPlayer } from "./commands/search-player.ts";
 import { createCollector, honoClient } from "./utils.ts";
 

@@ -1,4 +1,4 @@
-import { Config } from "../config.ts";
+import { Config } from "../serverConfig.ts";
 
 // modified version of https://github.com/uNetworking/uWebSockets.js/blob/master/examples/RateLimit.js
 // also wraps simultaneous connections rate limit not just messages

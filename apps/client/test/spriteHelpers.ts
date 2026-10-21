@@ -1,6 +1,6 @@
-import { Atlases } from "../../client/atlas-builder/atlasDefs.ts";
-import { type MapDef, type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import { MapObjectDefs } from "../../shared/defs/register.ts";
+import { type MapDef, type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { MapObjectDefs } from "@survev/shared/defs/register.ts";
+import { Atlases } from "../atlas-builder/atlasDefs.ts";
 
 export function getAllAtlasSprites(map: MapDefKey) {
     const def = MapDefs[map];

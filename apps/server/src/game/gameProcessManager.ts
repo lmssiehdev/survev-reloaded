@@ -1,11 +1,12 @@
+import { Config } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
+import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import type { TeamMode } from "@survev/shared/gameConfig.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { type ChildProcess, fork } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { type MapDefKey, MapDefs } from "../../../shared/defs/mapDefs.ts";
-import type { TeamMode } from "../../../shared/gameConfig.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { Config } from "../config.ts";
-import { ServerLogger } from "../utils/logger.ts";
-import { type FindGamePrivateBody, type ServerGameConfig, type SpectateGamePrivateBody } from "../utils/types.ts";
+import type { ServerGameConfig } from "../utils/types.ts";
 import type { SpectateTokenData } from "./game.ts";
 import { type GameData, type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 

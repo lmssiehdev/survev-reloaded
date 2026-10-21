@@ -1,6 +1,6 @@
+import type { ModRouterSpectateGameRes } from "@survev/contracts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { type ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import type { ModRouterSpectateGameRes } from "../../../server/src/utils/types.ts";
-import { GameConfig } from "../../../shared/gameConfig.ts";
 import { Config } from "../config.ts";
 import { botLogger, Command, hasBotPermission, honoClient } from "../utils.ts";
 import { sendNoPermissionMessage } from "./helpers.ts";

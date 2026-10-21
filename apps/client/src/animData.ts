@@ -1,8 +1,8 @@
-import { GameObjectDefs } from "../../shared/defs/register.ts";
-import { GameConfig } from "../../shared/gameConfig.ts";
-import { math } from "../../shared/utils/math.ts";
-import { assert } from "../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../shared/utils/v2.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AnimCtx, Player } from "./objects/player.ts";
 
 function frame(time: number, bones: Partial<Record<Bones, Pose>>, easing?: (t: number) => number) {

@@ -1,8 +1,8 @@
-import { SCOPE_LEVELS } from "../../../shared/defs/gameObjects/gearDefs.ts";
-import { PerkProperties } from "../../../shared/defs/gameObjects/perkDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { GameConfig, type InventoryItem } from "../../../shared/gameConfig.ts";
-import { math } from "../../../shared/utils/math.ts";
+import { SCOPE_LEVELS } from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import { PerkProperties } from "@survev/shared/defs/gameObjects/perkDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { GameConfig, type InventoryItem } from "@survev/shared/gameConfig.ts";
+import { math } from "@survev/shared/utils/math.ts";
 import type { Player } from "./objects/player.ts";
 import { throwableList } from "./weaponManager.ts";
 

@@ -1,9 +1,8 @@
+import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { type FindGameMatchData, type FindGamePrivateError, loadoutSchema } from "@survev/shared/types/api.ts";
+import { zSpectateFilter } from "@survev/shared/types/moderation.ts";
 import { z } from "zod";
-import type { MapDefKey } from "../../../shared/defs/mapDefs.ts";
-import { TeamMode } from "../../../shared/gameConfig.ts";
-import { type FindGameMatchData, type FindGamePrivateError, loadoutSchema } from "../../../shared/types/api.ts";
-import { zSpectateFilter } from "../../../shared/types/moderation.ts";
-import type { MatchDataTable } from "../api/db/schema.ts";
 
 export const zUpdateRegionBody = z.object({
     regionId: z.string(),
@@ -25,17 +24,8 @@ export const zSetClientThemeBody = z.object({
 });
 
 /**
- * Directory (relative to the server cwd) where games that failed to save are stored,
- * written by the game process and retried by the game server.
- */
-export const LOST_GAME_DATA_DIR = "lost_game_data";
-
-export interface SaveGameBody {
-    matchData: (MatchDataTable & { ip: string; findGameIp: string })[];
-}
-
-/**
- * Runtime validator for SaveGameBody["matchData"], used to check lost game files before retrying them
+ * Runtime validator for SaveGameBody["matchData"], used to check lost game files before retrying them.
+ * The API checks that this stays assignable to its match_data insert type (see apps/api/src/types.ts).
  */
 export const zSaveGameMatchData = z.array(
     z.object({
@@ -66,11 +56,10 @@ export const zSaveGameMatchData = z.array(
         ip: z.string(),
         findGameIp: z.string(),
     }),
-) satisfies z.ZodType<SaveGameBody["matchData"]>;
+);
 
-export interface ServerGameConfig {
-    readonly mapName: MapDefKey;
-    readonly teamMode: TeamMode;
+export interface SaveGameBody {
+    matchData: z.infer<typeof zSaveGameMatchData>;
 }
 
 export const zFindGamePrivateBody = z.object({

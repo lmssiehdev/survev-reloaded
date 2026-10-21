@@ -1,10 +1,10 @@
 import * as PIXI from "pixi.js-legacy";
 
-import { GameConfig, Input, TeamMode, WeaponSlot } from "../../shared/gameConfig.ts";
-import * as net from "../../shared/net/net.ts";
-import { ObjectType } from "../../shared/net/objectSerializeFns.ts";
-import { math } from "../../shared/utils/math.ts";
-import { v2 } from "../../shared/utils/v2.ts";
+import { GameConfig, Input, TeamMode, WeaponSlot } from "@survev/shared/gameConfig.ts";
+import * as net from "@survev/shared/net/net.ts";
+import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import type { Ambiance } from "./ambiance.ts";
 import type { AudioManager } from "./audioManager.ts";
 import { Camera } from "./camera.ts";
@@ -16,10 +16,10 @@ import { debugLines } from "./debug/debugLines.ts";
 import { Editor } from "./debug/editor.ts";
 /* STRIP_FROM_PROD_CLIENT:END */
 
-import { GameObjectDefs } from "../../shared/defs/register.ts";
-import { type Connection, ConnectionState, WebsocketConnection } from "../../shared/net/connection.ts";
-import { SpectateAction } from "../../shared/net/spectateMsg.ts";
-import type { GameWsDisconnectReason } from "../../shared/types/api.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { type Connection, ConnectionState, WebsocketConnection } from "@survev/shared/net/connection.ts";
+import { SpectateAction } from "@survev/shared/net/spectateMsg.ts";
+import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
 import { errorLogManager } from "./errorLogs.ts";

@@ -1,15 +1,14 @@
+import { saveConfig } from "@survev/config/config.ts";
+import { serverConfigPath } from "@survev/config/serverConfig.ts";
+import { type SaveGameBody, zSetClientThemeBody, zSetGameModeBody, zUpdateRegionBody } from "@survev/contracts";
+import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { zGiveItemParams, zRemoveItemParams } from "@survev/shared/types/moderation.ts";
 import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import { saveConfig } from "../../../../../config.ts";
-import { QuestDefs } from "../../../../../shared/defs/gameObjects/questDefs.ts";
-import { type MapDefKey, MapDefs } from "../../../../../shared/defs/mapDefs.ts";
-import { GameObjectDefs } from "../../../../../shared/defs/register.ts";
-import { TeamMode } from "../../../../../shared/gameConfig.ts";
-import { zGiveItemParams, zRemoveItemParams } from "../../../../../shared/types/moderation.ts";
-import { serverConfigPath } from "../../../config.ts";
-import { isBehindProxy } from "../../../utils/proxyCheck.ts";
-import { type SaveGameBody, zSetClientThemeBody, zSetGameModeBody, zUpdateRegionBody } from "../../../utils/types.ts";
 import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
 import { getRedisClient } from "../../cache/index.ts";
@@ -17,9 +16,18 @@ import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
 import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable, usersTable } from "../../db/schema.ts";
 import type { Context } from "../../index.ts";
+import { isBehindProxy } from "../../utils/proxyCheck.ts";
 import { MOCK_USER_ID } from "../user/auth/mock.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
+
+// @survev/contracts can't depend on the drizzle schema, so check here that the game's
+// save_game payload still fits the match_data insert type
+type AssertAssignable<T extends U, U> = T;
+type _SaveGameMatchDataFitsTable = AssertAssignable<
+    SaveGameBody["matchData"],
+    (MatchDataTable & { ip: string; findGameIp: string })[]
+>;
 
 export const PrivateRouter = new Hono<Context>()
     .use(privateMiddleware)

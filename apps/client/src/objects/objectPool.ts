@@ -1,6 +1,6 @@
-import type { BitStream } from "../../../shared/net/net.ts";
-import { type ObjectData, type ObjectsPartialData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import { assert } from "../../../shared/utils/util.ts";
+import type { BitStream } from "@survev/shared/net/net.ts";
+import { type ObjectData, type ObjectsPartialData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { assert } from "@survev/shared/utils/util.ts";
 import { errorLogManager } from "../errorLogs.ts";
 import type { Ctx } from "../game.ts";
 

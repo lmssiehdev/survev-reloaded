@@ -1,5 +1,7 @@
-import { type GameObjectDef, type LootDef, WeaponTypeToDefs } from "../../../../shared/defs/gameObjectDefs.ts";
-import { EmotesDefs } from "../../../../shared/defs/gameObjects/emoteDefs.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { validateUserName } from "@survev/config/utils/badWords.ts";
+import { type GameObjectDef, type LootDef, WeaponTypeToDefs } from "@survev/shared/defs/gameObjectDefs.ts";
+import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
 import {
     type BackpackDef,
     type BoostDef,
@@ -8,14 +10,14 @@ import {
     type HealDef,
     type HelmetDef,
     SCOPE_LEVELS,
-} from "../../../../shared/defs/gameObjects/gearDefs.ts";
-import type { GunDef } from "../../../../shared/defs/gameObjects/gunDefs.ts";
-import type { MeleeDef } from "../../../../shared/defs/gameObjects/meleeDefs.ts";
-import { PerkProperties } from "../../../../shared/defs/gameObjects/perkDefs.ts";
-import type { RoleDef } from "../../../../shared/defs/gameObjects/roleDefs.ts";
-import type { ThrowableDef } from "../../../../shared/defs/gameObjects/throwableDefs.ts";
-import { UnlockDefs } from "../../../../shared/defs/gameObjects/unlockDefs.ts";
-import { GameObjectDefs } from "../../../../shared/defs/register.ts";
+} from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
+import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
+import { PerkProperties } from "@survev/shared/defs/gameObjects/perkDefs.ts";
+import type { RoleDef } from "@survev/shared/defs/gameObjects/roleDefs.ts";
+import type { ThrowableDef } from "@survev/shared/defs/gameObjects/throwableDefs.ts";
+import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import {
     type Action,
     type Anim,
@@ -24,16 +26,14 @@ import {
     type HasteType,
     type Input,
     type InventoryItem,
-} from "../../../../shared/gameConfig.ts";
-import * as net from "../../../../shared/net/net.ts";
-import { ObjectType } from "../../../../shared/net/objectSerializeFns.ts";
-import { type Circle, coldet } from "../../../../shared/utils/coldet.ts";
-import { collider } from "../../../../shared/utils/collider.ts";
-import { math } from "../../../../shared/utils/math.ts";
-import { assert, util } from "../../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../../shared/utils/v2.ts";
-import { Config } from "../../config.ts";
-import { validateUserName } from "../../utils/badWords.ts";
+} from "@survev/shared/gameConfig.ts";
+import * as net from "@survev/shared/net/net.ts";
+import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { type Circle, coldet } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { assert, util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { IDAllocator } from "../../utils/IDAllocator.ts";
 import { Client } from "../client.ts";
 import type { Game, JoinTokenData } from "../game.ts";

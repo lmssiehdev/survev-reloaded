@@ -1,11 +1,11 @@
+import { Config } from "@survev/config/serverConfig.ts";
+import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
+import { defaultLogger, ServerLogger } from "@survev/config/utils/logger.ts";
+import type { FindGamePrivateBody, FindGamePrivateRes } from "@survev/contracts";
+import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import type { Hono } from "hono";
 import type { UpgradeWebSocket } from "hono/ws";
-import type { SiteInfoRes } from "../../../shared/types/api.ts";
-import { Config } from "../config.ts";
-import { TeamMenu } from "../teamMenu.ts";
-import { GIT_VERSION } from "../utils/gitRevision.ts";
-import { defaultLogger, ServerLogger } from "../utils/logger.ts";
-import type { FindGamePrivateBody, FindGamePrivateRes } from "../utils/types.ts";
+import { TeamMenu } from "./teamMenu.ts";
 
 class Region {
     data: (typeof Config)["regions"][string];

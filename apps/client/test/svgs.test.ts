@@ -39,7 +39,7 @@ function readDirectory(dir: string, filter?: RegExp): string[] {
     return results;
 }
 
-const imgDir = npath.join(import.meta.dirname, "../../client/public/img/");
+const imgDir = npath.join(import.meta.dirname, "../public/img/");
 
 const svgPaths = Object.keys(MAX_SIZES)
     .map((path) => {

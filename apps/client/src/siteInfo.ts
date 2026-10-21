@@ -1,7 +1,7 @@
+import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import $ from "jquery";
-import { type MapDefKey, MapDefs } from "../../shared/defs/mapDefs.ts";
-import { GameConfig } from "../../shared/gameConfig.ts";
-import type { SiteInfoRes } from "../../shared/types/api.ts";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { device } from "./device.ts";

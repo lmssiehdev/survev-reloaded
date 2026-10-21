@@ -1,10 +1,10 @@
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
+import { MsgType, SpectateMsg } from "@survev/shared/net/net.ts";
+import { SpectateAction } from "@survev/shared/net/spectateMsg.ts";
+import { v2 } from "@survev/shared/utils/v2.ts";
 import { expect, test } from "bun:test";
-import { GameConfig, TeamMode } from "../../shared/gameConfig.ts";
-import { MsgType, SpectateMsg } from "../../shared/net/net.ts";
-import { SpectateAction } from "../../shared/net/spectateMsg.ts";
-import { v2 } from "../../shared/utils/v2.ts";
 import { createGame } from "./gameTestHelpers.ts";
-import "./testHelpers.ts";
+import "@survev/shared/test/testHelpers.ts";
 
 const specBegin = new SpectateMsg();
 specBegin.action = SpectateAction.Begin;

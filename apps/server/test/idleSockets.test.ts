@@ -2,7 +2,7 @@ import type { ServerWebSocket } from "bun";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import net from "node:net";
-import { type IdleSocketData, IdleSocketMonitor } from "../../server/src/game/idleSockets.ts";
+import { type IdleSocketData, IdleSocketMonitor } from "../src/game/idleSockets.ts";
 
 // scaled down from the game server's 30s timeout / 22s ping
 const TIMEOUT_MS = 600;

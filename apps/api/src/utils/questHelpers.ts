@@ -1,4 +1,4 @@
-import type { ConfigType } from "../../../configType.ts";
+import type { ConfigType } from "@survev/config/configType.ts";
 import {
     exclusivityGroups,
     type MapFilter,
@@ -6,9 +6,9 @@ import {
     QuestDefs,
     QuestDifficulty,
     type QuestMapFilter,
-} from "../../../shared/defs/gameObjects/questDefs.ts";
-import { type MapDefKey, MapDefs } from "../../../shared/defs/mapDefs.ts";
-import { MapId } from "../../../shared/gameConfig.ts";
+} from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { MapId } from "@survev/shared/gameConfig.ts";
 
 const questTypes = Object.keys(QuestDefs);
 

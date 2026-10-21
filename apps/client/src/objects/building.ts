@@ -1,16 +1,16 @@
 import * as PIXI from "pixi.js-legacy";
 
-import type { FloorImage } from "../../../shared/defs/mapObjects/buildings/buildingDefs.ts";
-import type { SurfaceData, SurfaceType } from "../../../shared/defs/mapObjectsTyping.ts";
-import { MapObjectDefs } from "../../../shared/defs/register.ts";
-import type { ObjectData, ObjectType } from "../../../shared/net/objectSerializeFns.ts";
-import type { Collider } from "../../../shared/utils/coldet.ts";
-import { collider } from "../../../shared/utils/collider.ts";
-import { collisionHelpers } from "../../../shared/utils/collisionHelpers.ts";
-import { mapHelpers } from "../../../shared/utils/mapHelpers.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
-import { v2, type Vec2 } from "../../../shared/utils/v2.ts";
+import type { FloorImage } from "@survev/shared/defs/mapObjects/buildings/buildingDefs.ts";
+import type { SurfaceData, SurfaceType } from "@survev/shared/defs/mapObjectsTyping.ts";
+import { MapObjectDefs } from "@survev/shared/defs/register.ts";
+import type { ObjectData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import type { Collider } from "@survev/shared/utils/coldet.ts";
+import { collider } from "@survev/shared/utils/collider.ts";
+import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
+import { mapHelpers } from "@survev/shared/utils/mapHelpers.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { DebugRendererOpts } from "../config.ts";

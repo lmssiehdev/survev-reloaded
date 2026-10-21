@@ -1,11 +1,11 @@
 import $ from "jquery";
 import { type FolderApi, Pane, type TabPageApi } from "tweakpane";
 
-import { RoleDefs } from "../../../shared/defs/gameObjects/roleDefs.ts";
-import { GameObjectDefs } from "../../../shared/defs/register.ts";
-import { EditMsg } from "../../../shared/net/editMsg.ts";
-import { math } from "../../../shared/utils/math.ts";
-import { util } from "../../../shared/utils/util.ts";
+import { RoleDefs } from "@survev/shared/defs/gameObjects/roleDefs.ts";
+import { GameObjectDefs } from "@survev/shared/defs/register.ts";
+import { EditMsg } from "@survev/shared/net/editMsg.ts";
+import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import {
     type ConfigKey,
     type ConfigManager,

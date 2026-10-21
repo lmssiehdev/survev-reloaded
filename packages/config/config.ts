@@ -1,13 +1,16 @@
+import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import hjson from "hjson";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { ConfigType, PartialConfig } from "./configType.ts";
-import { TeamMode } from "./shared/gameConfig.ts";
-import { util } from "./shared/utils/util.ts";
 
 export const configFileName = "survev-config.hjson";
 
+/**
+ * @param dir directory of survev-config.hjson, relative to the directory of this module
+ */
 export function getConfig(isProduction: boolean, dir: string) {
     const isDev = !isProduction;
 

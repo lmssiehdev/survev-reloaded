@@ -1,8 +1,8 @@
-import { GameConfig } from "../../shared/gameConfig.ts";
-import { WebsocketConnection } from "../../shared/net/connection.ts";
-import type { FindGameBody, FindGameResponse } from "../../shared/types/api.ts";
-import { Bot } from "../../shared/utils/bot.ts";
-import { Config } from "./config.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { WebsocketConnection } from "@survev/shared/net/connection.ts";
+import type { FindGameBody, FindGameResponse } from "@survev/shared/types/api.ts";
+import { Bot } from "@survev/shared/utils/bot.ts";
 
 const config = {
     address: Config.gameServer.apiServerUrl,

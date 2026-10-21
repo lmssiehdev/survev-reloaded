@@ -1,7 +1,7 @@
+import { type Input, Input as GameInput } from "@survev/shared/gameConfig.ts";
+import { BitStream } from "@survev/shared/lib/bitBuffer.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import $ from "jquery";
-import { type Input, Input as GameInput } from "../../shared/gameConfig.ts";
-import { BitStream } from "../../shared/lib/bitBuffer.ts";
-import { util } from "../../shared/utils/util.ts";
 import type { ConfigManager } from "./config.ts";
 import { type InputHandler, InputType, InputValue, Key, MouseButton, MouseWheel } from "./input.ts";
 import { crc16 } from "./lib/crc.ts";

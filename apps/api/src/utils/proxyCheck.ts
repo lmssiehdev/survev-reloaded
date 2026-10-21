@@ -1,7 +1,7 @@
-import { assert, util } from "../../../shared/utils/util.ts";
-import { Config } from "../config.ts";
-import { fetchWithRetry } from "./fetchWithRetry.ts";
-import { defaultLogger } from "./logger.ts";
+import { Config } from "@survev/config/serverConfig.ts";
+import { fetchWithRetry } from "@survev/config/utils/fetchWithRetry.ts";
+import { defaultLogger } from "@survev/config/utils/logger.ts";
+import { assert, util } from "@survev/shared/utils/util.ts";
 
 type IpInfo = {
     network: {

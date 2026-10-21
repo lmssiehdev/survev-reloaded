@@ -1,5 +1,5 @@
+import { Constants } from "@survev/shared/net/net.ts";
 import { DataSet, englishDataset, englishRecommendedTransformers, pattern, RegExpMatcher } from "obscenity";
-import { Constants } from "../../../shared/net/net.ts";
 
 const badWordsdataSet = new DataSet<{ originalWord: string }>()
     .addAll(englishDataset)
