@@ -8,7 +8,7 @@ export type PlayerCardsFilters = Pick<UserStatsRequest, "interval" | "mapIdFilte
 /** the green card at the top: avatar, name, totals, or a message */
 export function OverviewCard(props: { profile?: Profile; message?: string }) {
     return (
-        <div class="container mt-3">
+        <div class={["container mt-3", { "mb-3": !props.profile }]}>
             <div class="card card-player col-lg-8 col-12 p-0">
                 <div class="card-body">
                     <div class="row card-row-top">
@@ -110,11 +110,11 @@ export function PlayerFilters(props: {
                 </div>
                 <div class="offset-6 col-2 col-rating-help">
                     <div class="rating-help">
-                        What is Rating?
+                        {t("stats-rating-help")}
                         <div class="rating-help-desc">
-                            <span class="highlight">This feature coming soon!</span>
+                            <span class="highlight">{t("stats-coming-soon")}</span>
                             <br />
-                            Rating will be based on placement and kills within an individual game mode.
+                            {t("stats-rating-desc")}
                         </div>
                     </div>
                 </div>
@@ -138,14 +138,13 @@ export function ModeCards(props: { cards: ModeCard[] }) {
                                         </div>
                                         <div class="col-5 p-0">
                                             <div class={`mode-name mode-name-${card.name}`}>
-                                                {t(`stats-${card.name}`).toUpperCase()}
+                                                {t(`stats-${card.name}`)}
                                             </div>
                                         </div>
                                         <div class="col-5 mt-2">
                                             <Show when={card.games > 0}>
                                                 <div class="mode-games">
-                                                    <span>{card.games}</span>{" "}
-                                                    <span>{t("stats-games").toUpperCase()}</span>
+                                                    <span>{card.games}</span> <span>{t("stats-games")}</span>
                                                 </div>
                                             </Show>
                                         </div>
@@ -157,7 +156,7 @@ export function ModeCards(props: { cards: ModeCard[] }) {
                                 when={card.games > 0}
                                 fallback={
                                     <div class="card card-mode card-mode-no-games">
-                                        <div class="col-12">No games played.</div>
+                                        <div class="col-12">{t("stats-no-games")}</div>
                                     </div>
                                 }
                             >
@@ -169,7 +168,7 @@ export function ModeCards(props: { cards: ModeCard[] }) {
                                                     <div class="col-6 mt-1 mb-1">
                                                         <div class="card-mode-stat-mid">
                                                             <div class="card-mode-stat-name">
-                                                                {t(stat.key).toUpperCase()}
+                                                                {t(stat.key)}
                                                             </div>
                                                             <div class="card-mode-stat-value">{stat.val}</div>
                                                         </div>
@@ -187,7 +186,7 @@ export function ModeCards(props: { cards: ModeCard[] }) {
                                                     <div class="col-6 mt-1 mb-1">
                                                         <div class="card-mode-stat-bot">
                                                             <div class="card-mode-stat-name">
-                                                                {t(stat.key).toUpperCase()}
+                                                                {t(stat.key)}
                                                             </div>
                                                             <div class="card-mode-stat-value">{stat.val}</div>
                                                         </div>
