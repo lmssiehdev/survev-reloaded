@@ -6,7 +6,7 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { server } from "../../apiServer.ts";
 import type { db } from "../../db/index.ts";
-import { itemsTable, userPassTable } from "../../db/schema.ts";
+import { items, userPasses } from "../../db/schema.ts";
 
 export async function incrementPassXp(
     transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -17,7 +17,7 @@ export async function incrementPassXp(
 
     const passDef = PassDefs[Config.passType];
 
-    const pass = await transaction.query.userPassTable.findFirst({
+    const pass = await transaction.query.userPasses.findFirst({
         where: { userId, passType: Config.passType },
     });
 
@@ -41,7 +41,7 @@ export async function incrementPassXp(
     const now = Date.now();
     if (unlockedRewardItems.length > 0) {
         const insertedRewards = await transaction
-            .insert(itemsTable)
+            .insert(items)
             .values(
                 unlockedRewardItems.map((item) => ({
                     userId,
@@ -52,14 +52,14 @@ export async function incrementPassXp(
             )
             .onConflictDoNothing()
             .returning({
-                type: itemsTable.type,
+                type: items.type,
             });
 
         unlockedNewItems = insertedRewards.length > 0;
     }
 
     await transaction
-        .insert(userPassTable)
+        .insert(userPasses)
         .values({
             userId,
             passType: Config.passType,
@@ -67,11 +67,10 @@ export async function incrementPassXp(
             newItems: unlockedNewItems,
         })
         .onConflictDoUpdate({
-            target: [userPassTable.userId, userPassTable.passType],
+            target: [userPasses.userId, userPasses.passType],
             set: {
                 totalXp: newTotalXp,
-                newItems: unlockedNewItems ? true : sql`${userPassTable.newItems}`,
-                updatedAt: new Date(),
+                newItems: unlockedNewItems ? true : sql`${userPasses.newItems}`,
             },
         });
 }

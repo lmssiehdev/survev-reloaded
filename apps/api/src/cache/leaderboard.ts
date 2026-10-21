@@ -52,11 +52,11 @@ class LeaderBoardCache {
         return `${prefix}:${GameConfig.TeamModeToString[teamMode]}:${mapName}:${type}:${interval}`;
     }
 
-    async invalidateCache(matchData: MatchDataTable[]) {
+    async invalidateCache(rows: MatchDataTable[]) {
         if (!Config.cachingEnabled) return;
         const client = await getRedisClient();
 
-        const maxValues = matchData.reduce(
+        const maxValues = rows.reduce(
             (obj, player) => ({
                 most_kills: Math.max(obj.most_kills, player.kills),
                 most_damage_dealt: Math.max(obj.most_damage_dealt, player.damageDealt),
@@ -72,8 +72,8 @@ class LeaderBoardCache {
 
                 const params: LeaderboardRequest = {
                     type,
-                    teamMode: matchData[0].teamMode,
-                    mapId: matchData[0].mapId,
+                    teamMode: rows[0].teamMode,
+                    mapId: rows[0].mapId,
                     interval,
                 };
 

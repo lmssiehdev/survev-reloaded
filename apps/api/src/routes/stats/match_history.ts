@@ -5,11 +5,11 @@ import { aliasedTable, and, desc, eq, gt, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
-import { matchDataTable, usersTable } from "../../db/schema.ts";
+import { matchData, users } from "../../db/schema.ts";
 
 export const matchHistoryRouter = new Hono();
 
-const aliased = aliasedTable(matchDataTable, "aliased");
+const aliased = aliasedTable(matchData, "aliased");
 
 matchHistoryRouter.post(
     "/",
@@ -19,7 +19,7 @@ matchHistoryRouter.post(
     async (c) => {
         const { slug, offset, teamModeFilter } = c.req.valid("json");
 
-        const result = await db.query.usersTable.findFirst({
+        const result = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -31,55 +31,55 @@ matchHistoryRouter.post(
         const { id: userId } = result;
         const data = await db
             .select({
-                guid: matchDataTable.gameId,
-                region: matchDataTable.region,
-                map_id: matchDataTable.mapId,
-                team_mode: matchDataTable.teamMode,
-                team_count: matchDataTable.teamCount,
-                team_total: matchDataTable.teamTotal,
-                end_time: matchDataTable.createdAt,
-                time_alive: matchDataTable.timeAlive,
-                rank: matchDataTable.rank,
-                kills: matchDataTable.kills,
+                guid: matchData.gameId,
+                region: matchData.region,
+                map_id: matchData.mapId,
+                team_mode: matchData.teamMode,
+                team_count: matchData.teamCount,
+                team_total: matchData.teamTotal,
+                end_time: matchData.createdAt,
+                time_alive: matchData.timeAlive,
+                rank: matchData.rank,
+                kills: matchData.kills,
                 team_kills: sum(aliased.kills).mapWith(Number),
-                damage_dealt: matchDataTable.damageDealt,
-                damage_taken: matchDataTable.damageTaken,
-                slug: usersTable.slug,
+                damage_dealt: matchData.damageDealt,
+                damage_taken: matchData.damageTaken,
+                slug: users.slug,
             })
-            .from(matchDataTable)
+            .from(matchData)
             .groupBy(
-                matchDataTable.gameId,
-                matchDataTable.region,
-                matchDataTable.mapId,
-                matchDataTable.teamMode,
-                matchDataTable.teamCount,
-                matchDataTable.teamTotal,
-                matchDataTable.createdAt,
-                matchDataTable.timeAlive,
-                matchDataTable.rank,
-                matchDataTable.kills,
-                matchDataTable.damageDealt,
-                matchDataTable.damageTaken,
-                usersTable.slug,
+                matchData.gameId,
+                matchData.region,
+                matchData.mapId,
+                matchData.teamMode,
+                matchData.teamCount,
+                matchData.teamTotal,
+                matchData.createdAt,
+                matchData.timeAlive,
+                matchData.rank,
+                matchData.kills,
+                matchData.damageDealt,
+                matchData.damageTaken,
+                users.slug,
             )
             .leftJoin(
                 aliased,
                 and(
-                    eq(aliased.gameId, matchDataTable.gameId),
-                    eq(aliased.teamId, matchDataTable.teamId),
+                    eq(aliased.gameId, matchData.gameId),
+                    eq(aliased.teamId, matchData.teamId),
                 ),
             )
-            .innerJoin(usersTable, eq(usersTable.id, matchDataTable.userId))
+            .innerJoin(users, eq(users.id, matchData.userId))
             .where(
                 and(
-                    eq(usersTable.id, userId),
-                    eq(matchDataTable.teamMode, teamModeFilter as TeamMode).if(
+                    eq(users.id, userId),
+                    eq(matchData.teamMode, teamModeFilter as TeamMode).if(
                         teamModeFilter != ALL_TEAM_MODES,
                     ),
-                    gt(matchDataTable.createdAt, new Date(Date.now() - util.daysToMs(7))),
+                    gt(matchData.createdAt, new Date(Date.now() - util.daysToMs(7))),
                 ),
             )
-            .orderBy(desc(matchDataTable.createdAt))
+            .orderBy(desc(matchData.createdAt))
             .offset(offset)
             .limit(10);
 

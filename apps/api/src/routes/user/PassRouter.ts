@@ -10,7 +10,7 @@ import { server } from "../../apiServer.ts";
 import { validateParams } from "../../auth/middleware.ts";
 import type { AuthEnv } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
-import { userPassTable, type UserPassTableSelect, userQuestTable, type UserQuestTableSelect } from "../../db/schema.ts";
+import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../../db/schema.ts";
 import { questHelpers } from "../../utils/questHelpers.ts";
 
 // hardcoded for now
@@ -21,7 +21,7 @@ async function findPassWithQuests(
     tx: Pick<typeof db, "query">,
     userId: string,
 ): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined> {
-    const row = await tx.query.userPassTable.findFirst({
+    const row = await tx.query.userPasses.findFirst({
         where: { userId, passType: Config.passType },
         with: {
             quests: {
@@ -70,18 +70,18 @@ async function getPassAndQuests(
     // create them
     return db.transaction(async (tx) => {
         await tx
-            .insert(userPassTable)
+            .insert(userPasses)
             .values({ userId, passType: Config.passType })
             .onConflictDoNothing({
-                target: [userPassTable.userId, userPassTable.passType],
+                target: [userPasses.userId, userPasses.passType],
             });
 
         await tx
-            .delete(userQuestTable)
+            .delete(userQuests)
             .where(
                 and(
-                    eq(userQuestTable.userId, userId),
-                    inArray(userQuestTable.idx, questSlotIndexes),
+                    eq(userQuests.userId, userId),
+                    inArray(userQuests.idx, questSlotIndexes),
                 ),
             );
 
@@ -103,7 +103,7 @@ async function getPassAndQuests(
             };
         });
 
-        await tx.insert(userQuestTable).values(inserts);
+        await tx.insert(userQuests).values(inserts);
 
         const created = await findPassWithQuests(tx, userId);
 
@@ -127,7 +127,7 @@ async function rerollSlot(
     const questType = getRandomQuestType(currentQuests, rerolled ? loadedQuests[idx].questType : undefined);
 
     await (transaction ?? db)
-        .update(userQuestTable)
+        .update(userQuests)
         .set({
             questType,
             progress: 0,
@@ -137,7 +137,7 @@ async function rerollSlot(
             timeAcquired: now,
             nextRefreshAt: passUtil.getNextQuestRefreshAt(now),
         })
-        .where(and(eq(userQuestTable.userId, userId), eq(userQuestTable.idx, idx)));
+        .where(and(eq(userQuests.userId, userId), eq(userQuests.idx, idx)));
 
     return questType;
 }
@@ -188,15 +188,14 @@ export const PassRouter = new Hono<AuthEnv>()
 
             if (pass.newItems) {
                 await db
-                    .update(userPassTable)
+                    .update(userPasses)
                     .set({
                         newItems: false,
-                        updatedAt: new Date(),
                     })
                     .where(
                         and(
-                            eq(userPassTable.userId, user.id),
-                            eq(userPassTable.passType, pass.passType),
+                            eq(userPasses.userId, user.id),
+                            eq(userPasses.passType, pass.passType),
                         ),
                     );
             }
@@ -246,11 +245,11 @@ export const PassRouter = new Hono<AuthEnv>()
         const success = await db.transaction(async (transaction) => {
             const quests = await transaction
                 .select()
-                .from(userQuestTable)
+                .from(userQuests)
                 .where(
                     and(
-                        eq(userQuestTable.userId, user.id),
-                        inArray(userQuestTable.idx, questSlotIndexes),
+                        eq(userQuests.userId, user.id),
+                        inArray(userQuests.idx, questSlotIndexes),
                     ),
                 )
                 .for("update");

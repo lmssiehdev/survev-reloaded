@@ -8,7 +8,7 @@ import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
-import { matchDataTable, usersTable } from "../../db/schema.ts";
+import { matchData, users } from "../../db/schema.ts";
 
 export const UserStatsRouter = new Hono();
 
@@ -29,7 +29,7 @@ UserStatsRouter.post(
     async (c) => {
         const { interval, mapIdFilter, slug } = c.req.valid("json");
 
-        const result = await db.query.usersTable.findFirst({
+        const result = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -47,8 +47,8 @@ UserStatsRouter.post(
 );
 
 const intervalFilter: Record<string, SQL<unknown>> = {
-    daily: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '7 days'`),
+    daily: gte(matchData.createdAt, sql`NOW() - INTERVAL '1 day'`),
+    weekly: gte(matchData.createdAt, sql`NOW() - INTERVAL '7 days'`),
 };
 
 async function userStatsSqlQuery(
@@ -59,48 +59,48 @@ async function userStatsSqlQuery(
     const withSelect = db.$with("mode_stats").as(
         db
             .select({
-                team_mode: matchDataTable.teamMode,
+                team_mode: matchData.teamMode,
                 games: sql`COUNT(*)`.as("games"),
-                wins: sql`SUM(CASE WHEN ${matchDataTable.rank} = 1 THEN 1 ELSE 0 END)`.as(
+                wins: sql`SUM(CASE WHEN ${matchData.rank} = 1 THEN 1 ELSE 0 END)`.as(
                     "wins",
                 ),
-                kills: sum(matchDataTable.kills).as("kills"),
-                winPct: sql`ROUND(SUM(CASE WHEN ${matchDataTable.rank} = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)`
+                kills: sum(matchData.kills).as("kills"),
+                winPct: sql`ROUND(SUM(CASE WHEN ${matchData.rank} = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)`
                     .as(
                         "winpct",
                     ),
-                most_kills: max(matchDataTable.kills).as("most_kills"),
-                most_damage: max(matchDataTable.damageDealt).as("most_damage"),
-                kpg: sql`ROUND(SUM(${matchDataTable.kills}) * 1.0 / COUNT(*), 1)`.as(
+                most_kills: max(matchData.kills).as("most_kills"),
+                most_damage: max(matchData.damageDealt).as("most_damage"),
+                kpg: sql`ROUND(SUM(${matchData.kills}) * 1.0 / COUNT(*), 1)`.as(
                     "kpg",
                 ),
-                avg_damage: sql`ROUND(AVG(${matchDataTable.damageDealt}))`.as(
+                avg_damage: sql`ROUND(AVG(${matchData.damageDealt}))`.as(
                     "avg_damage",
                 ),
-                avg_time_alive: sql`ROUND(AVG(${matchDataTable.timeAlive}))`.as(
+                avg_time_alive: sql`ROUND(AVG(${matchData.timeAlive}))`.as(
                     "avg_time_alive",
                 ),
             })
-            .from(matchDataTable)
+            .from(matchData)
             .where(
                 and(
-                    eq(matchDataTable.userId, userId),
+                    eq(matchData.userId, userId),
                     mapIdFilter !== ALL_MAPS
-                        ? eq(matchDataTable.mapId, parseInt(mapIdFilter))
+                        ? eq(matchData.mapId, parseInt(mapIdFilter))
                         : undefined,
                     interval in intervalFilter ? intervalFilter[interval] : undefined,
                 ),
             )
-            .groupBy(matchDataTable.teamMode),
+            .groupBy(matchData.teamMode),
     );
 
     const res = await db
         .with(withSelect)
         .select({
-            slug: usersTable.slug,
-            username: usersTable.username,
-            banned: usersTable.banned,
-            player_icon: sql`JSON_EXTRACT_PATH(ANY_VALUE(${usersTable.loadout}), 'player_icon')`,
+            slug: users.slug,
+            username: users.username,
+            banned: users.banned,
+            player_icon: sql`JSON_EXTRACT_PATH(ANY_VALUE(${users.loadout}), 'player_icon')`,
             games: sql`COALESCE(SUM("mode_stats".games), 0)`,
             wins: sql`COALESCE(SUM("mode_stats".wins), 0)`,
             kills: sql`COALESCE(SUM("mode_stats".kills), 0)`,
@@ -123,10 +123,10 @@ async function userStatsSqlQuery(
             END
         ), '[]')`,
         })
-        .from(usersTable)
+        .from(users)
         .leftJoin(withSelect, eq(sql`1`, 1))
-        .where(eq(usersTable.id, userId))
-        .groupBy(usersTable.slug, usersTable.username, usersTable.banned)
+        .where(eq(users.id, userId))
+        .groupBy(users.slug, users.username, users.banned)
         .limit(1);
 
     const userStats = res[0] as UserStatsResponse;

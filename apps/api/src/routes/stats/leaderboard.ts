@@ -6,7 +6,7 @@ import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
 import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
-import { matchDataTable, usersTable } from "../../db/schema.ts";
+import { matchData, users } from "../../db/schema.ts";
 
 export const leaderboardRouter = new Hono();
 
@@ -65,45 +65,45 @@ const typeToQuery: Record<LeaderboardRequest["type"], string> = {
 };
 
 const intervalFilter = {
-    daily: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchDataTable.createdAt, sql`NOW() - INTERVAL '7 days'`),
+    daily: gte(matchData.createdAt, sql`NOW() - INTERVAL '1 day'`),
+    weekly: gte(matchData.createdAt, sql`NOW() - INTERVAL '7 days'`),
 };
 
 async function soloLeaderboardQuery(params: LeaderboardRequest) {
     const { interval, mapId, teamMode, type } = params;
     const minGames = type === "kpg" ? MinGames[type][interval] : 1;
 
-    const usernameQuery = type === "most_kills" ? matchDataTable.username : usersTable.username;
+    const usernameQuery = type === "most_kills" ? matchData.username : users.username;
 
     const result = await db
         .select({
             username: usernameQuery,
-            mapId: matchDataTable.mapId,
-            region: matchDataTable.region,
-            teamMode: matchDataTable.teamMode,
+            mapId: matchData.mapId,
+            region: matchData.region,
+            teamMode: matchData.teamMode,
             games: count(sql`DISTINCT(match_data.game_id)`),
-            slug: usersTable.slug,
+            slug: users.slug,
             val: sql.raw(`${typeToQuery[type]} as val`) as SQL<number>,
         })
-        .from(matchDataTable)
-        .leftJoin(usersTable, eq(usersTable.id, matchDataTable.userId))
+        .from(matchData)
+        .leftJoin(users, eq(users.id, matchData.userId))
         .where(
             and(
-                eq(matchDataTable.teamMode, teamMode),
-                eq(usersTable.banned, false),
+                eq(matchData.teamMode, teamMode),
+                eq(users.banned, false),
                 interval === "alltime" ? undefined : intervalFilter[interval],
-                ne(matchDataTable.userId, ""),
-                eq(matchDataTable.mapId, mapId),
+                ne(matchData.userId, ""),
+                eq(matchData.mapId, mapId),
             ),
         )
         .groupBy(
-            matchDataTable.mapId,
-            usersTable.slug,
-            matchDataTable.region,
-            matchDataTable.teamMode,
+            matchData.mapId,
+            users.slug,
+            matchData.region,
+            matchData.teamMode,
             usernameQuery,
-            sql`${type === "most_kills" ? matchDataTable.kills : ""}`,
-            sql`${type === "most_kills" ? matchDataTable.gameId : ""}`,
+            sql`${type === "most_kills" ? matchData.kills : ""}`,
+            sql`${type === "most_kills" ? matchData.gameId : ""}`,
         )
         .having(gte(count(sql`DISTINCT(match_data.game_id)`), minGames))
         .orderBy(sql`val DESC`)
@@ -126,23 +126,23 @@ async function multiplePlayersQuery({
                 }[]
             >`json_agg(
                 json_build_object(
-                    'username', ${matchDataTable.username},
-                    'userId', ${matchDataTable.userId}
+                    'username', ${matchData.username},
+                    'userId', ${matchData.userId}
                 )
             )`,
-            region: matchDataTable.region,
-            val: sql<number>`SUM(${matchDataTable.kills}) as val`,
+            region: matchData.region,
+            val: sql<number>`SUM(${matchData.kills}) as val`,
         })
-        .from(matchDataTable)
+        .from(matchData)
         .where(
             and(
                 interval === "alltime" ? undefined : intervalFilter[interval],
-                eq(matchDataTable.userBanned, false),
-                eq(matchDataTable.teamMode, teamMode),
-                eq(matchDataTable.mapId, mapId),
+                eq(matchData.userBanned, false),
+                eq(matchData.teamMode, teamMode),
+                eq(matchData.mapId, mapId),
             ),
         )
-        .groupBy(matchDataTable.gameId, matchDataTable.teamId, matchDataTable.region)
+        .groupBy(matchData.gameId, matchData.teamId, matchData.region)
         // make sure at least one member of the duo / squad is logged in
         .having(sql`count(case when user_id!='' then 1 end) >= 1`)
         .orderBy(sql`val DESC`)
@@ -163,11 +163,11 @@ async function multiplePlayersQuery({
 
     const slugsFromUserIds = await db
         .select({
-            slug: usersTable.slug,
-            id: usersTable.id,
+            slug: users.slug,
+            id: users.id,
         })
-        .from(usersTable)
-        .where(and(inArray(usersTable.id, userIds), eq(usersTable.banned, false)));
+        .from(users)
+        .where(and(inArray(users.id, userIds), eq(users.banned, false)));
 
     const slugMap = Object.fromEntries(
         slugsFromUserIds.map(({ id, slug }) => [id, slug]),

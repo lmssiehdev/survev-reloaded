@@ -4,7 +4,7 @@ import { generateUsername } from "unique-username-generator";
 import { giveNewAccountItems, randomId } from "../auth/users.ts";
 import { db } from "./index.ts";
 import type { MatchDataTable } from "./schema.ts";
-import { accountTable, matchDataTable, usersTable } from "./schema.ts";
+import { accounts, matchData, users } from "./schema.ts";
 
 const playersWithAccounts = Array.from({ length: 3000 }, (_, _idx) => ({
     slug: generateUsername(),
@@ -158,14 +158,14 @@ function getRandomData() {
 
 try {
     for (const { slug, userId } of playersWithAccounts) {
-        await db.insert(usersTable).values({
+        await db.insert(users).values({
             id: userId,
             email: `${slug}@seed.local`,
             emailVerified: true,
             username: slug,
             slug: slug,
         });
-        await db.insert(accountTable).values({
+        await db.insert(accounts).values({
             id: randomId(32),
             userId,
             providerId: "discord",
@@ -174,7 +174,7 @@ try {
         await giveNewAccountItems(userId);
         for (let j = 0; j < util.randomInt(50, 100); j++) {
             const data = generateMatchHistory(userId, slug, util.randomInt(60, 80));
-            await db.insert(matchDataTable).values(data);
+            await db.insert(matchData).values(data);
         }
         console.log({ slug, userId });
     }

@@ -4,7 +4,7 @@ import { util } from "@survev/shared/utils/util.ts";
 import { generateRandomString } from "better-auth/crypto";
 import slugify from "slugify";
 import { db } from "../db/index.ts";
-import { itemsTable } from "../db/schema.ts";
+import { items } from "../db/schema.ts";
 
 export function randomId(length: number) {
     return generateRandomString(length, "a-z", "0-9");
@@ -34,7 +34,7 @@ export async function generateUsername() {
     while (true) {
         const username = `Player ${randomId(6)}`;
         const slug = sanitizeSlug(username);
-        const taken = await db.query.usersTable.findFirst({
+        const taken = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -48,7 +48,7 @@ export async function giveNewAccountItems(userId: string) {
     if (!itemsToUnlock.length) return;
 
     await db
-        .insert(itemsTable)
+        .insert(items)
         .values(
             itemsToUnlock.map((type) => ({
                 userId,

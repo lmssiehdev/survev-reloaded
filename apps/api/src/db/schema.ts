@@ -18,14 +18,14 @@ import {
 //
 // AUTH (shape owned by better-auth, see auth/auth.ts)
 //
-export const usersTable = pgTable("users", {
+export const users = pgTable("users", {
     id: text("id").notNull().primaryKey(),
     // better-auth core fields
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     userCreated: timestamp("user_created", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
     // game fields
     slug: text("slug").notNull().unique(),
     banned: boolean("banned").notNull().default(false),
@@ -40,25 +40,25 @@ export const usersTable = pgTable("users", {
         .$type<Loadout>(),
 });
 
-export const sessionTable = pgTable(
+export const sessions = pgTable(
     "session",
     {
         id: text("id").primaryKey(),
         token: text("token").notNull().unique(),
         userId: text("user_id")
             .notNull()
-            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+            .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
         expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
         ipAddress: text("ip_address"),
         userAgent: text("user_agent"),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
     },
     (table) => [index("session_user_id_idx").on(table.userId), index("session_expires_at_idx").on(table.expiresAt)],
 );
 
 /** one row per linked login provider (discord / google) */
-export const accountTable = pgTable(
+export const accounts = pgTable(
     "account",
     {
         id: text("id").primaryKey(),
@@ -66,7 +66,7 @@ export const accountTable = pgTable(
         providerId: text("provider_id").notNull(),
         userId: text("user_id")
             .notNull()
-            .references(() => usersTable.id, { onDelete: "cascade", onUpdate: "cascade" }),
+            .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
         accessToken: text("access_token"),
         refreshToken: text("refresh_token"),
         idToken: text("id_token"),
@@ -75,7 +75,7 @@ export const accountTable = pgTable(
         scope: text("scope"),
         password: text("password"),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
     },
     (table) => [
         uniqueIndex("account_provider_account_idx").on(table.providerId, table.accountId),
@@ -83,24 +83,24 @@ export const accountTable = pgTable(
     ],
 );
 
-export const verificationTable = pgTable("verification", {
+export const verifications = pgTable("verification", {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
-export type UsersTableInsert = typeof usersTable.$inferInsert;
-export type UsersTableSelect = typeof usersTable.$inferSelect;
+export type UsersTableInsert = typeof users.$inferInsert;
+export type UsersTableSelect = typeof users.$inferSelect;
 
-export const itemsTable = pgTable(
+export const items = pgTable(
     "items",
     {
         userId: text("user_id")
             .notNull()
-            .references(() => usersTable.id, {
+            .references(() => users.id, {
                 onDelete: "cascade",
                 onUpdate: "cascade",
             }),
@@ -111,12 +111,15 @@ export const itemsTable = pgTable(
     },
     (table) => [uniqueIndex("uq_items_user_type").on(table.userId, table.type)],
 );
-export const userPassTable = pgTable(
+/** the item fields the client gets */
+export const itemColumns = { type: true, timeAcquired: true, source: true, status: true } as const;
+
+export const userPasses = pgTable(
     "user_pass",
     {
         userId: text("user_id")
             .notNull()
-            .references(() => usersTable.id, {
+            .references(() => users.id, {
                 onDelete: "cascade",
                 onUpdate: "cascade",
             }),
@@ -125,20 +128,20 @@ export const userPassTable = pgTable(
         unlocks: json("unlocks").notNull().default({}).$type<Record<string, boolean>>(),
         newItems: boolean("new_items").notNull().default(false),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
     },
     (table) => [uniqueIndex("user_pass_user_type").on(table.userId, table.passType)],
 );
 
-export type UserPassTableSelect = typeof userPassTable.$inferSelect;
+export type UserPassTableSelect = typeof userPasses.$inferSelect;
 
-export const userQuestTable = pgTable(
+export const userQuests = pgTable(
     "user_quest",
     {
         id: serial("id").primaryKey(),
         userId: text("user_id")
             .notNull()
-            .references(() => usersTable.id, {
+            .references(() => users.id, {
                 onDelete: "cascade",
                 onUpdate: "cascade",
             }),
@@ -154,9 +157,9 @@ export const userQuestTable = pgTable(
     (table) => [uniqueIndex("user_quest_user_idx").on(table.userId, table.idx)],
 );
 
-export type UserQuestTableSelect = typeof userQuestTable.$inferSelect;
+export type UserQuestTableSelect = typeof userQuests.$inferSelect;
 
-export const matchDataTable = pgTable(
+export const matchData = pgTable(
     "match_data",
     {
         userId: text("user_id").default(""),
@@ -207,12 +210,12 @@ export const matchDataTable = pgTable(
     ],
 );
 
-export type MatchDataTable = typeof matchDataTable.$inferInsert;
+export type MatchDataTable = typeof matchData.$inferInsert;
 
 //
 // LOGS
 //
-export const ipLogsTable = pgTable(
+export const ipLogs = pgTable(
     "ip_logs",
     {
         id: serial().primaryKey(),
@@ -234,9 +237,9 @@ export const ipLogsTable = pgTable(
     (table) => [index("name_created_at_idx").on(table.username, table.createdAt)],
 );
 
-export type IpLogsTable = typeof ipLogsTable.$inferSelect;
+export type IpLogsTable = typeof ipLogs.$inferSelect;
 
-export const bannedIpsTable = pgTable("banned_ips", {
+export const bannedIps = pgTable("banned_ips", {
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     expiresIn: timestamp("expires_in").notNull(),
     encodedIp: text("encoded_ip").notNull().primaryKey(),

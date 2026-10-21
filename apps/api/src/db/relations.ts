@@ -7,36 +7,36 @@ import * as schema from "./schema.ts";
  * relations don't need one.
  */
 export const relations = defineRelations(schema, (r) => ({
-    usersTable: {
-        sessions: r.many.sessionTable({ from: r.usersTable.id, to: r.sessionTable.userId }),
-        accounts: r.many.accountTable({ from: r.usersTable.id, to: r.accountTable.userId }),
-        items: r.many.itemsTable({ from: r.usersTable.id, to: r.itemsTable.userId }),
-        passes: r.many.userPassTable({ from: r.usersTable.id, to: r.userPassTable.userId }),
-        quests: r.many.userQuestTable({ from: r.usersTable.id, to: r.userQuestTable.userId }),
-        matches: r.many.matchDataTable({ from: r.usersTable.id, to: r.matchDataTable.userId }),
-        ipLogs: r.many.ipLogsTable({ from: r.usersTable.id, to: r.ipLogsTable.userId }),
+    users: {
+        sessions: r.many.sessions({ from: r.users.id, to: r.sessions.userId }),
+        accounts: r.many.accounts({ from: r.users.id, to: r.accounts.userId }),
+        items: r.many.items({ from: r.users.id, to: r.items.userId }),
+        passes: r.many.userPasses({ from: r.users.id, to: r.userPasses.userId }),
+        quests: r.many.userQuests({ from: r.users.id, to: r.userQuests.userId }),
+        matches: r.many.matchData({ from: r.users.id, to: r.matchData.userId }),
+        ipLogs: r.many.ipLogs({ from: r.users.id, to: r.ipLogs.userId }),
     },
-    sessionTable: {
-        user: r.one.usersTable({ from: r.sessionTable.userId, to: r.usersTable.id, optional: false }),
+    sessions: {
+        user: r.one.users({ from: r.sessions.userId, to: r.users.id, optional: false }),
     },
-    accountTable: {
-        user: r.one.usersTable({ from: r.accountTable.userId, to: r.usersTable.id, optional: false }),
+    accounts: {
+        user: r.one.users({ from: r.accounts.userId, to: r.users.id, optional: false }),
     },
-    itemsTable: {
-        user: r.one.usersTable({ from: r.itemsTable.userId, to: r.usersTable.id, optional: false }),
+    items: {
+        user: r.one.users({ from: r.items.userId, to: r.users.id, optional: false }),
     },
-    userPassTable: {
-        user: r.one.usersTable({ from: r.userPassTable.userId, to: r.usersTable.id, optional: false }),
+    userPasses: {
+        user: r.one.users({ from: r.userPasses.userId, to: r.users.id, optional: false }),
         // quests belong to the user, not to a specific pass
-        quests: r.many.userQuestTable({ from: r.userPassTable.userId, to: r.userQuestTable.userId }),
+        quests: r.many.userQuests({ from: r.userPasses.userId, to: r.userQuests.userId }),
     },
-    userQuestTable: {
-        user: r.one.usersTable({ from: r.userQuestTable.userId, to: r.usersTable.id, optional: false }),
+    userQuests: {
+        user: r.one.users({ from: r.userQuests.userId, to: r.users.id, optional: false }),
     },
-    matchDataTable: {
-        user: r.one.usersTable({ from: r.matchDataTable.userId, to: r.usersTable.id }),
+    matchData: {
+        user: r.one.users({ from: r.matchData.userId, to: r.users.id }),
     },
-    ipLogsTable: {
-        user: r.one.usersTable({ from: r.ipLogsTable.userId, to: r.usersTable.id }),
+    ipLogs: {
+        user: r.one.users({ from: r.ipLogs.userId, to: r.users.id }),
     },
 }));

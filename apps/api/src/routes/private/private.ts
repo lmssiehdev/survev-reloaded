@@ -15,7 +15,7 @@ import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "..
 import { getRedisClient } from "../../cache/index.ts";
 import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
-import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable } from "../../db/schema.ts";
+import { items, matchData, type MatchDataTable, userQuests } from "../../db/schema.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
@@ -105,21 +105,21 @@ export const PrivateRouter = new Hono()
     .post("/save_game", databaseEnabledMiddleware, async (c) => {
         const data = (await c.req.json()) as SaveGameBody;
 
-        const matchData = data.matchData;
+        const rows = data.matchData;
 
-        if (!matchData.length) {
+        if (!rows.length) {
             return c.json({ error: "Empty match data" }, 400);
         }
 
-        await db.insert(matchDataTable).values(matchData).onConflictDoNothing();
+        await db.insert(matchData).values(rows).onConflictDoNothing();
 
-        await logPlayerIPs(matchData);
+        await logPlayerIPs(rows);
         try {
-            await leaderboardCache.invalidateCache(matchData);
+            await leaderboardCache.invalidateCache(rows);
         } catch (e) {
             server.logger.error("Failed to invalidate leaderboard cache", e);
         }
-        server.logger.info(`Saved game data for ${matchData[0].gameId}`);
+        server.logger.info(`Saved game data for ${rows[0].gameId}`);
         return c.json({}, 200);
     })
     .post(
@@ -156,11 +156,11 @@ export const PrivateRouter = new Hono()
                 return c.json({ success: true }, 200);
             }
 
-            const userQuests = await db.query.userQuestTable.findMany({
+            const quests = await db.query.userQuests.findMany({
                 where: { userId, questType: { in: validEntries.map((e) => e.id) } },
             });
 
-            if (userQuests.length === 0) {
+            if (quests.length === 0) {
                 return c.json({ success: true }, 200);
             }
 
@@ -168,7 +168,7 @@ export const PrivateRouter = new Hono()
             const deltaById = new Map(validEntries.map((e) => [e.id, e.delta]));
 
             await db.transaction(async (tx) => {
-                for (const quest of userQuests) {
+                for (const quest of quests) {
                     const delta = deltaById.get(quest.questType) ?? 0;
                     if (delta <= 0) continue;
 
@@ -187,12 +187,12 @@ export const PrivateRouter = new Hono()
                     }
 
                     await tx
-                        .update(userQuestTable)
+                        .update(userQuests)
                         .set({
                             progress: nextProgress,
                             complete: nowComplete,
                         })
-                        .where(eq(userQuestTable.id, quest.id));
+                        .where(eq(userQuests.id, quest.id));
                 }
 
                 if (xpGain <= 0) return;
@@ -216,7 +216,7 @@ export const PrivateRouter = new Hono()
                 return c.json({ message: "Invalid item type" }, 200);
             }
 
-            const user = await db.query.usersTable.findFirst({
+            const user = await db.query.users.findFirst({
                 where: { slug },
                 columns: { id: true },
                 with: { items: { where: { type: item }, columns: { type: true } } },
@@ -230,7 +230,7 @@ export const PrivateRouter = new Hono()
                 return c.json({ message: "User already has item" }, 200);
             }
 
-            await db.insert(itemsTable).values({
+            await db.insert(items).values({
                 userId: user.id,
                 type: item,
                 source,
@@ -247,7 +247,7 @@ export const PrivateRouter = new Hono()
         async (c) => {
             const { item, slug } = c.req.valid("json");
 
-            const user = await db.query.usersTable.findFirst({
+            const user = await db.query.users.findFirst({
                 where: { slug },
                 columns: { id: true },
             });
@@ -257,8 +257,8 @@ export const PrivateRouter = new Hono()
             }
 
             await db
-                .delete(itemsTable)
-                .where(and(eq(itemsTable.userId, user.id), eq(itemsTable.type, item)));
+                .delete(items)
+                .where(and(eq(items.userId, user.id), eq(items.type, item)));
 
             return c.json({ message: `Item "${item}" removed from ${slug}` }, 200);
         },
@@ -305,7 +305,7 @@ export const PrivateRouter = new Hono()
             }
 
             const data = c.req.valid("json");
-            const matchData: MatchDataTable = {
+            const row: MatchDataTable = {
                 gameId: crypto.randomUUID(),
                 userId: MOCK_USER_ID,
                 createdAt: new Date(),
@@ -333,8 +333,8 @@ export const PrivateRouter = new Hono()
                 ],
                 ...data,
             };
-            await leaderboardCache.invalidateCache([matchData]);
-            await db.insert(matchDataTable).values(matchData);
+            await leaderboardCache.invalidateCache([row]);
+            await db.insert(matchData).values(row);
             return c.json({ success: true }, 200);
         },
     );

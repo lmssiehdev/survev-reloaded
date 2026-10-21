@@ -1,11 +1,9 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { db } from "./db/index.ts";
-import { userQuestTable, usersTable } from "./db/schema.ts";
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader
@@ -55,20 +53,15 @@ export async function getFindGamePlayerData(
     > = {};
 
     if (userIds.length) {
-        const query = await db
-            .select({
-                userId: usersTable.id,
-                loadout: usersTable.loadout,
-                quests: sql<
-                    string[]
-                >`array_agg(${userQuestTable.questType}) filter (where ${userQuestTable.questType} is not null)`,
-            })
-            .from(usersTable)
-            .leftJoin(userQuestTable, and(eq(userQuestTable.userId, usersTable.id)))
-            .where(inArray(usersTable.id, userIds))
-            .groupBy(usersTable.id);
+        const rows = await db.query.users.findMany({
+            where: { id: { in: userIds } },
+            columns: { id: true, loadout: true },
+            with: { quests: { columns: { questType: true } } },
+        });
 
-        accountData = Object.fromEntries(query.map((r) => [r.userId, r]));
+        accountData = Object.fromEntries(
+            rows.map((u) => [u.id, { loadout: u.loadout, quests: u.quests.map((q) => q.questType) }]),
+        );
     }
 
     return players.map(({ joinToken, userId, ip }) => ({

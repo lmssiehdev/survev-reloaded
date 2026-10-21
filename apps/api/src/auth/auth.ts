@@ -7,7 +7,7 @@ import { setSessionCookie } from "better-auth/cookies";
 import { lt } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { relations } from "../db/relations.ts";
-import { accountTable, sessionTable, usersTable, verificationTable } from "../db/schema.ts";
+import { accounts, sessions, users, verifications } from "../db/schema.ts";
 import { generateUsername, giveNewAccountItems } from "./users.ts";
 
 const DAY = 60 * 60 * 24;
@@ -25,16 +25,16 @@ const mockLogin = {
     id: "mock-login",
     endpoints: {
         mockLogin: createAuthEndpoint("/mock", { method: "GET" }, async (ctx) => {
-            const users = ctx.context.internalAdapter;
+            const adapter = ctx.context.internalAdapter;
             // created through the normal hooks, so it gets a generated name and the starter items
-            const user = (await users.findUserById(MOCK_USER_ID))
-                ?? (await users.createUser({
+            const user = (await adapter.findUserById(MOCK_USER_ID))
+                ?? (await adapter.createUser({
                     id: MOCK_USER_ID,
                     email: "mock@survev.local",
                     name: MOCK_USER_ID,
                     emailVerified: true,
                 }, { method: "mock" }));
-            const session = await users.createSession(user.id);
+            const session = await adapter.createSession(user.id);
             await setSessionCookie(ctx, { session, user });
             throw ctx.redirect(clientUrl);
         }),
@@ -58,10 +58,10 @@ export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
         schema: {
-            user: usersTable,
-            session: sessionTable,
-            account: accountTable,
-            verification: verificationTable,
+            user: users,
+            session: sessions,
+            account: accounts,
+            verification: verifications,
             ...relations,
         },
     }),
@@ -163,5 +163,5 @@ export function isProviderEnabled(provider: SocialProvider) {
 
 /** better-auth only removes expired sessions when they are looked up again */
 export async function deleteExpiredSessions() {
-    await db.delete(sessionTable).where(lt(sessionTable.expiresAt, new Date()));
+    await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
 }

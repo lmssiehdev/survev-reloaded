@@ -27,7 +27,7 @@ import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { sanitizeSlug } from "../../auth/users.ts";
 import { db, rowCount } from "../../db/index.ts";
-import { bannedIpsTable, ipLogsTable, itemsTable, matchDataTable, userPassTable, usersTable } from "../../db/schema.ts";
+import { bannedIps, ipLogs, items, matchData, userPasses, users } from "../../db/schema.ts";
 import { incrementPassXp } from "./passXp.ts";
 
 export const ModerationRouter = new Hono()
@@ -42,7 +42,7 @@ export const ModerationRouter = new Hono()
             ip_ban_permanent,
         } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true, banned: true },
             with: {
@@ -81,10 +81,10 @@ export const ModerationRouter = new Hono()
 
             if (bans.length) {
                 await db
-                    .insert(bannedIpsTable)
+                    .insert(bannedIps)
                     .values(bans)
                     .onConflictDoUpdate({
-                        target: bannedIpsTable.encodedIp,
+                        target: bannedIps.encodedIp,
                         set: {
                             expiresIn: expiresIn,
                             reason: banReason,
@@ -109,7 +109,7 @@ export const ModerationRouter = new Hono()
     .post("/unban_account", validateParams(zUnbanAccountParams), async (c) => {
         const { slug } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true, banned: true },
         });
@@ -123,18 +123,18 @@ export const ModerationRouter = new Hono()
         }
 
         await db
-            .update(usersTable)
+            .update(users)
             .set({
                 banned: false,
                 banReason: "",
                 bannedBy: "",
             })
-            .where(eq(usersTable.id, user.id));
+            .where(eq(users.id, user.id));
 
         await db
-            .update(matchDataTable)
+            .update(matchData)
             .set({ userBanned: false })
-            .where(eq(matchDataTable.userId, user.id));
+            .where(eq(matchData.userId, user.id));
 
         return c.json({ message: "User has been unbanned." }, 200);
     })
@@ -160,10 +160,10 @@ export const ModerationRouter = new Hono()
         }));
 
         await db
-            .insert(bannedIpsTable)
+            .insert(bannedIps)
             .values(values)
             .onConflictDoUpdate({
-                target: bannedIpsTable.encodedIp,
+                target: bannedIps.encodedIp,
                 set: {
                     expiresIn: expiresIn,
                     reason: ban_reason,
@@ -172,7 +172,7 @@ export const ModerationRouter = new Hono()
             });
 
         if (ban_associated_account) {
-            const user = await db.query.ipLogsTable.findFirst({
+            const user = await db.query.ipLogs.findFirst({
                 where: { encodedIp: { in: encodedIps }, userId: { ne: "" } },
                 columns: { userId: true },
             });
@@ -205,15 +205,14 @@ export const ModerationRouter = new Hono()
         const { ip, is_encoded } = c.req.valid("json");
         const encodedIp = is_encoded ? ip : hashIp(ip);
         await db
-            .delete(bannedIpsTable)
-            .where(eq(bannedIpsTable.encodedIp, encodedIp))
-            .execute();
+            .delete(bannedIps)
+            .where(eq(bannedIps.encodedIp, encodedIp));
         return c.json({ message: `IP ${encodedIp} has been unbanned.` }, 200);
     })
     .post("/get_player_ip", validateParams(zGetPlayerIpParams), async (c) => {
         const { name, use_account_slug, game_id } = c.req.valid("json");
 
-        const logs = await db.query.ipLogsTable.findMany({
+        const logs = await db.query.ipLogs.findMany({
             where: {
                 ...(use_account_slug ? { user: { slug: name } } : { username: name }),
                 ...(game_id && { gameId: game_id }),
@@ -257,7 +256,7 @@ export const ModerationRouter = new Hono()
         );
     })
     .post("/clear_all_bans", async (c) => {
-        await db.delete(bannedIpsTable).execute();
+        await db.delete(bannedIps);
         return c.json({ message: `All bans have been cleared.` }, 200);
     })
     .post(
@@ -268,11 +267,11 @@ export const ModerationRouter = new Hono()
             const { current_name, new_name } = c.req.valid("json");
 
             const res = await db
-                .update(matchDataTable)
+                .update(matchData)
                 .set({
                     username: new_name,
                 })
-                .where(eq(matchDataTable.username, current_name));
+                .where(eq(matchData.username, current_name));
 
             return c.json({ message: `Updated ${rowCount(res)} rows` }, 200);
         },
@@ -289,12 +288,12 @@ export const ModerationRouter = new Hono()
         const newSlug = sanitizeSlug(sanitized.validName);
 
         const res = await db
-            .update(usersTable)
+            .update(users)
             .set({
                 username: sanitized.validName,
                 slug: newSlug,
             })
-            .where(eq(usersTable.slug, current_slug));
+            .where(eq(users.slug, current_slug));
 
         if (rowCount(res)) {
             return c.json(
@@ -316,8 +315,8 @@ export const ModerationRouter = new Hono()
             const { gameId } = c.req.valid("json");
 
             const res = await db
-                .delete(matchDataTable)
-                .where(eq(matchDataTable.gameId, gameId));
+                .delete(matchData)
+                .where(eq(matchData.gameId, gameId));
 
             return c.json({ message: `Deleted ${rowCount(res)} rows` }, 200);
         },
@@ -328,7 +327,7 @@ export const ModerationRouter = new Hono()
         async (c) => {
             const { discord_user } = c.req.valid("json");
 
-            const account = await db.query.accountTable.findFirst({
+            const account = await db.query.accounts.findFirst({
                 where: { providerId: "discord", accountId: discord_user },
                 with: { user: { columns: { slug: true } } },
             });
@@ -349,7 +348,7 @@ export const ModerationRouter = new Hono()
     .post("reset_pass", validateParams(zResetPassParams), async (c) => {
         const { slug, pass } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -363,21 +362,21 @@ export const ModerationRouter = new Hono()
 
         await db.transaction(async (t) => {
             await t
-                .delete(userPassTable)
+                .delete(userPasses)
                 .where(
                     and(
-                        eq(userPassTable.userId, user.id),
-                        eq(userPassTable.passType, actualPass),
+                        eq(userPasses.userId, user.id),
+                        eq(userPasses.passType, actualPass),
                     ),
                 );
 
             // also remove the pass items from their account
             await t
-                .delete(itemsTable)
+                .delete(items)
                 .where(
                     and(
-                        eq(itemsTable.userId, user.id),
-                        eq(itemsTable.source, actualPass),
+                        eq(items.userId, user.id),
+                        eq(items.source, actualPass),
                     ),
                 );
         });
@@ -387,7 +386,7 @@ export const ModerationRouter = new Hono()
     .post("give_xp", validateParams(zGiveXpParams), async (c) => {
         const { slug, xp } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -405,7 +404,7 @@ export const ModerationRouter = new Hono()
     .post("logout_from_game", validateParams(zLogoutFromGameParams), async (c) => {
         const { slug, game_id } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -415,12 +414,12 @@ export const ModerationRouter = new Hono()
         }
 
         const result = await db
-            .update(matchDataTable)
+            .update(matchData)
             .set({ userId: null })
             .where(
                 and(
-                    eq(matchDataTable.userId, user.id),
-                    eq(matchDataTable.gameId, game_id),
+                    eq(matchData.userId, user.id),
+                    eq(matchData.gameId, game_id),
                 ),
             );
 
@@ -441,7 +440,7 @@ export const ModerationRouter = new Hono()
     .post("reset_stats", validateParams(zResetStatsParams), async (c) => {
         const { slug } = c.req.valid("json");
 
-        const user = await db.query.usersTable.findFirst({
+        const user = await db.query.users.findFirst({
             where: { slug },
             columns: { id: true },
         });
@@ -451,9 +450,9 @@ export const ModerationRouter = new Hono()
         }
 
         const result = await db
-            .update(matchDataTable)
+            .update(matchData)
             .set({ userId: null })
-            .where(eq(matchDataTable.userId, user.id));
+            .where(eq(matchData.userId, user.id));
 
         return c.json(
             {
@@ -467,7 +466,7 @@ export const ModerationRouter = new Hono()
 
         if (filter.type === "user_id") {
             // convert the slug to user id
-            const user = await db.query.usersTable.findFirst({
+            const user = await db.query.users.findFirst({
                 where: { slug: filter.value },
                 columns: { id: true },
             });
@@ -514,26 +513,26 @@ export const ModerationRouter = new Hono()
 
 async function banAccount(userId: string, banReason: string, executorId: string) {
     await db
-        .update(usersTable)
+        .update(users)
         .set({
             banned: true,
             banReason,
             bannedBy: executorId,
         })
-        .where(eq(usersTable.id, userId));
+        .where(eq(users.id, userId));
 
     // NOTE: some lb queries join with the userTable so we do
     // this so it's easier to filter them
     await db
-        .update(matchDataTable)
+        .update(matchData)
         .set({ userBanned: true })
-        .where(eq(matchDataTable.userId, userId));
+        .where(eq(matchData.userId, userId));
 }
 
 export async function cleanupOldLogs() {
     try {
         const thirtyDaysAgo = new Date(Date.now() - util.daysToMs(30));
-        await db.delete(ipLogsTable).where(lt(ipLogsTable.createdAt, thirtyDaysAgo));
+        await db.delete(ipLogs).where(lt(ipLogs.createdAt, thirtyDaysAgo));
     } catch (err) {
         server.logger.error("Failed to cleanup old logs", err);
     }
@@ -543,7 +542,7 @@ export async function isBanned(ip: string, isEncoded = false) {
     if (!Config.database.enabled) return undefined;
     try {
         const encodedIp = isEncoded ? ip : hashIp(ip);
-        const banned = await db.query.bannedIpsTable.findFirst({
+        const banned = await db.query.bannedIps.findFirst({
             where: { encodedIp },
             columns: {
                 permanent: true,
@@ -563,9 +562,8 @@ export async function isBanned(ip: string, isEncoded = false) {
             }
             // unban the ip
             await db
-                .delete(bannedIpsTable)
-                .where(eq(bannedIpsTable.encodedIp, encodedIp))
-                .execute();
+                .delete(bannedIps)
+                .where(eq(bannedIps.encodedIp, encodedIp));
             return undefined;
         }
         return undefined;
@@ -577,12 +575,12 @@ export async function isBanned(ip: string, isEncoded = false) {
 
 export async function logPlayerIPs(data: SaveGameBody["matchData"]) {
     try {
-        const logsData = data.map((matchData) => ({
-            ...matchData,
-            encodedIp: hashIp(matchData.ip),
-            findGameEncodedIp: hashIp(matchData.findGameIp),
+        const logsData = data.map((player) => ({
+            ...player,
+            encodedIp: hashIp(player.ip),
+            findGameEncodedIp: hashIp(player.findGameIp),
         }));
-        await db.insert(ipLogsTable).values(logsData);
+        await db.insert(ipLogs).values(logsData);
     } catch (err) {
         server.logger.error("Failed to log player ip", err);
     }
