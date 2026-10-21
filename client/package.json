@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit",
     "dev": "vite dev",
     "preview": "vite preview",
-    "lint": "cd .. && pnpm lint"
+    "lint": "cd .. && bun run lint"
   },
   "dependencies": {
     "@taufik-nurrohman/color-picker": "1.4.2",

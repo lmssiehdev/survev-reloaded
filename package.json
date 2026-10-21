@@ -3,20 +3,27 @@
   "version": "0.4.3",
   "type": "module",
   "description": "Open Source Surviv.io Server",
+  "workspaces": [
+    "server",
+    "shared",
+    "client",
+    "bot",
+    "tests"
+  ],
   "scripts": {
-    "survev-setup": "pnpm install && tsx setup.ts",
-    "dev": "concurrently \"pnpm run dev:api\" \"pnpm run dev:game\" \"pnpm run dev:client\"",
-    "dev:server": "cd server && pnpm dev",
-    "dev:api": "cd server && pnpm dev:api",
-    "dev:game": "cd server && pnpm dev:game",
-    "dev:client": "cd client && pnpm dev",
-    "build": "cd server && pnpm build && cd ../client && pnpm build",
-    "stressTest": "cd server && pnpm stressTest",
+    "survev-setup": "bun install && tsx setup.ts",
+    "dev": "concurrently \"bun run dev:api\" \"bun run dev:game\" \"bun run dev:client\"",
+    "dev:server": "cd server && bun run dev",
+    "dev:api": "cd server && bun run dev:api",
+    "dev:game": "cd server && bun run dev:game",
+    "dev:client": "cd client && bun run dev",
+    "build": "cd server && bun run build && cd ../client && bun run build",
+    "stressTest": "cd server && bun run stressTest",
     "lint": "oxlint --fix; dprint fmt",
     "lint:ci": "oxlint; dprint check"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "bun": ">=1.4.4-canary.1"
   },
   "author": "Leia",
   "license": "GPL-3.0-or-later",
@@ -33,5 +40,13 @@
     "hjson": "^3.2.2",
     "tsx": "^4.23.15"
   },
-  "packageManager": "pnpm@11.24.0"
+  "packageManager": "bun@1.4.4-canary.1",
+  "trustedDependencies": [
+    "@taufik-nurrohman/color-picker",
+    "canvas",
+    "dprint",
+    "esbuild",
+    "sharp",
+    "workerd"
+  ]
 }

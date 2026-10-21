@@ -7,7 +7,7 @@
     "typecheck": "tsc",
     "start:api": "node --enable-source-maps dist/index.js",
     "start:game": "node --enable-source-maps dist/gameServer.js",
-    "dev": "concurrently \"pnpm run dev:api\" \"pnpm run dev:game\"",
+    "dev": "concurrently \"bun run dev:api\" \"bun run dev:game\"",
     "dev:api": "tsx watch --clear-screen=false --include ../survev-config.hjson src/api/index.ts",
     "dev:game": "tsx watch --clear-screen=false --include ../survev-config.hjson --include ./src/game --include ../shared src/gameServer.ts",
     "db:generate": "drizzle-kit generate --config=src/api/drizzle.config.ts",
@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio --config=src/api/drizzle.config.ts",
     "db:wipe": "tsx src/api/db/wipe.ts",
     "stressTest": "tsx src/stressTest.ts",
-    "lint": "cd .. && pnpm lint"
+    "lint": "cd .. && bun run lint"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",
