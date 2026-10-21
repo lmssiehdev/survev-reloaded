@@ -69,7 +69,7 @@ function stopGame() {
 //
 
 async function saveGame(gameId: string, values: SaveGameBody["matchData"]) {
-    let res: Response | undefined = undefined;
+    let res: Pick<Response, "ok"> | undefined = undefined;
     try {
         res = await apiPrivateRouter.save_game.$post({
             json: {

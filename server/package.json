@@ -37,8 +37,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.3",
     "@types/nanotimer": "^0.3.2",
-    "@types/node": "~22.12.0",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",
     "rolldown": "^1.2.9",

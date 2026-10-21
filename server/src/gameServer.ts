@@ -128,7 +128,7 @@ class GameServer {
 
         this.logger.info(`${games.length} lost games found, trying to save...`);
 
-        let res: Response | undefined = undefined;
+        let res: Pick<Response, "ok"> | undefined = undefined;
         try {
             res = await apiPrivateRouter.save_game.$post({
                 json: {
