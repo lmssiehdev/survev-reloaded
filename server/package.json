@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "rolldown -c rolldown.config.ts",
-    "typecheck": "tsc",
+    "typecheck": "bun check",
     "start:api": "node --enable-source-maps dist/index.js",
     "start:game": "node --enable-source-maps dist/gameServer.js",
     "dev": "bun run --parallel dev:api dev:game",

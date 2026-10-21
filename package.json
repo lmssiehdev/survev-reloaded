@@ -19,8 +19,8 @@
     "dev:client": "cd client && bun run dev",
     "build": "cd server && bun run build && cd ../client && bun run build",
     "stressTest": "cd server && bun run stressTest",
-    "lint": "oxlint --fix; dprint fmt",
-    "lint:ci": "oxlint; dprint check"
+    "lint": "bun lint --fix && dprint fmt",
+    "lint:ci": "bun lint --no-script && dprint check"
   },
   "engines": {
     "bun": ">=1.4.4-canary.1"
@@ -31,7 +31,6 @@
     "@types/hjson": "^2.4.6",
     "@types/node": "~22.12.0",
     "dprint": "^0.55.2",
-    "oxlint": "^1.85.0",
     "typescript": "^6.0.3"
   },
   "dependencies": {

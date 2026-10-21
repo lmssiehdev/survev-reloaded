@@ -3,7 +3,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "start": "bun src/index.ts",
     "dev": "bun --watch --no-clear-screen src/index.ts",
     "register-commands": "bun src/register-commands.ts"
