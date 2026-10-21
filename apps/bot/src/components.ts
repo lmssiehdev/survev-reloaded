@@ -11,7 +11,7 @@ import {
     type StringSelectMenuInteraction,
 } from "discord.js";
 import { BUTTON_PREFIXES, type SelectedPlayer } from "./commands/search-player.ts";
-import { createCollector, honoClient } from "./utils.ts";
+import { apiMessage, createCollector, honoClient } from "./utils.ts";
 
 export async function createDiscordDropdownUI(
     interaction: RepliableInteraction,
@@ -157,8 +157,7 @@ export async function createDiscordPlayerInfoCardUI({
                         executor_id: executorId,
                     },
                 });
-                const { message } = await res.json();
-                await clearEmbedWithMessage(interaction, message);
+                await clearEmbedWithMessage(interaction, await apiMessage(res));
                 return;
             }
 
@@ -176,8 +175,7 @@ export async function createDiscordPlayerInfoCardUI({
                 },
             });
 
-            const { message } = await res.json();
-            await clearEmbedWithMessage(interaction, message);
+            await clearEmbedWithMessage(interaction, await apiMessage(res));
         },
     });
 }

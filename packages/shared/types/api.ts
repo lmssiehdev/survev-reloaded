@@ -78,8 +78,8 @@ export type FindGameResponse =
     | {
         type: "banned";
         reason: string;
-        permanent: boolean;
-        expiresIn: Date | string;
+        /** null: permanent */
+        expiresAt: Date | string | null;
     };
 
 export interface SiteInfoRes {

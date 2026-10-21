@@ -8,7 +8,7 @@ import { errorLogManager } from "./errorLogs.ts";
 import { proxy } from "./proxy.ts";
 
 import type { UserRouterApp } from "@survev/api/types";
-import { hc } from "hono/client";
+import { hc, type InferResponseType } from "hono/client";
 
 type UserRouter = ReturnType<typeof hc<UserRouterApp>>;
 
@@ -55,7 +55,7 @@ export class Account {
         body: Parameters<UserRouter[Path]["$post"]>[0],
         cb: (
             error: null | any,
-            res: Awaited<ReturnType<Awaited<ReturnType<UserRouter[Path]["$post"]>>["json"]>>,
+            res: InferResponseType<UserRouter[Path]["$post"], 200>,
         ) => void,
     ): Promise<void> {
         this.requestsInFlight++;
@@ -63,7 +63,9 @@ export class Account {
 
         try {
             const res = await this.router[path].$post(body as any);
-            const data = await res.json();
+            const data: object = await res.json();
+            // the API's error body ({ error, message }); other non 2xx bodies like { result: "invalid" } are answers
+            if (!res.ok && "error" in data && "message" in data) throw new Error(`${path}: ${data.message}`);
             cb(null, data as any);
         } catch (err) {
             cb(err, {} as any);

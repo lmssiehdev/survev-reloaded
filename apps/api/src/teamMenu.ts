@@ -19,10 +19,10 @@ import { assert, util } from "@survev/shared/utils/util.ts";
 import type { Hono } from "hono";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
-import { getFindGamePlayerData, getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
+import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "./apiHelpers.ts";
 import type { ApiServer } from "./apiServer.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
-import { hashIp, isBanned } from "./routes/private/ModerationRouter.ts";
+import { findIpBan, hashIp } from "./bans.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
 
 interface SocketData {
@@ -266,15 +266,9 @@ class Room {
                 return;
             }
 
-            try {
-                if (!(await verifyTurnsStile(data.turnstileToken, roomLeader.ip))) {
-                    this.data.lastError = "find_game_invalid_captcha";
-                    this.sendState();
-                    return;
-                }
-            } catch (err) {
-                this.teamMenu.logger.error("Failed verifying turnstile:", err);
-                this.data.lastError = "find_game_error";
+            const captcha = await verifyTurnstile(data.turnstileToken, roomLeader.ip);
+            if (captcha.isErr() || !captcha.value) {
+                this.data.lastError = captcha.isErr() ? "find_game_error" : "find_game_invalid_captcha";
                 this.sendState();
                 return;
             }
@@ -405,27 +399,19 @@ export class TeamMenu {
             upgradeWebSocket(async (c) => {
                 const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
 
-                let closeReason: TeamMenuErrorType | undefined;
-                if (
-                    !ip
-                    || httpRateLimit.isRateLimited(ip)
-                    || wsRateLimit.isIpRateLimited(ip)
-                ) {
-                    closeReason = "rate_limited";
-                }
-
-                if (await isBanned(ip!)) {
-                    closeReason = "banned";
-                }
-
-                wsRateLimit.ipConnected(ip!);
-
                 const user = c.var.user;
                 const userId = user && !user.banned ? user.id : null;
 
-                if (!closeReason && (await isBehindProxy(ip!, !userId))) {
+                let closeReason: TeamMenuErrorType | undefined;
+                if (!ip || httpRateLimit.isRateLimited(ip) || wsRateLimit.isIpRateLimited(ip)) {
+                    closeReason = "rate_limited";
+                } else if (await findIpBan(ip)) {
+                    closeReason = "banned";
+                } else if (await isBehindProxy(ip, !userId)) {
                     closeReason = "behind_proxy";
                 }
+
+                if (ip) wsRateLimit.ipConnected(ip);
 
                 // hono/bun creates a new WSContext for every event,
                 // so keep the one from onOpen to persist the data stored in `raw`

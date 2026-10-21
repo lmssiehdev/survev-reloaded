@@ -10,11 +10,12 @@ import { HTTPException } from "hono/http-exception";
 import { randomUUID } from "node:crypto";
 import pkgJson from "../../../package.json" with { type: "json" };
 import { getFindGamePlayerData } from "./apiHelpers.ts";
-import { getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";
+import { getHonoIp, verifyTurnstile } from "./apiHelpers.ts";
 import { server } from "./apiServer.ts";
 import { deleteExpiredSessions } from "./auth/auth.ts";
 import { rateLimitMiddleware, sessionMiddleware, validateParams } from "./auth/middleware.ts";
-import { cleanupOldLogs, isBanned } from "./routes/private/ModerationRouter.ts";
+import { banInfo, cleanupOldPlayerIps, findIpBan } from "./bans.ts";
+import { type ErrorBody, errorResponse, NotFound } from "./errors.ts";
 import { PrivateRouter } from "./routes/private/private.ts";
 import { StatsRouter } from "./routes/stats/StatsRouter.ts";
 import { AuthRouter } from "./routes/user/AuthRouter.ts";
@@ -37,13 +38,16 @@ process.on("SIGINT", () => {
 
 const app = new Hono();
 
+// a thrown error is a bug, expected failures are Results (see errors.ts)
 app.onError((err: unknown, c) => {
     server.logger.error(`${c.req.path} Error:`, err);
     if (err instanceof HTTPException) {
         return err.getResponse();
     }
-    return c.text("Internal Server Error", 500);
+    return c.json<ErrorBody>({ error: "InternalError", message: "Internal Server Error" }, 500);
 });
+
+app.notFound((c) => errorResponse(c, new NotFound({ message: `${c.req.method} ${c.req.path} not found` })));
 
 if (server.logger.config.debugLogs) {
     app.use("*", async (ctx, next) => {
@@ -100,14 +104,9 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), sessionMiddleware, 
         return c.json<FindGameResponse>({ type: "error", error: "rate_limited" }, 429);
     }
 
-    const banData = await isBanned(ip);
-    if (banData) {
-        return c.json<FindGameResponse>({
-            type: "banned",
-            reason: banData.reason,
-            permanent: banData.permanent,
-            expiresIn: banData.expiresIn,
-        });
+    const ban = await findIpBan(ip);
+    if (ban) {
+        return c.json<FindGameResponse>({ type: "banned", ...banInfo(ban) });
     }
 
     const joinToken = randomUUID();
@@ -130,13 +129,12 @@ app.post("/api/find_game_v2", validateParams(zFindGameBody), sessionMiddleware, 
             return c.json<FindGameResponse>({ type: "error", error: "invalid_captcha" });
         }
 
-        try {
-            if (!(await verifyTurnsStile(body.turnstileToken, ip))) {
-                return c.json<FindGameResponse>({ type: "error", error: "invalid_captcha" });
-            }
-        } catch (err) {
-            server.logger.error("/api/find_game: Failed verifying turnstile: ", err);
+        const captcha = await verifyTurnstile(body.turnstileToken, ip);
+        if (captcha.isErr()) {
             return c.json<FindGameResponse>({ type: "error", error: "invalid_captcha" }, 500);
+        }
+        if (!captcha.value) {
+            return c.json<FindGameResponse>({ type: "error", error: "invalid_captcha" });
         }
     }
 
@@ -218,9 +216,9 @@ Bun.serve({
 // becomes an uncaughtException/unhandledRejection, which exits the process
 Bun.cron("0 0 * * *", async () => {
     try {
-        await cleanupOldLogs();
+        await cleanupOldPlayerIps();
         await deleteExpiredSessions();
-        server.logger.info("Deleted old logs and expired sessions");
+        server.logger.info("Deleted old player IPs and expired sessions");
     } catch (err) {
         server.logger.error("Failed to run cleanup script", err);
     }

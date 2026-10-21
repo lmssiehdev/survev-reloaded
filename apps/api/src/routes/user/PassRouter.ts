@@ -11,6 +11,7 @@ import { validateParams } from "../../auth/middleware.ts";
 import type { AuthEnv } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../../db/schema.ts";
+import { errorResponse, query, respond } from "../../errors.ts";
 import { questHelpers } from "../../utils/questHelpers.ts";
 
 // hardcoded for now
@@ -153,7 +154,9 @@ export const PassRouter = new Hono<AuthEnv>()
             const { tryRefreshQuests } = c.req.valid("json");
             const now = Date.now();
 
-            const { pass, quests } = await getPassAndQuests(user.id, now);
+            const loaded = await query(() => getPassAndQuests(user.id, now), "Failed to load pass");
+            if (loaded.isErr()) return errorResponse(c, loaded.error);
+            const { pass, quests } = loaded.value;
 
             let activeQuests = quests;
 
@@ -242,40 +245,42 @@ export const PassRouter = new Hono<AuthEnv>()
         const user = c.get("user");
         const { idx } = c.req.valid("json");
 
-        const success = await db.transaction(async (transaction) => {
-            const quests = await transaction
-                .select()
-                .from(userQuests)
-                .where(
-                    and(
-                        eq(userQuests.userId, user.id),
-                        inArray(userQuests.idx, questSlotIndexes),
-                    ),
-                )
-                .for("update");
+        const success = await query(() =>
+            db.transaction(async (transaction) => {
+                const quests = await transaction
+                    .select()
+                    .from(userQuests)
+                    .where(
+                        and(
+                            eq(userQuests.userId, user.id),
+                            inArray(userQuests.idx, questSlotIndexes),
+                        ),
+                    )
+                    .for("update");
 
-            const quest = quests.find((entry) => entry.idx === idx);
+                const quest = quests.find((entry) => entry.idx === idx);
 
-            if (!quest) {
-                return false;
-            }
+                if (!quest) {
+                    return false;
+                }
 
-            const now = Date.now();
-            const expired = quest.nextRefreshAt - now < 0;
+                const now = Date.now();
+                const expired = quest.nextRefreshAt - now < 0;
 
-            const questDef = QuestDefs[quest.questType];
-            const serverMaps = server.modes.filter(m => m.enabled).map(m => m.mapName);
-            const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
+                const questDef = QuestDefs[quest.questType];
+                const serverMaps = server.modes.filter(m => m.enabled).map(m => m.mapName);
+                const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
 
-            const refreshEnabled = (!quest.rerolled && !quest.complete) || expired || badMap;
-            if (!refreshEnabled) {
-                return false;
-            }
-            await rerollSlot(user.id, idx, now, !expired && !badMap, quests, transaction);
-            return true;
-        });
+                const refreshEnabled = (!quest.rerolled && !quest.complete) || expired || badMap;
+                if (!refreshEnabled) {
+                    return false;
+                }
+                await rerollSlot(user.id, idx, now, !expired && !badMap, quests, transaction);
+                return true;
+            })
+        );
 
-        return c.json({ success }, 200);
+        return respond(c, success.map((success) => ({ success })));
     })
     .post(
         "/set_pass_unlock",

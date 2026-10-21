@@ -3,8 +3,7 @@ import * as schema from "./schema.ts";
 
 /**
  * Relations for the relational query API (`db.query.*` with `with` / nested `where`).
- * match_data and ip_logs have no foreign keys on user_id (anonymous players use ""),
- * relations don't need one.
+ * match_data, player_ips and bans have no foreign keys to users, relations don't need one.
  */
 export const relations = defineRelations(schema, (r) => ({
     users: {
@@ -14,7 +13,8 @@ export const relations = defineRelations(schema, (r) => ({
         passes: r.many.userPasses({ from: r.users.id, to: r.userPasses.userId }),
         quests: r.many.userQuests({ from: r.users.id, to: r.userQuests.userId }),
         matches: r.many.matchData({ from: r.users.id, to: r.matchData.userId }),
-        ipLogs: r.many.ipLogs({ from: r.users.id, to: r.ipLogs.userId }),
+        playerIps: r.many.playerIps({ from: r.users.id, to: r.playerIps.userId }),
+        bans: r.many.bans({ from: r.users.id, to: r.bans.target, where: { kind: "account" } }),
     },
     sessions: {
         user: r.one.users({ from: r.sessions.userId, to: r.users.id, optional: false }),
@@ -36,7 +36,7 @@ export const relations = defineRelations(schema, (r) => ({
     matchData: {
         user: r.one.users({ from: r.matchData.userId, to: r.users.id }),
     },
-    ipLogs: {
-        user: r.one.users({ from: r.ipLogs.userId, to: r.users.id }),
+    playerIps: {
+        user: r.one.users({ from: r.playerIps.userId, to: r.users.id }),
     },
 }));

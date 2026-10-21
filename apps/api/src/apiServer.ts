@@ -1,10 +1,12 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { defaultLogger, ServerLogger } from "@survev/config/utils/logger.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import type { FindGamePrivateBody, FindGamePrivateRes } from "@survev/contracts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
+import { Result } from "better-result";
 import type { Hono } from "hono";
 import type { UpgradeWebSocket } from "hono/ws";
+import { fetchResult, readJson } from "./errors.ts";
 import { TeamMenu } from "./teamMenu.ts";
 
 class Region {
@@ -17,35 +19,25 @@ class Region {
         this.data = Config.regions[this.id];
     }
 
-    async fetch<Data extends object>(endPoint: string, body: object) {
+    /** POST to the region's game server; the result is logged on failure */
+    fetch<Data extends object>(endPoint: string, body: object, timeoutMs = 10_000) {
         const url = `http${this.data.https ? "s" : ""}://${this.data.address}/${endPoint}`;
-
-        try {
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "content-type": "application/json",
-                    "survev-api-key": Config.secrets.SURVEV_API_KEY,
-                },
-                body: JSON.stringify(body),
-            });
-
-            if (res.ok) {
-                return (await res.json()) as Data;
-            }
-
-            defaultLogger.warn(`Region ${this.id} returned status ${res.statusText}`);
-        } catch (err) {
-            defaultLogger.error(`Error fetching region ${this.id}`, err);
-        }
+        const name = `Region ${this.id} ${endPoint}`;
+        return fetchResult(name, url, {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                "survev-api-key": Config.secrets.SURVEV_API_KEY,
+            },
+            body: JSON.stringify(body),
+            timeoutMs,
+        }).then(Result.andThenAsync((res: Response) => readJson<Data>(name, res)));
     }
 
     async findGame(body: FindGamePrivateBody): Promise<FindGamePrivateRes> {
-        const data = await this.fetch<FindGamePrivateRes>("api/find_game", body);
-        if (!data) {
-            return { error: "find_game_failed" };
-        }
-        return data;
+        // can wait for a new game process to start
+        const res = await this.fetch<FindGamePrivateRes>("api/find_game", body, 20_000);
+        return res.unwrapOr({ error: "find_game_failed" as const });
     }
 }
 

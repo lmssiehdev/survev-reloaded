@@ -1,11 +1,13 @@
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { ItemStatus, type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
+import { sql } from "drizzle-orm";
 import {
     bigint,
     boolean,
     index,
     integer,
     json,
+    pgEnum,
     pgTable,
     primaryKey,
     serial,
@@ -29,8 +31,6 @@ export const users = pgTable("users", {
     // game fields
     slug: text("slug").notNull().unique(),
     banned: boolean("banned").notNull().default(false),
-    banReason: text("ban_reason").notNull().default(""),
-    bannedBy: text("banned_by").notNull().default(""),
     username: text("username").notNull().default(""),
     usernameSet: boolean("username_set").notNull().default(false),
     lastUsernameChangeTime: timestamp("last_username_change_time"),
@@ -213,37 +213,70 @@ export const matchData = pgTable(
 export type MatchDataTable = typeof matchData.$inferInsert;
 
 //
-// LOGS
+// MODERATION
 //
-export const ipLogs = pgTable(
-    "ip_logs",
+
+/**
+ * the IPs a player used in a saved game, same key as their match_data row.
+ * self-contained (no FK, own username / user id): moderation evidence survives
+ * delete_game, renames and stat resets. raw IPs are kept, mods only ever see the hashes
+ */
+export const playerIps = pgTable(
+    "player_ips",
     {
-        id: serial().primaryKey(),
+        gameId: uuid("game_id").notNull(),
+        playerId: integer("player_id").notNull(),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        region: text("region").notNull(),
-        gameId: text("game_id").notNull(),
-        mapId: integer("map_id").notNull(),
+        userId: text("user_id"),
         username: text("username").notNull(),
-        userId: text("user_id").default(""),
-        encodedIp: text("encoded_ip").notNull(),
-        teamMode: integer("team_mode").$type<TeamMode>().notNull().default(TeamMode.Solo),
+        region: text("region").notNull(),
+        mapId: integer("map_id").notNull(),
+        teamMode: integer("team_mode").$type<TeamMode>().notNull(),
         ip: text("ip").notNull(),
+        ipHash: text("ip_hash").notNull(),
         // also store the IP that was used in api/find_game...
         // since one could exploit that to never get banned
         // by requesting it with a different IP than the in-game one
         findGameIp: text("find_game_ip").notNull(),
-        findGameEncodedIp: text("find_game_encoded_ip").notNull(),
+        findGameIpHash: text("find_game_ip_hash").notNull(),
     },
-    (table) => [index("name_created_at_idx").on(table.username, table.createdAt)],
+    (table) => [
+        primaryKey({ columns: [table.gameId, table.playerId] }),
+        index("player_ips_username_idx").on(table.username, table.createdAt),
+        index("player_ips_user_id_idx").on(table.userId),
+        index("player_ips_ip_hash_idx").on(table.ipHash),
+        index("player_ips_find_game_ip_hash_idx").on(table.findGameIpHash),
+        index("player_ips_created_at_idx").on(table.createdAt),
+    ],
 );
 
-export type IpLogsTable = typeof ipLogs.$inferSelect;
+export const banKind = pgEnum("ban_kind", ["ip", "account"]);
 
-export const bannedIps = pgTable("banned_ips", {
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    expiresIn: timestamp("expires_in").notNull(),
-    encodedIp: text("encoded_ip").notNull().primaryKey(),
-    permanent: boolean("permanent").notNull().default(false),
-    reason: text("reason").notNull().default(""),
-    bannedBy: text("banned_by").notNull().default("admin"),
-});
+/**
+ * every ban ever placed. a ban is active while it's not revoked and not expired,
+ * at most one unrevoked ban per target. users.banned mirrors the active account ban
+ * (read on every request through the session)
+ */
+export const bans = pgTable(
+    "bans",
+    {
+        id: serial("id").primaryKey(),
+        kind: banKind("kind").notNull(),
+        /** ip: the ip hash, account: the user id */
+        target: text("target").notNull(),
+        reason: text("reason").notNull(),
+        bannedBy: text("banned_by").notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        /** null: permanent */
+        expiresAt: timestamp("expires_at", { withTimezone: true }),
+        revokedAt: timestamp("revoked_at", { withTimezone: true }),
+        revokedBy: text("revoked_by"),
+    },
+    (table) => [
+        uniqueIndex("bans_unrevoked_target_idx")
+            .on(table.kind, table.target)
+            .where(sql`${table.revokedAt} is null`),
+    ],
+);
+
+export type Ban = typeof bans.$inferSelect;

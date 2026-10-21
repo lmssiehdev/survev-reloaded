@@ -6,9 +6,10 @@ import {
 } from "@survev/shared/types/stats.ts";
 import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
 import { Hono } from "hono";
-import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
+import { validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { matchData, users } from "../../db/schema.ts";
+import { query, respond } from "../../errors.ts";
 
 export const UserStatsRouter = new Hono();
 
@@ -19,30 +20,20 @@ const emptyState = {
     slug: "",
     username: "",
     modes: [],
-};
+} as Partial<UserStatsResponse> as UserStatsResponse;
 
 UserStatsRouter.post(
     "/",
-    databaseEnabledMiddleware,
-    rateLimitMiddleware(40, 60 * 1000),
     validateParams(zUserStatsRequest),
     async (c) => {
         const { interval, mapIdFilter, slug } = c.req.valid("json");
 
-        const result = await db.query.users.findFirst({
-            where: { slug },
-            columns: { id: true },
+        const data = await query(async () => {
+            const user = await db.query.users.findFirst({ where: { slug }, columns: { id: true } });
+            return user ? userStatsSqlQuery(user.id, mapIdFilter, interval) : emptyState;
         });
 
-        if (!result) {
-            return c.json(emptyState, 200);
-        }
-
-        const { id: userId } = result;
-
-        const data = await userStatsSqlQuery(userId, mapIdFilter, interval);
-
-        return c.json<UserStatsResponse>(data, 200);
+        return respond(c, data);
     },
 );
 
@@ -131,7 +122,7 @@ async function userStatsSqlQuery(
 
     const userStats = res[0] as UserStatsResponse;
 
-    if (!userStats || !userStats.slug) return emptyState as unknown as UserStatsResponse;
+    if (!userStats || !userStats.slug) return emptyState;
 
     const modes = userStats?.modes;
     const formatedData: UserStatsResponse = {

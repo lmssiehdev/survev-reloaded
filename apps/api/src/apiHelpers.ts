@@ -1,9 +1,11 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
+import { Result } from "better-result";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { db } from "./db/index.ts";
+import { fetchResult, readJson } from "./errors.ts";
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader
@@ -15,9 +17,9 @@ export function getHonoIp(c: Context, proxyHeader?: string): string | undefined 
     return ip;
 }
 
-export async function verifyTurnsStile(token: string, ip: string): Promise<boolean> {
-    const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-    const result = await fetch(url, {
+/** Ok(false): the token was rejected, Err: turnstile could not be reached */
+export function verifyTurnstile(token: string, ip: string) {
+    return fetchResult("Turnstile", "https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         body: JSON.stringify({
             secret: Config.secrets.TURNSTILE_SECRET_KEY,
             response: token,
@@ -27,14 +29,10 @@ export async function verifyTurnsStile(token: string, ip: string): Promise<boole
         headers: {
             "Content-Type": "application/json",
         },
-    });
-
-    const outcome = await result.json();
-
-    if (!outcome.success) {
-        return false;
-    }
-    return true;
+        timeoutMs: 5000,
+    })
+        .then(Result.andThenAsync((res: Response) => readJson<{ success?: boolean }>("Turnstile", res)))
+        .then(Result.map((outcome: { success?: boolean }) => outcome.success === true));
 }
 
 export async function getFindGamePlayerData(

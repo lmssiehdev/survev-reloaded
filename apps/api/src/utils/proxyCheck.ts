@@ -1,7 +1,7 @@
 import { Config } from "@survev/config/serverConfig.ts";
-import { fetchWithRetry } from "@survev/config/utils/fetchWithRetry.ts";
 import { defaultLogger } from "@survev/config/utils/logger.ts";
-import { assert, util } from "@survev/shared/utils/util.ts";
+import { Result } from "better-result";
+import { fetchResult, readJson } from "../errors.ts";
 
 type IpInfo = {
     network: {
@@ -75,57 +75,45 @@ const proxyCheckCache = new Map<
     }
 >();
 
-async function fetchProxyCheck<IP extends string>(ip: IP) {
+async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
     const url = new URL(`https://proxycheck.io/v3/${ip}`);
     url.searchParams.set("key", Config.secrets.PROXYCHECK_KEY!);
-    const res = await fetchWithRetry(url);
 
-    const data = await res.json();
-    return data as ProxyCheckRes<IP>;
+    const data = await fetchResult("ProxyCheck", url, { timeoutMs: 5000, retries: 2 })
+        .then(Result.andThenAsync((res: Response) => readJson<ProxyCheckRes<string>>("ProxyCheck", res)));
+    if (data.isErr()) return undefined;
+
+    const res = data.value;
+    switch (res.status) {
+        case "ok":
+        case "warning":
+            if (res.status === "warning") {
+                defaultLogger.warn(`ProxyCheck warning, res:`, res);
+            }
+            if (!res[ip]?.detections) {
+                defaultLogger.error(`ProxyCheck sent no detections for ${ip}:`, res);
+                return undefined;
+            }
+            return res[ip];
+        case "denied":
+        case "error":
+            defaultLogger.error(`ProxyCheck failed for ${ip}:`, res);
+            return undefined;
+    }
 }
 
+/** fails open: a proxycheck outage lets players through */
 export async function isBehindProxy(ip: string, checkVpn: boolean): Promise<boolean> {
     if (!Config.secrets.PROXYCHECK_KEY) return false;
 
-    let info: IpInfo | undefined = undefined;
-
-    const key = `${ip}_${checkVpn}`;
-
-    const cached = proxyCheckCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) {
-        info = cached.info;
-    } else {
-        try {
-            const proxyRes = await fetchProxyCheck(ip);
-            switch (proxyRes.status) {
-                case "ok":
-                case "warning":
-                    info = proxyRes[ip];
-                    if (proxyRes.status === "warning") {
-                        defaultLogger.warn(`ProxyCheck warning, res:`, proxyRes);
-                    }
-                    assert(info.detections);
-                    break;
-                case "denied":
-                case "error":
-                    defaultLogger.error(`Failed to check for ip ${ip}:`, proxyRes);
-                    break;
-            }
-        } catch (error) {
-            defaultLogger.error(`Proxycheck error:`, error);
-        }
-
-        if (!info) {
-            return false;
-        }
-
-        proxyCheckCache.set(key, {
-            info,
-            expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-        });
+    let info = proxyCheckCache.get(ip);
+    if (!info || info.expiresAt <= Date.now()) {
+        const fetched = await fetchIpInfo(ip);
+        if (!fetched) return false;
+        info = { info: fetched, expiresAt: Date.now() + 10 * 60 * 1000 };
+        proxyCheckCache.set(ip, info);
     }
 
-    if (checkVpn && info.detections.vpn) return true;
-
-    return info.detections.proxy;
+    const { detections } = info.info;
+    return detections.proxy || (checkVpn && detections.vpn);
 }

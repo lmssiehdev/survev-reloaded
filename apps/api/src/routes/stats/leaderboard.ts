@@ -3,10 +3,11 @@ import { type LeaderboardRequest, type LeaderboardResponse, zLeaderboardsRequest
 import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { server } from "../../apiServer.ts";
-import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../../auth/middleware.ts";
+import { validateParams } from "../../auth/middleware.ts";
 import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { matchData, users } from "../../db/schema.ts";
+import { query, respond } from "../../errors.ts";
 
 export const leaderboardRouter = new Hono();
 
@@ -20,20 +21,20 @@ const MinGames = {
 
 leaderboardRouter.post(
     "/",
-    databaseEnabledMiddleware,
-    rateLimitMiddleware(40, 60 * 1000),
     validateParams(zLeaderboardsRequest),
     async (c) => {
         const params = c.req.valid("json");
-        const data = await cache.cached(
-            leaderboardKey(params),
-            leaderboardTtl(params.type),
-            () => queryLeaderboard(params),
-            // TODO: decide if we should cache empty results;
-            (data) => data.length != 0,
+        const data = await query(() =>
+            cache.cached(
+                leaderboardKey(params),
+                leaderboardTtl(params.type),
+                () => queryLeaderboard(params),
+                // TODO: decide if we should cache empty results;
+                (data) => data.length != 0,
+            )
         );
 
-        return c.json<LeaderboardResponse[]>(data, 200);
+        return respond<LeaderboardResponse[]>(c, data);
     },
 );
 

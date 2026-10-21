@@ -1,11 +1,20 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "13597c3a-83ad-4aa4-9611-a856725e619d",
+  "id": "85f90ef3-9c8e-4710-8512-cb85f8cd9baf",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
+    {
+      "values": [
+        "ip",
+        "account"
+      ],
+      "name": "ban_kind",
+      "entityType": "enums",
+      "schema": "public"
+    },
     {
       "isRlsEnabled": false,
       "name": "account",
@@ -14,13 +23,7 @@
     },
     {
       "isRlsEnabled": false,
-      "name": "banned_ips",
-      "entityType": "tables",
-      "schema": "public"
-    },
-    {
-      "isRlsEnabled": false,
-      "name": "ip_logs",
+      "name": "bans",
       "entityType": "tables",
       "schema": "public"
     },
@@ -33,6 +36,12 @@
     {
       "isRlsEnabled": false,
       "name": "match_data",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "player_ips",
       "entityType": "tables",
       "schema": "public"
     },
@@ -236,84 +245,6 @@
       "table": "account"
     },
     {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "now()",
-      "generated": null,
-      "identity": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "expires_in",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "encoded_ip",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
-      "type": "boolean",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "false",
-      "generated": null,
-      "identity": null,
-      "name": "permanent",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "reason",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'admin'",
-      "generated": null,
-      "identity": null,
-      "name": "banned_by",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "banned_ips"
-    },
-    {
       "type": "serial",
       "typeSchema": null,
       "notNull": true,
@@ -324,7 +255,59 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
+    },
+    {
+      "type": "ban_kind",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bans"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "target",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bans"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bans"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "banned_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bans"
     },
     {
       "type": "timestamp with time zone",
@@ -337,137 +320,46 @@
       "name": "created_at",
       "entityType": "columns",
       "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
     },
     {
-      "type": "text",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "region",
+      "name": "expires_at",
       "entityType": "columns",
       "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
     },
     {
-      "type": "text",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "game_id",
+      "name": "revoked_at",
       "entityType": "columns",
       "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "integer",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "map_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "username",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
     },
     {
       "type": "text",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "user_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "encoded_ip",
+      "name": "revoked_by",
       "entityType": "columns",
       "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "integer",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "1",
-      "generated": null,
-      "identity": null,
-      "name": "team_mode",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "ip",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "find_game_ip",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "find_game_encoded_ip",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
     },
     {
       "type": "text",
@@ -832,6 +724,162 @@
       "entityType": "columns",
       "schema": "public",
       "table": "match_data"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "game_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "player_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "username",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "region",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "map_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_mode",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ip",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ip_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "find_game_ip",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "find_game_ip_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "player_ips"
     },
     {
       "type": "text",
@@ -1270,32 +1318,6 @@
       "default": "''",
       "generated": null,
       "identity": null,
-      "name": "ban_reason",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "users"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "banned_by",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "users"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
       "name": "username",
       "entityType": "columns",
       "schema": "public",
@@ -1471,29 +1493,29 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "username",
+          "value": "kind",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
           "opclass": null
         },
         {
-          "value": "created_at",
+          "value": "target",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
           "opclass": null
         }
       ],
-      "isUnique": false,
-      "where": null,
+      "isUnique": true,
+      "where": "\"revoked_at\" is null",
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "name_created_at_idx",
+      "name": "bans_unrevoked_target_idx",
       "entityType": "indexes",
       "schema": "public",
-      "table": "ip_logs"
+      "table": "bans"
     },
     {
       "nameExplicit": true,
@@ -1683,6 +1705,118 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "match_data"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "username",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_username_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "ip_hash",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_ip_hash_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "find_game_ip_hash",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_find_game_ip_hash_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_created_at_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
     },
     {
       "nameExplicit": true,
@@ -1880,6 +2014,17 @@
     },
     {
       "columns": [
+        "game_id",
+        "player_id"
+      ],
+      "nameExplicit": false,
+      "name": "player_ips_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "columns": [
         "id"
       ],
       "nameExplicit": false,
@@ -1890,22 +2035,12 @@
     },
     {
       "columns": [
-        "encoded_ip"
-      ],
-      "nameExplicit": false,
-      "name": "banned_ips_pkey",
-      "schema": "public",
-      "table": "banned_ips",
-      "entityType": "pks"
-    },
-    {
-      "columns": [
         "id"
       ],
       "nameExplicit": false,
-      "name": "ip_logs_pkey",
+      "name": "bans_pkey",
       "schema": "public",
-      "table": "ip_logs",
+      "table": "bans",
       "entityType": "pks"
     },
     {

@@ -60,17 +60,10 @@ export const searchPlayersHandler = {
                 },
             });
 
-            if (!res.ok) {
-                await interaction.editReply({
-                    content: "Failed to get player IP",
-                });
-                return;
-            }
-
             const result = await res.json();
 
-            // no player found, return message formatted by the api;
-            if ("message" in result) {
+            // no player found (or any other error), return message formatted by the api
+            if (!Array.isArray(result)) {
                 await interaction.editReply({
                     content: result.message,
                 });

@@ -119,3 +119,9 @@ export function createCollector<
 }
 
 export const botLogger = new Logger(Config.logging, "Bot");
+
+/** every API reply, ok or error, carries a message; fall back for non json errors (proxies, crashes) */
+export async function apiMessage(res: Pick<Response, "json" | "status">): Promise<string> {
+    const body = (await res.json().catch(() => undefined)) as { message?: unknown } | undefined;
+    return typeof body?.message === "string" ? body.message : `Request failed (${res.status})`;
+}

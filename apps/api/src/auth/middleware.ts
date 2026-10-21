@@ -6,6 +6,7 @@ import type { Context, Next } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { z } from "zod";
 import { getHonoIp } from "../apiHelpers.ts";
+import { errorResponse, Forbidden, InvalidParams, RateLimited, Unauthorized } from "../errors.ts";
 import { auth, type AuthSession, type AuthUser } from "./auth.ts";
 
 const logger = new ServerLogger("Auth");
@@ -46,7 +47,7 @@ export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) =>
 /** use after sessionMiddleware: 401 when logged out */
 export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
     if (!c.get("user")) {
-        return c.json({ error: "Authentication failed" }, 401);
+        return errorResponse(c, new Unauthorized({ message: "Authentication failed" }));
     }
     await next();
 });
@@ -60,27 +61,25 @@ export function validateParams<Schema extends z.ZodSchema>(
 ) {
     return zValidator("json", schema, (result, c) => {
         if (!result.success) {
-            return c.json(
-                response ?? {
-                    error: "Invalid params",
-                    issues: result.error.issues,
-                },
-                400,
-            );
+            // plain Response: keep the error out of the typed client's route outputs
+            const res: Response = response
+                ? c.json(response, 400)
+                : errorResponse(c, new InvalidParams({ message: "Invalid params", issues: result.error.issues }));
+            return res;
         }
     });
 }
 
 export async function databaseEnabledMiddleware(c: Context, next: Next) {
     if (!Config.database.enabled) {
-        return c.json({ error: "Database is disabled" }, 403);
+        return errorResponse(c, new Forbidden({ message: "Database is disabled" }));
     }
     await next();
 }
 
 export async function privateMiddleware(c: Context, next: Next) {
     if (c.req.header("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-        return c.json({ error: "Forbidden" }, 403);
+        return errorResponse(c, new Forbidden({ message: "Invalid API key" }));
     }
     await next();
 }
@@ -92,11 +91,11 @@ export function rateLimitMiddleware(limit: number, interval: number) {
         const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
 
         if (!ip) {
-            return c.json({ error: "invalid_ip" }, 500);
+            return errorResponse(c, new InvalidParams({ message: "Invalid IP" }));
         }
 
         if (rateLimit.isRateLimited(ip)) {
-            return c.json({ error: "rate_limited" }, 429);
+            return errorResponse(c, new RateLimited({ message: "Rate limited" }));
         }
 
         await next();

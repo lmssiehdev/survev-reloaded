@@ -886,9 +886,8 @@ export class Application {
         $("#modal-ip-banned-reason").text(`Reason: ${ban.reason}`);
 
         let expiration = "Duration: indefinite";
-        if (!ban.permanent) {
-            const expiresIn = new Date(ban.expiresIn);
-            const timeLeft = expiresIn.getTime() - Date.now();
+        if (ban.expiresAt) {
+            const timeLeft = new Date(ban.expiresAt).getTime() - Date.now();
 
             const daysLeft = Math.round(timeLeft / (1000 * 60 * 60 * 24));
             const hoursLeft = Math.round(timeLeft / (1000 * 60 * 60));

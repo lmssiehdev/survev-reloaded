@@ -5,7 +5,7 @@ import {
     SlashCommandBuilder,
 } from "discord.js";
 import type z from "zod";
-import { botLogger, type Command, honoClient, isAdmin } from "../utils.ts";
+import { apiMessage, botLogger, type Command, honoClient, isAdmin } from "../utils.ts";
 
 export function createCommand<T extends z.ZodSchema = z.ZodSchema>(config: {
     name: Command;
@@ -67,8 +67,7 @@ export async function genericExecute<N extends Exclude<Command, "search_player">
     const res = await route.$post({
         json: args.data as any,
     });
-    const { message } = await res.json();
-    await interaction.editReply(message);
+    await interaction.editReply(await apiMessage(res));
 }
 
 export function createSlashCommand(config: ReturnType<typeof createCommand>) {

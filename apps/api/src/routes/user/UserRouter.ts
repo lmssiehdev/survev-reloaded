@@ -7,7 +7,6 @@ import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.
 import { and, eq, inArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import z from "zod";
-import { server } from "../../apiServer.ts";
 import { auth } from "../../auth/auth.ts";
 import {
     databaseEnabledMiddleware,
@@ -20,6 +19,7 @@ import type { AuthEnv } from "../../auth/middleware.ts";
 import { getTimeUntilNextUsernameChange, sanitizeSlug } from "../../auth/users.ts";
 import { db } from "../../db/index.ts";
 import { itemColumns, items, matchData, users } from "../../db/schema.ts";
+import { errorResponse, query, respond } from "../../errors.ts";
 import { PassRouter } from "./PassRouter.ts";
 
 export const UserRouter = new Hono<AuthEnv>()
@@ -38,15 +38,18 @@ export const UserRouter = new Hono<AuthEnv>()
             usernameSet,
             lastUsernameChangeTime,
             banned,
-            banReason,
         } = user;
 
         if (banned) {
+            const ban = await db.query.bans.findFirst({
+                where: { kind: "account", target: user.id, revokedAt: { isNull: true } },
+                columns: { reason: true },
+            });
             await logout(c);
 
             return c.json<ProfileResponse>({
                 banned: true,
-                reason: banReason,
+                reason: ban?.reason ?? "",
             });
         }
 
@@ -54,10 +57,13 @@ export const UserRouter = new Hono<AuthEnv>()
 
         const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
 
-        const ownedItems = await db.query.items.findMany({
-            where: { userId: user.id, type: { notIn: defaultUnlockItems } },
-            columns: itemColumns,
-        });
+        const ownedItems = await query(() =>
+            db.query.items.findMany({
+                where: { userId: user.id, type: { notIn: defaultUnlockItems } },
+                columns: itemColumns,
+            })
+        );
+        if (ownedItems.isErr()) return errorResponse(c, ownedItems.error);
 
         return c.json<ProfileResponse>(
             {
@@ -71,7 +77,7 @@ export const UserRouter = new Hono<AuthEnv>()
                     usernameChangeTime: timeUntilNextChange,
                 },
                 loadout: loadout as Loadout,
-                items: ownedItems,
+                items: ownedItems.value,
             },
             200,
         );
@@ -112,46 +118,40 @@ export const UserRouter = new Hono<AuthEnv>()
                 return c.json<UsernameResponse>({ result: "taken" }, 200);
             }
 
-            try {
-                await db
-                    .update(users)
-                    .set({
-                        username: validName,
-                        slug: slug,
-                        usernameSet: true,
-                        lastUsernameChangeTime: new Date(),
-                    })
-                    .where(eq(users.id, user.id));
-            } catch (err) {
-                server.logger.error("/api/username: Error updating username", err);
-                return c.json<UsernameResponse>({ result: "failed" }, 500);
-            }
+            const updated = await query(
+                () =>
+                    db
+                        .update(users)
+                        .set({
+                            username: validName,
+                            slug: slug,
+                            usernameSet: true,
+                            lastUsernameChangeTime: new Date(),
+                        })
+                        .where(eq(users.id, user.id)),
+                "/api/username: Error updating username",
+            );
 
-            return c.json<UsernameResponse>({ result: "success" }, 200);
+            return updated.isOk()
+                ? c.json<UsernameResponse>({ result: "success" }, 200)
+                : c.json<UsernameResponse>({ result: "failed" }, 500);
         },
     )
     .post("/loadout", validateParams(z.object({ loadout: loadoutSchema })), async (c) => {
         const user = c.get("user");
         const { loadout: userLoadout } = c.req.valid("json");
 
-        const ownedItems = await db.query.items.findMany({
-            where: { userId: user.id },
-            columns: itemColumns,
+        const saved = await query(async () => {
+            const ownedItems = await db.query.items.findMany({
+                where: { userId: user.id },
+                columns: itemColumns,
+            });
+            const validatedLoadout = loadout.validateWithAvailableItems(userLoadout, ownedItems);
+            await db.update(users).set({ loadout: validatedLoadout }).where(eq(users.id, user.id));
+            return { loadout: validatedLoadout };
         });
 
-        const validatedLoadout = loadout.validateWithAvailableItems(userLoadout, ownedItems);
-
-        await db
-            .update(users)
-            .set({ loadout: validatedLoadout })
-            .where(eq(users.id, user.id));
-
-        return c.json(
-            {
-                loadout: validatedLoadout,
-            },
-            200,
-        );
+        return respond(c, saved);
     })
     .post("/logout", async (c) => {
         await logout(c);
@@ -163,15 +163,14 @@ export const UserRouter = new Hono<AuthEnv>()
         await logout(c);
 
         // sessions, accounts, items and pass data cascade with the user row
-        await db.transaction(async (tx) => {
-            await tx.delete(users).where(eq(users.id, user.id));
-            await tx
-                .update(matchData)
-                .set({ userId: null })
-                .where(eq(matchData.userId, user.id));
-        });
+        const deleted = await query(() =>
+            db.transaction(async (tx) => {
+                await tx.delete(users).where(eq(users.id, user.id));
+                await tx.update(matchData).set({ userId: null }).where(eq(matchData.userId, user.id));
+            })
+        );
 
-        return c.json({}, 200);
+        return respond(c, deleted.map(() => ({})));
     })
     .post(
         "/set_item_status",
@@ -183,25 +182,24 @@ export const UserRouter = new Hono<AuthEnv>()
             const user = c.get("user");
             const { itemTypes, status } = c.req.valid("json");
 
-            await db
-                .update(items)
-                .set({
-                    status: status,
-                })
-                .where(and(eq(items.userId, user.id), inArray(items.type, itemTypes)));
+            const updated = await query(() =>
+                db
+                    .update(items)
+                    .set({ status })
+                    .where(and(eq(items.userId, user.id), inArray(items.type, itemTypes)))
+            );
 
-            return c.json({}, 200);
+            return respond(c, updated.map(() => ({})));
         },
     )
     .post("/reset_stats", async (c) => {
         const user = c.get("user");
 
-        await db
-            .update(matchData)
-            .set({ userId: null })
-            .where(eq(matchData.userId, user.id));
+        const reset = await query(() =>
+            db.update(matchData).set({ userId: null }).where(eq(matchData.userId, user.id))
+        );
 
-        return c.json({}, 200);
+        return respond(c, reset.map(() => ({})));
     });
 
 export type UserRouterApp = typeof UserRouter;

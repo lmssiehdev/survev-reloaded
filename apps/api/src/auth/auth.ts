@@ -96,8 +96,6 @@ export const auth = betterAuth({
             // set by the user.create.before hook below
             slug: { type: "string", required: true, input: false, defaultValue: "" },
             banned: { type: "boolean", required: true, input: false, defaultValue: false },
-            banReason: { type: "string", required: true, input: false, defaultValue: "" },
-            bannedBy: { type: "string", required: true, input: false, defaultValue: "" },
             usernameSet: { type: "boolean", required: true, input: false, defaultValue: false },
             lastUsernameChangeTime: { type: "date", required: false, input: false },
             loadout: {

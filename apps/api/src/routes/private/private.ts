@@ -1,22 +1,31 @@
 import { saveConfig } from "@survev/config/config.ts";
 import { serverConfigPath } from "@survev/config/serverConfig.ts";
-import { type SaveGameBody, zSetClientThemeBody, zSetGameModeBody, zUpdateRegionBody } from "@survev/contracts";
+import {
+    type SaveGameBody,
+    zSaveGameMatchData,
+    zSetClientThemeBody,
+    zSetGameModeBody,
+    zUpdateRegionBody,
+} from "@survev/contracts";
 import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { zGiveItemParams, zRemoveItemParams } from "@survev/shared/types/moderation.ts";
+import { Result } from "better-result";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { server } from "../../apiServer.ts";
 import { MOCK_USER_ID } from "../../auth/auth.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
+import { banInfo, findIpBan, logPlayerIps } from "../../bans.ts";
 import { cache } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { items, matchData, type MatchDataTable, userQuests } from "../../db/schema.ts";
+import { Conflict, errorResponse, InvalidParams, query, queryOne, respond } from "../../errors.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
-import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
+import { ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
 
 // @survev/contracts can't depend on the drizzle schema, so check here that the game's
@@ -45,11 +54,11 @@ export const PrivateRouter = new Hono()
         } = c.req.valid("json");
 
         if (!MapDefs[mapName as MapDefKey]) {
-            return c.json({ error: "Invalid map name" }, 400);
+            return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
         if (!server.modes[index]) {
-            return c.json({ error: "Invalid mode index" }, 400);
+            return errorResponse(c, new InvalidParams({ message: "Invalid mode index" }));
         }
 
         server.modes[index] = {
@@ -71,7 +80,7 @@ export const PrivateRouter = new Hono()
         const { theme } = c.req.valid("json");
 
         if (!MapDefs[theme as MapDefKey]) {
-            return c.json({ error: "Invalid map name" }, 400);
+            return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
         server.clientTheme = theme as MapDefKey;
@@ -98,25 +107,26 @@ export const PrivateRouter = new Hono()
                 captchaEnabled: enabled,
             });
 
-            return c.json({ state: enabled }, 200);
+            return c.json({ state: enabled, message: `Captcha ${enabled ? "enabled" : "disabled"}` }, 200);
         },
     )
-    .post("/save_game", databaseEnabledMiddleware, async (c) => {
-        const data = (await c.req.json()) as SaveGameBody;
+    .post(
+        "/save_game",
+        databaseEnabledMiddleware,
+        validateParams(z.object({ matchData: zSaveGameMatchData.min(1) })),
+        async (c) => {
+            const rows = c.req.valid("json").matchData;
 
-        const rows = data.matchData;
+            // safe to send again: rows that already exist are skipped, match data and player ips alike
+            const saved = await query(() => db.insert(matchData).values(rows).onConflictDoNothing());
+            if (saved.isErr()) return respond(c, saved);
 
-        if (!rows.length) {
-            return c.json({ error: "Empty match data" }, 400);
-        }
-
-        await db.insert(matchData).values(rows).onConflictDoNothing();
-
-        await logPlayerIPs(rows);
-        await cache.invalidateLeaderboards(rows);
-        server.logger.info(`Saved game data for ${rows[0].gameId}`);
-        return c.json({}, 200);
-    })
+            await logPlayerIps(rows);
+            await cache.invalidateLeaderboards(rows);
+            server.logger.info(`Saved game data for ${rows[0].gameId}`);
+            return c.json({ message: `Saved ${rows.length} rows` }, 200);
+        },
+    )
     .post(
         "/quest_progress",
         databaseEnabledMiddleware,
@@ -151,51 +161,44 @@ export const PrivateRouter = new Hono()
                 return c.json({ success: true }, 200);
             }
 
-            const quests = await db.query.userQuests.findMany({
-                where: { userId, questType: { in: validEntries.map((e) => e.id) } },
-            });
-
-            if (quests.length === 0) {
-                return c.json({ success: true }, 200);
-            }
-
-            let xpGain = 0;
             const deltaById = new Map(validEntries.map((e) => [e.id, e.delta]));
 
-            await db.transaction(async (tx) => {
-                for (const quest of quests) {
-                    const delta = deltaById.get(quest.questType) ?? 0;
-                    if (delta <= 0) continue;
+            const saved = await query(() =>
+                db.transaction(async (tx) => {
+                    const quests = await tx.query.userQuests.findMany({
+                        where: { userId, questType: { in: validEntries.map((e) => e.id) } },
+                    });
 
-                    const def = QuestDefs[quest.questType];
-                    if (!def) continue;
-                    const nextProgress = Math.min(quest.target, quest.progress + delta);
-                    const wasComplete = quest.complete;
-                    const nowComplete = nextProgress >= quest.target;
+                    let xpGain = 0;
+                    for (const quest of quests) {
+                        const delta = deltaById.get(quest.questType) ?? 0;
+                        const def = QuestDefs[quest.questType];
+                        if (delta <= 0 || !def) continue;
 
-                    if (!wasComplete && nowComplete) {
-                        xpGain += def.xp;
+                        const nextProgress = Math.min(quest.target, quest.progress + delta);
+                        const nowComplete = nextProgress >= quest.target;
+
+                        if (!quest.complete && nowComplete) {
+                            xpGain += def.xp;
+                        }
+
+                        if (nextProgress === quest.progress && quest.complete === nowComplete) {
+                            continue;
+                        }
+
+                        await tx
+                            .update(userQuests)
+                            .set({ progress: nextProgress, complete: nowComplete })
+                            .where(eq(userQuests.id, quest.id));
                     }
 
-                    if (nextProgress === quest.progress && wasComplete === nowComplete) {
-                        continue;
+                    if (xpGain > 0) {
+                        await incrementPassXp(tx, userId, xpGain);
                     }
+                })
+            );
 
-                    await tx
-                        .update(userQuests)
-                        .set({
-                            progress: nextProgress,
-                            complete: nowComplete,
-                        })
-                        .where(eq(userQuests.id, quest.id));
-                }
-
-                if (xpGain <= 0) return;
-
-                await incrementPassXp(tx, userId, xpGain);
-            });
-
-            return c.json({ success: true }, 200);
+            return respond(c, saved.map(() => ({ success: true })));
         },
     )
     .post(
@@ -205,34 +208,34 @@ export const PrivateRouter = new Hono()
         async (c) => {
             const { item, slug, source } = c.req.valid("json");
 
-            const def = GameObjectDefs.typeToDefSafe(item);
-
-            if (!def) {
-                return c.json({ message: "Invalid item type" }, 200);
+            if (!GameObjectDefs.typeToDefSafe(item)) {
+                return errorResponse(c, new InvalidParams({ message: "Invalid item type" }));
             }
 
-            const user = await db.query.users.findFirst({
-                where: { slug },
-                columns: { id: true },
-                with: { items: { where: { type: item }, columns: { type: true } } },
-            });
+            return respond(
+                c,
+                await Result.gen(async function*() {
+                    const user = yield* Result.await(queryOne(
+                        () =>
+                            db.query.users.findFirst({
+                                where: { slug },
+                                columns: { id: true },
+                                with: { items: { where: { type: item }, columns: { type: true } } },
+                            }),
+                        "User not found",
+                    ));
+                    if (user.items.length) {
+                        return Result.err(new Conflict({ message: "User already has item" }));
+                    }
 
-            if (!user) {
-                return c.json({ message: "User not found" }, 200);
-            }
-
-            if (user.items.length) {
-                return c.json({ message: "User already has item" }, 200);
-            }
-
-            await db.insert(items).values({
-                userId: user.id,
-                type: item,
-                source,
-                timeAcquired: Date.now(),
-            });
-
-            return c.json({ message: `Item "${item}" given to ${slug}` }, 200);
+                    yield* Result.await(
+                        query(() =>
+                            db.insert(items).values({ userId: user.id, type: item, source, timeAcquired: Date.now() })
+                        ),
+                    );
+                    return Result.ok({ message: `Item "${item}" given to ${slug}` });
+                }),
+            );
         },
     )
     .post(
@@ -242,20 +245,19 @@ export const PrivateRouter = new Hono()
         async (c) => {
             const { item, slug } = c.req.valid("json");
 
-            const user = await db.query.users.findFirst({
-                where: { slug },
-                columns: { id: true },
-            });
-
-            if (!user) {
-                return c.json({ message: "User not found" }, 200);
-            }
-
-            await db
-                .delete(items)
-                .where(and(eq(items.userId, user.id), eq(items.type, item)));
-
-            return c.json({ message: `Item "${item}" removed from ${slug}` }, 200);
+            return respond(
+                c,
+                await Result.gen(async function*() {
+                    const user = yield* Result.await(queryOne(
+                        () => db.query.users.findFirst({ where: { slug }, columns: { id: true } }),
+                        "User not found",
+                    ));
+                    yield* Result.await(
+                        query(() => db.delete(items).where(and(eq(items.userId, user.id), eq(items.type, item)))),
+                    );
+                    return Result.ok({ message: `Item "${item}" removed from ${slug}` });
+                }),
+            );
         },
     )
     .post("/clear_cache", async (c) => {
@@ -272,17 +274,13 @@ export const PrivateRouter = new Hono()
         async (c) => {
             const { ip } = c.req.valid("json");
 
-            const banData = await isBanned(ip, false);
-            if (banData) {
-                return c.json({ banned: true, banData: banData, behindProxy: false });
+            const ban = await findIpBan(ip);
+            if (ban) {
+                return c.json({ banned: true, banData: banInfo(ban), behindProxy: false });
             }
 
-            const isProxied = await isBehindProxy(ip, false);
-            if (isProxied) {
-                return c.json({ banned: false, banData: undefined, behindProxy: true });
-            }
-
-            return c.json({ banned: false, banData: undefined, behindProxy: false });
+            const behindProxy = await isBehindProxy(ip, false);
+            return c.json({ banned: false, banData: undefined, behindProxy });
         },
     )
     .post(

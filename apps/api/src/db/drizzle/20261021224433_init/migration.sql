@@ -1,3 +1,4 @@
+CREATE TYPE "ban_kind" AS ENUM('ip', 'account');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY,
 	"account_id" text NOT NULL,
@@ -14,28 +15,16 @@ CREATE TABLE "account" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "banned_ips" (
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"expires_in" timestamp NOT NULL,
-	"encoded_ip" text PRIMARY KEY,
-	"permanent" boolean DEFAULT false NOT NULL,
-	"reason" text DEFAULT '' NOT NULL,
-	"banned_by" text DEFAULT 'admin' NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "ip_logs" (
+CREATE TABLE "bans" (
 	"id" serial PRIMARY KEY,
+	"kind" "ban_kind" NOT NULL,
+	"target" text NOT NULL,
+	"reason" text NOT NULL,
+	"banned_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"region" text NOT NULL,
-	"game_id" text NOT NULL,
-	"map_id" integer NOT NULL,
-	"username" text NOT NULL,
-	"user_id" text DEFAULT '',
-	"encoded_ip" text NOT NULL,
-	"team_mode" integer DEFAULT 1 NOT NULL,
-	"ip" text NOT NULL,
-	"find_game_ip" text NOT NULL,
-	"find_game_encoded_ip" text NOT NULL
+	"expires_at" timestamp with time zone,
+	"revoked_at" timestamp with time zone,
+	"revoked_by" text
 );
 --> statement-breakpoint
 CREATE TABLE "items" (
@@ -71,6 +60,22 @@ CREATE TABLE "match_data" (
 	"killed_ids" integer[] NOT NULL,
 	"role" text DEFAULT '' NOT NULL,
 	CONSTRAINT "match_data_pkey" PRIMARY KEY("game_id","player_id")
+);
+--> statement-breakpoint
+CREATE TABLE "player_ips" (
+	"game_id" uuid,
+	"player_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"user_id" text,
+	"username" text NOT NULL,
+	"region" text NOT NULL,
+	"map_id" integer NOT NULL,
+	"team_mode" integer NOT NULL,
+	"ip" text NOT NULL,
+	"ip_hash" text NOT NULL,
+	"find_game_ip" text NOT NULL,
+	"find_game_ip_hash" text NOT NULL,
+	CONSTRAINT "player_ips_pkey" PRIMARY KEY("game_id","player_id")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -116,8 +121,6 @@ CREATE TABLE "users" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"slug" text NOT NULL UNIQUE,
 	"banned" boolean DEFAULT false NOT NULL,
-	"ban_reason" text DEFAULT '' NOT NULL,
-	"banned_by" text DEFAULT '' NOT NULL,
 	"username" text DEFAULT '' NOT NULL,
 	"username_set" boolean DEFAULT false NOT NULL,
 	"last_username_change_time" timestamp,
@@ -135,12 +138,17 @@ CREATE TABLE "verification" (
 --> statement-breakpoint
 CREATE UNIQUE INDEX "account_provider_account_idx" ON "account" ("provider_id","account_id");--> statement-breakpoint
 CREATE INDEX "account_user_id_idx" ON "account" ("user_id");--> statement-breakpoint
-CREATE INDEX "name_created_at_idx" ON "ip_logs" ("username","created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "bans_unrevoked_target_idx" ON "bans" ("kind","target") WHERE "revoked_at" is null;--> statement-breakpoint
 CREATE UNIQUE INDEX "uq_items_user_type" ON "items" ("user_id","type");--> statement-breakpoint
 CREATE INDEX "idx_match_data_user_stats" ON "match_data" ("user_id","team_mode","rank","kills","damage_dealt","time_alive");--> statement-breakpoint
 CREATE INDEX "idx_game_id" ON "match_data" ("game_id");--> statement-breakpoint
 CREATE INDEX "idx_user_id" ON "match_data" ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_match_data_team_query" ON "match_data" ("team_mode","map_id","created_at","game_id","team_id","region","kills");--> statement-breakpoint
+CREATE INDEX "player_ips_username_idx" ON "player_ips" ("username","created_at");--> statement-breakpoint
+CREATE INDEX "player_ips_user_id_idx" ON "player_ips" ("user_id");--> statement-breakpoint
+CREATE INDEX "player_ips_ip_hash_idx" ON "player_ips" ("ip_hash");--> statement-breakpoint
+CREATE INDEX "player_ips_find_game_ip_hash_idx" ON "player_ips" ("find_game_ip_hash");--> statement-breakpoint
+CREATE INDEX "player_ips_created_at_idx" ON "player_ips" ("created_at");--> statement-breakpoint
 CREATE INDEX "session_user_id_idx" ON "session" ("user_id");--> statement-breakpoint
 CREATE INDEX "session_expires_at_idx" ON "session" ("expires_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_pass_user_type" ON "user_pass" ("user_id","pass_type");--> statement-breakpoint
