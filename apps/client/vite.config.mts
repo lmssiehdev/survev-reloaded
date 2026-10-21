@@ -3,12 +3,30 @@ import { getConfig } from "@survev/config/config.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { stripBlockPlugin } from "@survev/shared/utils/stripBlockPlugin.ts";
 import { resolve } from "node:path";
-import { defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
+import { type Connect, defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
 import pkgJson from "../../package.json" with { type: "json" };
 import { atlasBuilderPlugin } from "./atlas-builder/vitePlugin.ts";
 import { codefendPlugin } from "./vite-plugins/codefendPlugin.ts";
 import { ejsPlugin } from "./vite-plugins/ejsPlugin.ts";
 import { svgoPlugin } from "./vite-plugins/svgoPlugin.ts";
+
+/**
+ * vite only serves stats/index.html at /stats/ (with the trailing slash),
+ * so redirect /stats and /stats?query there, keeping the query.
+ */
+function statsRedirectPlugin(): PluginOption {
+    const redirect: Connect.NextHandleFunction = (req, res, next) => {
+        const match = req.url?.match(/^\/stats(\?.*)?$/);
+        if (!match) return next();
+        res.writeHead(301, { Location: `/stats/${match[1] ?? ""}` });
+        res.end();
+    };
+    return {
+        name: "stats-redirect",
+        configureServer: (server) => void server.middlewares.use(redirect),
+        configurePreviewServer: (server) => void server.middlewares.use(redirect),
+    };
+}
 
 export default defineConfig(({ mode }) => {
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
@@ -31,6 +49,7 @@ export default defineConfig(({ mode }) => {
     process.env.VITE_SPELLSYNC_PUBLIC_TOKEN = Config.secrets.SPELLSYNC_PUBLIC_TOKEN;
 
     const plugins: PluginOption[] = [
+        statsRedirectPlugin(),
         ejsPlugin(),
         solidPlugin(),
         ...atlasBuilderPlugin(mode === "production"),
@@ -52,14 +71,6 @@ export default defineConfig(({ mode }) => {
         port: Config.vite.port,
         host: Config.vite.host,
         proxy: {
-            // this redirects /stats to /stats/
-            // because vite is cringe and does not work without trailing slashes at the end of paths 😭
-            "^/stats(?!/$).*": {
-                target: `http://${Config.vite.host}:${Config.vite.port}`,
-                rewrite: (path) => path.replace(/^\/stats(?!\/$).*/, "/stats/"),
-                changeOrigin: true,
-                secure: false,
-            },
             "/api": {
                 target: `http://${Config.apiServer.host}:${Config.apiServer.port}`,
                 changeOrigin: true,
