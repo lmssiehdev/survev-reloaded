@@ -2,7 +2,7 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { SQL } from "bun";
 import { drizzle } from "drizzle-orm/bun-sql";
-import * as schema from "./schema.ts";
+import { relations } from "./relations.ts";
 
 const logger = new ServerLogger("Database");
 
@@ -24,7 +24,7 @@ const client = new SQL({
 
 export const db = drizzle({
     client,
-    schema,
+    relations,
 });
 
 /**

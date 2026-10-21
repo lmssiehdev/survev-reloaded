@@ -17,7 +17,6 @@ import {
 } from "@survev/shared/types/team.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import type { Hono } from "hono";
-import { getCookie } from "hono/cookie";
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { getFindGamePlayerData, getHonoIp, verifyTurnsStile } from "./apiHelpers.ts";

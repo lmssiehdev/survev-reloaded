@@ -4,7 +4,7 @@ import { Constants } from "@survev/shared/net/net.ts";
 import { loadoutSchema } from "@survev/shared/types/api.ts";
 import { type ProfileResponse, type UsernameResponse } from "@survev/shared/types/user.ts";
 import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.ts";
-import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import z from "zod";
 import { server } from "../../apiServer.ts";
@@ -114,10 +114,8 @@ export const UserRouter = new Hono<AuthEnv>()
             const slug = sanitizeSlug(validName);
 
             const slugTaken = await db.query.usersTable.findFirst({
-                where: and(eq(usersTable.slug, slug), ne(usersTable.id, user.id)),
-                columns: {
-                    id: true,
-                },
+                where: { slug, id: { ne: user.id } },
+                columns: { id: true },
             });
 
             if (slugTaken) {

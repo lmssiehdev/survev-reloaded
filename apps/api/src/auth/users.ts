@@ -2,10 +2,9 @@ import { checkForBadWords } from "@survev/config/utils/badWords.ts";
 import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { generateRandomString } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
 import slugify from "slugify";
 import { db } from "../db/index.ts";
-import { itemsTable, usersTable } from "../db/schema.ts";
+import { itemsTable } from "../db/schema.ts";
 
 export function randomId(length: number) {
     return generateRandomString(length, "a-z", "0-9");
@@ -36,7 +35,7 @@ export async function generateUsername() {
         const username = `Player ${randomId(6)}`;
         const slug = sanitizeSlug(username);
         const taken = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
+            where: { slug },
             columns: { id: true },
         });
         if (!taken) return { username, slug };

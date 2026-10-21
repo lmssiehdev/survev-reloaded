@@ -6,7 +6,7 @@ import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { zGiveItemParams, zRemoveItemParams } from "@survev/shared/types/moderation.ts";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { server } from "../../apiServer.ts";
@@ -15,7 +15,7 @@ import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "..
 import { getRedisClient } from "../../cache/index.ts";
 import { leaderboardCache } from "../../cache/leaderboard.ts";
 import { db } from "../../db/index.ts";
-import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable, usersTable } from "../../db/schema.ts";
+import { itemsTable, type MatchDataTable, matchDataTable, userQuestTable } from "../../db/schema.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
 import { isBanned, logPlayerIPs, ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
@@ -157,13 +157,7 @@ export const PrivateRouter = new Hono()
             }
 
             const userQuests = await db.query.userQuestTable.findMany({
-                where: and(
-                    eq(userQuestTable.userId, userId),
-                    inArray(
-                        userQuestTable.questType,
-                        validEntries.map((e) => e.id),
-                    ),
-                ),
+                where: { userId, questType: { in: validEntries.map((e) => e.id) } },
             });
 
             if (userQuests.length === 0) {
@@ -222,30 +216,22 @@ export const PrivateRouter = new Hono()
                 return c.json({ message: "Invalid item type" }, 200);
             }
 
-            const userId = await db.query.usersTable.findFirst({
-                where: eq(usersTable.slug, slug),
-                columns: {
-                    id: true,
-                },
+            const user = await db.query.usersTable.findFirst({
+                where: { slug },
+                columns: { id: true },
+                with: { items: { where: { type: item }, columns: { type: true } } },
             });
 
-            if (!userId) {
+            if (!user) {
                 return c.json({ message: "User not found" }, 200);
             }
 
-            const existing = await db.query.itemsTable.findFirst({
-                where: and(eq(itemsTable.userId, userId.id), eq(itemsTable.type, item)),
-                columns: {
-                    type: true,
-                },
-            });
-
-            if (existing) {
+            if (user.items.length) {
                 return c.json({ message: "User already has item" }, 200);
             }
 
             await db.insert(itemsTable).values({
-                userId: userId.id,
+                userId: user.id,
                 type: item,
                 source,
                 timeAcquired: Date.now(),
@@ -262,10 +248,8 @@ export const PrivateRouter = new Hono()
             const { item, slug } = c.req.valid("json");
 
             const user = await db.query.usersTable.findFirst({
-                where: eq(usersTable.slug, slug),
-                columns: {
-                    id: true,
-                },
+                where: { slug },
+                columns: { id: true },
             });
 
             if (!user) {

@@ -16,6 +16,25 @@ import { questHelpers } from "../../utils/questHelpers.ts";
 // hardcoded for now
 export const questSlotIndexes = [0, 1];
 
+/** the active pass of a user with its quest slots in order */
+async function findPassWithQuests(
+    tx: Pick<typeof db, "query">,
+    userId: string,
+): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined> {
+    const row = await tx.query.userPassTable.findFirst({
+        where: { userId, passType: Config.passType },
+        with: {
+            quests: {
+                where: { idx: { in: questSlotIndexes } },
+                orderBy: { idx: "asc" },
+            },
+        },
+    });
+    if (!row) return undefined;
+    const { quests, ...pass } = row;
+    return { pass, quests };
+}
+
 /**
  * lazily create pass and quest if they don't exist
  */
@@ -23,28 +42,9 @@ async function getPassAndQuests(
     userId: string,
     now: number,
 ): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] }> {
-    const rows = await db
-        .select({ pass: userPassTable, quest: userQuestTable })
-        .from(userPassTable)
-        .leftJoin(
-            userQuestTable,
-            and(
-                eq(userQuestTable.userId, userPassTable.userId),
-                inArray(userQuestTable.idx, questSlotIndexes),
-            ),
-        )
-        .where(
-            and(
-                eq(userPassTable.userId, userId),
-                eq(userPassTable.passType, Config.passType),
-            ),
-        );
-
-    const existingPass = rows[0]?.pass ?? null;
-    const existingQuests = rows
-        .map((row) => row.quest)
-        .filter((quest): quest is UserQuestTableSelect => quest !== null)
-        .sort((a, b) => a.idx - b.idx);
+    const found = await findPassWithQuests(db, userId);
+    const existingPass = found?.pass ?? null;
+    const existingQuests = found?.quests ?? [];
 
     const hasAllSlots = existingQuests.length === questSlotIndexes.length
         && questSlotIndexes.every((slot, index) => existingQuests[index]?.idx === slot);
@@ -105,29 +105,13 @@ async function getPassAndQuests(
 
         await tx.insert(userQuestTable).values(inserts);
 
-        const pass = await tx.query.userPassTable.findFirst({
-            where: and(
-                eq(userPassTable.userId, userId),
-                eq(userPassTable.passType, Config.passType),
-            ),
-        });
+        const created = await findPassWithQuests(tx, userId);
 
-        const quests = await tx.query.userQuestTable.findMany({
-            where: and(
-                eq(userQuestTable.userId, userId),
-                inArray(userQuestTable.idx, questSlotIndexes),
-            ),
-            orderBy: userQuestTable.idx,
-        });
-
-        if (!pass || !quests.length) {
+        if (!created?.quests.length) {
             throw new Error("failed_to_create_user_pass_and_quests");
         }
 
-        return {
-            pass,
-            quests,
-        };
+        return created;
     });
 }
 

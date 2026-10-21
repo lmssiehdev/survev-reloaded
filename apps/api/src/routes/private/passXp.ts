@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 import { Config } from "@survev/config/serverConfig.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
@@ -18,10 +18,7 @@ export async function incrementPassXp(
     const passDef = PassDefs[Config.passType];
 
     const pass = await transaction.query.userPassTable.findFirst({
-        where: and(
-            eq(userPassTable.userId, userId),
-            eq(userPassTable.passType, Config.passType),
-        ),
+        where: { userId, passType: Config.passType },
     });
 
     if (!pass) {

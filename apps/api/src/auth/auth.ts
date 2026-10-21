@@ -1,7 +1,7 @@
+import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { Config } from "@survev/config/serverConfig.ts";
 import { type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { lt } from "drizzle-orm";

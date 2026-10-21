@@ -30,11 +30,8 @@ UserStatsRouter.post(
         const { interval, mapIdFilter, slug } = c.req.valid("json");
 
         const result = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-                banned: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (!result) {

@@ -20,10 +20,8 @@ matchHistoryRouter.post(
         const { slug, offset, teamModeFilter } = c.req.valid("json");
 
         const result = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (result?.id == undefined) {

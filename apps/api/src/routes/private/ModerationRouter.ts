@@ -18,7 +18,7 @@ import {
     zUnbanIpParams,
 } from "@survev/shared/types/moderation.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import { and, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import { createHash } from "node:crypto";
@@ -27,15 +27,7 @@ import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { sanitizeSlug } from "../../auth/users.ts";
 import { db, rowCount } from "../../db/index.ts";
-import {
-    accountTable,
-    bannedIpsTable,
-    ipLogsTable,
-    itemsTable,
-    matchDataTable,
-    userPassTable,
-    usersTable,
-} from "../../db/schema.ts";
+import { bannedIpsTable, ipLogsTable, itemsTable, matchDataTable, userPassTable, usersTable } from "../../db/schema.ts";
 import { incrementPassXp } from "./passXp.ts";
 
 export const ModerationRouter = new Hono()
@@ -51,10 +43,10 @@ export const ModerationRouter = new Hono()
         } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-                banned: true,
+            where: { slug },
+            columns: { id: true, banned: true },
+            with: {
+                ipLogs: ban_associated_ips && { columns: { encodedIp: true, findGameEncodedIp: true } },
             },
         });
 
@@ -69,14 +61,7 @@ export const ModerationRouter = new Hono()
         await banAccount(user.id, banReason, executor_id);
 
         if (ban_associated_ips) {
-            const ips = await db
-                .select({
-                    encodedIp: ipLogsTable.encodedIp,
-                    findGameEncodedIp: ipLogsTable.findGameEncodedIp,
-                })
-                .from(ipLogsTable)
-                .where(eq(ipLogsTable.userId, user.id))
-                .groupBy(ipLogsTable.encodedIp, ipLogsTable.findGameEncodedIp);
+            const ips = user.ipLogs ?? [];
 
             const expiresIn = new Date(Date.now() + util.daysToMs(ip_ban_duration));
 
@@ -125,11 +110,8 @@ export const ModerationRouter = new Hono()
         const { slug } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-                banned: true,
-            },
+            where: { slug },
+            columns: { id: true, banned: true },
         });
 
         if (!user) {
@@ -191,13 +173,8 @@ export const ModerationRouter = new Hono()
 
         if (ban_associated_account) {
             const user = await db.query.ipLogsTable.findFirst({
-                where: and(
-                    inArray(ipLogsTable.encodedIp, encodedIps),
-                    ne(ipLogsTable.userId, ""),
-                ),
-                columns: {
-                    userId: true,
-                },
+                where: { encodedIp: { in: encodedIps }, userId: { ne: "" } },
+                columns: { userId: true },
             });
             if (user?.userId) {
                 await banAccount(user.userId, ban_reason, executor_id);
@@ -236,58 +213,22 @@ export const ModerationRouter = new Hono()
     .post("/get_player_ip", validateParams(zGetPlayerIpParams), async (c) => {
         const { name, use_account_slug, game_id } = c.req.valid("json");
 
-        let userId: string | null = null;
-
-        if (use_account_slug) {
-            const user = await db.query.usersTable.findFirst({
-                where: eq(usersTable.slug, name),
-                columns: {
-                    id: true,
+        const logs = await db.query.ipLogsTable.findMany({
+            where: {
+                ...(use_account_slug ? { user: { slug: name } } : { username: name }),
+                ...(game_id && { gameId: game_id }),
+            },
+            with: {
+                user: {
+                    columns: { slug: true },
+                    with: { accounts: { where: { providerId: "discord" }, columns: { accountId: true } } },
                 },
-            });
+            },
+            orderBy: { createdAt: "desc" },
+            limit: 10,
+        });
 
-            if (!user?.id) {
-                return c.json(
-                    {
-                        message: `User not found`,
-                    },
-                    200,
-                );
-            }
-            userId = user.id;
-        }
-
-        const result = await db
-            .select({
-                slug: usersTable.slug,
-                authId: accountTable.accountId,
-                linkedDiscord: sql<boolean>`${accountTable.accountId} is not null`,
-                ip: ipLogsTable.encodedIp,
-                findGameIp: ipLogsTable.findGameEncodedIp,
-                username: ipLogsTable.username,
-                region: ipLogsTable.region,
-                teamMode: ipLogsTable.teamMode,
-                createdAt: ipLogsTable.createdAt,
-                mapId: ipLogsTable.mapId,
-            })
-            .from(ipLogsTable)
-            .where(
-                and(
-                    userId
-                        ? eq(ipLogsTable.userId, userId)
-                        : eq(ipLogsTable.username, name),
-                    game_id ? eq(ipLogsTable.gameId, game_id) : undefined,
-                ),
-            )
-            .leftJoin(usersTable, eq(ipLogsTable.userId, usersTable.id))
-            .leftJoin(
-                accountTable,
-                and(eq(accountTable.userId, usersTable.id), eq(accountTable.providerId, "discord")),
-            )
-            .orderBy(desc(ipLogsTable.createdAt))
-            .limit(10);
-
-        if (result.length === 0) {
+        if (logs.length === 0) {
             return c.json(
                 {
                     message: `No IP found for ${name}. Make sure the name matches the one in game.`,
@@ -296,13 +237,24 @@ export const ModerationRouter = new Hono()
             );
         }
 
-        const prettyResult = result.map((data) => ({
-            ...data,
-            teamMode: GameConfig.TeamModeToString[data.teamMode],
-            mapId: GameConfig.MapId[data.mapId],
-        }));
-
-        return c.json(prettyResult, 200);
+        return c.json(
+            logs.map((log) => {
+                const discordId = log.user?.accounts[0]?.accountId ?? null;
+                return {
+                    slug: log.user?.slug ?? null,
+                    authId: discordId,
+                    linkedDiscord: !!discordId,
+                    ip: log.encodedIp,
+                    findGameIp: log.findGameEncodedIp,
+                    username: log.username,
+                    region: log.region,
+                    teamMode: GameConfig.TeamModeToString[log.teamMode],
+                    createdAt: log.createdAt,
+                    mapId: GameConfig.MapId[log.mapId],
+                };
+            }),
+            200,
+        );
     })
     .post("/clear_all_bans", async (c) => {
         await db.delete(bannedIpsTable).execute();
@@ -376,11 +328,11 @@ export const ModerationRouter = new Hono()
         async (c) => {
             const { discord_user } = c.req.valid("json");
 
-            const [user] = await db
-                .select({ slug: usersTable.slug })
-                .from(accountTable)
-                .innerJoin(usersTable, eq(accountTable.userId, usersTable.id))
-                .where(and(eq(accountTable.providerId, "discord"), eq(accountTable.accountId, discord_user)));
+            const account = await db.query.accountTable.findFirst({
+                where: { providerId: "discord", accountId: discord_user },
+                with: { user: { columns: { slug: true } } },
+            });
+            const user = account?.user;
 
             if (!user?.slug) {
                 return c.json(
@@ -398,10 +350,8 @@ export const ModerationRouter = new Hono()
         const { slug, pass } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (!user) {
@@ -438,10 +388,8 @@ export const ModerationRouter = new Hono()
         const { slug, xp } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (!user) {
@@ -458,10 +406,8 @@ export const ModerationRouter = new Hono()
         const { slug, game_id } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (!user) {
@@ -496,10 +442,8 @@ export const ModerationRouter = new Hono()
         const { slug } = c.req.valid("json");
 
         const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.slug, slug),
-            columns: {
-                id: true,
-            },
+            where: { slug },
+            columns: { id: true },
         });
 
         if (!user) {
@@ -524,10 +468,8 @@ export const ModerationRouter = new Hono()
         if (filter.type === "user_id") {
             // convert the slug to user id
             const user = await db.query.usersTable.findFirst({
-                where: eq(usersTable.slug, filter.value),
-                columns: {
-                    id: true,
-                },
+                where: { slug: filter.value },
+                columns: { id: true },
             });
             if (!user) {
                 return c.json({
@@ -602,7 +544,7 @@ export async function isBanned(ip: string, isEncoded = false) {
     try {
         const encodedIp = isEncoded ? ip : hashIp(ip);
         const banned = await db.query.bannedIpsTable.findFirst({
-            where: eq(bannedIpsTable.encodedIp, encodedIp),
+            where: { encodedIp },
             columns: {
                 permanent: true,
                 expiresIn: true,
