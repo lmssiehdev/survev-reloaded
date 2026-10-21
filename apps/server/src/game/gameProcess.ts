@@ -175,7 +175,7 @@ class ServerGame extends Game {
                 timeAlive: Math.round(player.timeAlive),
                 died: player.dead,
                 kills: player.kills,
-                team_kills: teamKills[player.groupId] ?? 0,
+                teamKills: teamKills[player.teamId] ?? 0,
                 damageDealt: Math.round(player.damageDealt),
                 damageTaken: Math.round(player.damageTaken),
                 killerId: player.killedBy?.matchDataId || 0,

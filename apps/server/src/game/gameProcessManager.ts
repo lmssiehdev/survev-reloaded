@@ -44,7 +44,11 @@ export class GameProcess {
 
     manager: GameProcessManager;
 
-    onCreatedCbs: Array<(_proc: typeof this) => void> = [];
+    /** find_game requests waiting for the game to be created, called with undefined if the process dies first */
+    onCreatedCbs: Array<(_proc: typeof this | undefined) => void> = [];
+
+    /** set once the process exited, `process.killed` only means a signal was sent */
+    exited = false;
 
     avaliableSlots = 0;
 
@@ -107,7 +111,7 @@ export class GameProcess {
     }
 
     send(msg: ProcessMsg) {
-        if (this.process.killed || !this.process.channel) return;
+        if (this.exited || !this.process.channel) return;
         this.process.send(msg);
     }
 
@@ -169,7 +173,8 @@ export class GameProcessManager {
         const minIdleProcs = 3;
 
         setInterval(() => {
-            for (const proc of this.processes) {
+            // copy, killProcess removes from the list
+            for (const proc of this.processes.slice()) {
                 proc.send({
                     type: ProcessMsgType.KeepAlive,
                 });
@@ -233,18 +238,17 @@ export class GameProcessManager {
 
             this.processes.push(gameProc);
 
-            gameProc.process.on("exit", () => {
-                this.killProcess(gameProc!);
-                if (!this._freePorts.includes(gameProc!.port)) {
-                    this._freePorts.push(gameProc!.port);
+            const proc = gameProc;
+            proc.process.on("exit", () => {
+                proc.exited = true;
+                this.removeProcess(proc);
+                if (!this._freePorts.includes(proc.port)) {
+                    this._freePorts.push(proc.port);
                 }
             });
-
-            gameProc.process.on("close", () => {
-                this.killProcess(gameProc!);
-            });
-            gameProc.process.on("disconnect", () => {
-                this.killProcess(gameProc!);
+            // lost the IPC channel, the process can't be used anymore
+            proc.process.on("disconnect", () => {
+                this.killProcess(proc);
             });
             this.logger.info("Created new process with PID", gameProc.process.pid);
         } else {
@@ -258,16 +262,27 @@ export class GameProcessManager {
     }
 
     killProcess(gameProc: GameProcess, signal: NodeJS.Signals = "SIGTERM"): void {
+        this.removeProcess(gameProc);
+        if (gameProc.exited) return;
+
         // send SIGTERM, if still hasn't terminated after 5 seconds, send SIGKILL >:3
         gameProc.process.kill(signal);
         setTimeout(() => {
-            if (!gameProc.process.killed) {
+            if (!gameProc.exited) {
                 gameProc.process.kill("SIGKILL");
             }
         }, 5000);
+    }
 
+    /** stop routing to a process; safe to call more than once */
+    private removeProcess(gameProc: GameProcess) {
         util.removeFrom(this.processes, gameProc);
-        this.processById.delete(gameProc.gameData.id);
+        if (this.processById.get(gameProc.gameData.id) === gameProc) {
+            this.processById.delete(gameProc.gameData.id);
+        }
+        for (const cb of gameProc.onCreatedCbs.splice(0)) {
+            cb(undefined);
+        }
     }
 
     getById(id: string): GameProcess | undefined {
@@ -305,7 +320,7 @@ export class GameProcessManager {
         if (proc.state !== ProcState.Running) {
             return await new Promise((resolve) => {
                 proc.onCreatedCbs.push((proc) => {
-                    proc.addJoinTokens(body.playerData, body.autoFill);
+                    proc?.addJoinTokens(body.playerData, body.autoFill);
                     resolve(proc);
                 });
             });
