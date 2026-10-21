@@ -1,3 +1,4 @@
+import solidPlugin from "@solidjs/vite-plugin";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
@@ -22,6 +23,7 @@ export default defineConfig(({ mode }) => {
 
     const plugins: PluginOption[] = [
         ejsPlugin(),
+        solidPlugin(),
         ...atlasBuilderPlugin(mode === "production"),
         svgoPlugin(),
     ];
@@ -101,7 +103,7 @@ export default defineConfig(({ mode }) => {
         },
         envDir,
         resolve: {
-            extensions: [".ts", ".js"],
+            extensions: [".ts", ".tsx", ".js"],
         },
         define: {
             GIT_VERSION: JSON.stringify(GIT_VERSION),
