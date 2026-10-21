@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "05478cdb-636d-4078-8daf-0c5330c28ea8",
+  "id": "13597c3a-83ad-4aa4-9611-a856725e619d",
   "prevIds": [
-    "f859f85f-1e3c-4431-beac-782ed4c5455e"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -1811,7 +1811,7 @@
       ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "name": "items_user_id_users_id_fk",
+      "name": "items_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "items"
@@ -1828,7 +1828,7 @@
       ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "name": "session_user_id_users_id_fk",
+      "name": "session_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "session"
@@ -1845,7 +1845,7 @@
       ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "name": "user_pass_user_id_users_id_fk",
+      "name": "user_pass_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "user_pass"
@@ -1862,7 +1862,7 @@
       ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "name": "user_quest_user_id_users_id_fk",
+      "name": "user_quest_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "user_quest"
@@ -1873,7 +1873,7 @@
         "player_id"
       ],
       "nameExplicit": false,
-      "name": "match_data_game_id_player_id_pk",
+      "name": "match_data_pkey",
       "entityType": "pks",
       "schema": "public",
       "table": "match_data"
@@ -1976,7 +1976,7 @@
         "slug"
       ],
       "nullsNotDistinct": false,
-      "name": "users_slug_unique",
+      "name": "users_slug_key",
       "schema": "public",
       "table": "users",
       "entityType": "uniques"
