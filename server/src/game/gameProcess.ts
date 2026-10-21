@@ -5,10 +5,11 @@ import type { GameWsDisconnectReason } from "../../../shared/types/api.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
+import { getIp } from "../utils/ip.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "../utils/rateLimit.ts";
-import { serverHelpers, uwsWebSocketDefaults } from "../utils/serverHelpers.ts";
 import { LOST_GAME_DATA_DIR, type SaveGameBody } from "../utils/types.ts";
+import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import type { Client } from "./client.ts";
 import { Game } from "./game.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
@@ -303,7 +304,10 @@ const port = parseInt(process.argv[2]);
 const app = Bun.serve({
     hostname: Config.gameServer.host,
     port,
-    tls: serverHelpers.getTLSOptions(Config.gameServer),
+    tls: Config.gameServer.ssl && {
+        key: Bun.file(Config.gameServer.ssl.keyFile),
+        cert: Bun.file(Config.gameServer.ssl.certFile),
+    },
 
     routes: {
         "/play": async (req, httpServer) => {
@@ -312,7 +316,7 @@ const app = Bun.serve({
                 return new Response();
             }
 
-            const ip = serverHelpers.getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+            const ip = getIp(req, httpServer, Config.gameServer.proxyIPHeader);
 
             if (!ip) {
                 game.logger.warn("Invalid IP Found");
@@ -359,7 +363,7 @@ const app = Bun.serve({
 
     websocket: {
         data: {} as GameSocketData,
-        ...uwsWebSocketDefaults,
+        backpressureLimit: UWS_BACKPRESSURE_LIMIT,
         idleTimeout: 30,
         maxPayloadLength: 1024,
 

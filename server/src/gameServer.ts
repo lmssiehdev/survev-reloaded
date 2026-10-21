@@ -9,9 +9,9 @@ import { Config } from "./config.ts";
 import { GameProcess, GameProcessManager, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
 import { GIT_VERSION } from "./utils/gitRevision.ts";
+import { getIp } from "./utils/ip.ts";
 import { logErrorToWebhook, ServerLogger } from "./utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "./utils/rateLimit.ts";
-import { HttpError, serverHelpers, uwsWebSocketDefaults } from "./utils/serverHelpers.ts";
 import {
     type FindGamePrivateBody,
     type FindGamePrivateRes,
@@ -23,6 +23,7 @@ import {
     zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "./utils/types.ts";
+import { UWS_BACKPRESSURE_LIMIT } from "./utils/websocket.ts";
 
 process.on("uncaughtException", async (err) => {
     console.error(err);
@@ -188,15 +189,19 @@ async function handleJsonPost<T extends ZodObject>(
     handler: (body: z.infer<T>) => Promise<Record<string, unknown>>,
 ): Promise<Response> {
     if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-        return serverHelpers.forbidden();
+        return new Response("403 Forbidden", { status: 403 });
+    }
+
+    const parsed = validator.safeParse(await req.json().catch(() => undefined));
+    if (!parsed.success) {
+        server.logger.warn(`${new URL(req.url).pathname} error: `, parsed.error);
+        return new Response("400 Bad Request", { status: 400 });
     }
 
     try {
-        const body = await serverHelpers.getJsonBody(req, validator);
-        return serverHelpers.returnJson(await handler(body));
+        return Response.json(await handler(parsed.data));
     } catch (error) {
         server.logger.warn(`${new URL(req.url).pathname} error: `, error);
-        if (error instanceof HttpError) return error.response;
         return new Response("500 Internal Server Error", { status: 500 });
     }
 }
@@ -204,8 +209,12 @@ async function handleJsonPost<T extends ZodObject>(
 const app = Bun.serve({
     hostname: Config.gameServer.host,
     port: Config.gameServer.port,
-    tls: serverHelpers.getTLSOptions(Config.gameServer),
-    maxRequestBodySize: serverHelpers.bodyLimit,
+    tls: Config.gameServer.ssl && {
+        key: Bun.file(Config.gameServer.ssl.keyFile),
+        cert: Bun.file(Config.gameServer.ssl.certFile),
+    },
+    // Bun responds with 413 to bigger bodies
+    maxRequestBodySize: 1024 * 1024, // 1 MB
 
     routes: {
         "/health": {
@@ -215,10 +224,10 @@ const app = Bun.serve({
         "/private/status": {
             GET: (req) => {
                 if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-                    return serverHelpers.forbidden();
+                    return new Response("403 Forbidden", { status: 403 });
                 }
 
-                return serverHelpers.returnJson({
+                return Response.json({
                     gameCount: server.manager.processes.length,
                     games: server.manager.processes.map(p => {
                         return {
@@ -243,7 +252,7 @@ const app = Bun.serve({
 
         // ping test
         "/ptc": (req, httpServer) => {
-            const ip = serverHelpers.getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+            const ip = getIp(req, httpServer, Config.gameServer.proxyIPHeader);
 
             if (!ip) {
                 server.logger.warn("Invalid IP Found:", ip);
@@ -274,7 +283,7 @@ const app = Bun.serve({
 
     websocket: {
         data: {} as pingSocketData,
-        ...uwsWebSocketDefaults,
+        backpressureLimit: UWS_BACKPRESSURE_LIMIT,
         idleTimeout: 10,
         maxPayloadLength: 2,
 
