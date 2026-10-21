@@ -15,6 +15,7 @@ import { HttpError, serverHelpers, uwsWebSocketDefaults } from "./utils/serverHe
 import {
     type FindGamePrivateBody,
     type FindGamePrivateRes,
+    LOST_GAME_DATA_DIR,
     type SaveGameBody,
     type SpectateGamePrivateBody,
     type SpectateGamePrivateRes,
@@ -112,7 +113,7 @@ class GameServer {
     async tryToSaveLostGames() {
         const games: SaveGameBody["matchData"] = [];
 
-        const dir = path.resolve("lost_game_data");
+        const dir = path.resolve(LOST_GAME_DATA_DIR);
 
         if (!existsSync(dir)) return;
 

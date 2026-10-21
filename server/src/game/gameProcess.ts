@@ -1,5 +1,4 @@
 import type { ServerWebSocket } from "bun";
-import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
 import type { GameWsDisconnectReason } from "../../../shared/types/api.ts";
@@ -9,7 +8,7 @@ import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "../utils/rateLimit.ts";
 import { serverHelpers, uwsWebSocketDefaults } from "../utils/serverHelpers.ts";
-import type { SaveGameBody } from "../utils/types.ts";
+import { LOST_GAME_DATA_DIR, type SaveGameBody } from "../utils/types.ts";
 import type { Client } from "./client.ts";
 import { Game } from "./game.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
@@ -84,15 +83,12 @@ async function saveGame(gameId: string, values: SaveGameBody["matchData"]) {
             `[${region}] Failed to save game data, saving locally instead`,
         );
 
-        const dir = path.resolve("lost_game_data");
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
+        try {
+            // Bun.write creates the directory if needed
+            await Bun.write(path.resolve(LOST_GAME_DATA_DIR, `${gameId}.json`), JSON.stringify(values));
+        } catch (err) {
+            procLogger.error(`[${region}] Failed to save game data locally:`, err);
         }
-        fs.writeFileSync(
-            path.join(dir, `${gameId}.json`),
-            JSON.stringify(values),
-            "utf8",
-        );
     }
 }
 
