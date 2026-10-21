@@ -2,7 +2,7 @@ import { Cron } from "croner";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { App, SSLApp, type WebSocket } from "uWebSockets.js";
+import type { z, ZodObject } from "zod";
 import pkgJson from "../../package.json" with { type: "json" };
 import { GameConfig } from "../../shared/gameConfig.ts";
 import { Config } from "./config.ts";
@@ -11,6 +11,7 @@ import { apiPrivateRouter } from "./utils/apiRouter.ts";
 import { GIT_VERSION } from "./utils/gitRevision.ts";
 import { logErrorToWebhook, ServerLogger } from "./utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "./utils/rateLimit.ts";
+import { HttpError, serverHelpers, uwsWebSocketDefaults } from "./utils/serverHelpers.ts";
 import {
     type FindGamePrivateBody,
     type FindGamePrivateRes,
@@ -20,7 +21,6 @@ import {
     zFindGamePrivateBody,
     zSpectateGamePrivateBody,
 } from "./utils/types.ts";
-import { uwsHelpers } from "./utils/uwsHelpers.ts";
 
 process.on("uncaughtException", async (err) => {
     console.error(err);
@@ -156,82 +156,6 @@ if (process.env.NODE_ENV !== "production") {
     server.manager.newGame(Config.modes[0]);
 }
 
-const app = Config.gameServer.ssl
-    ? SSLApp({
-        key_file_name: Config.gameServer.ssl.keyFile,
-        cert_file_name: Config.gameServer.ssl.certFile,
-    })
-    : App();
-
-app.get("/health", (res) => {
-    res.writeStatus("200 OK");
-    res.write("OK");
-    res.end();
-});
-
-app.get("/private/status", (res, req) => {
-    if (req.getHeader("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-        uwsHelpers.forbidden(res);
-        return;
-    }
-
-    uwsHelpers.returnJson(res, {
-        gameCount: server.manager.processes.length,
-        games: server.manager.processes.map(p => {
-            return {
-                state: ProcState[p.state],
-                reusedCount: p.reusedCount,
-                avaliableSlots: p.avaliableSlots,
-                port: p.port,
-                gameData: p.gameData,
-            };
-        }),
-    });
-});
-
-app.post("/api/find_game", async (res, req) => {
-    res.onAborted(() => {
-        res.aborted = true;
-    });
-
-    if (req.getHeader("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-        uwsHelpers.forbidden(res);
-        return;
-    }
-
-    try {
-        const body = await uwsHelpers.getJsonBody(res, zFindGamePrivateBody);
-
-        uwsHelpers.returnJson(res, await server.findGame(body));
-    } catch (error) {
-        server.logger.warn("/api/find_game error: ", error);
-        if (!res.aborted) {
-            res.writeStatus("500 Internal Server Error").end("500 Internal Server Error");
-        }
-    }
-});
-
-app.post("/api/spectate_game", async (res, req) => {
-    res.onAborted(() => {
-        res.aborted = true;
-    });
-
-    if (req.getHeader("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
-        uwsHelpers.forbidden(res);
-        return;
-    }
-
-    try {
-        const body = await uwsHelpers.getJsonBody(res, zSpectateGamePrivateBody);
-        uwsHelpers.returnJson(res, await server.findGameToSpectate(body));
-    } catch (error) {
-        server.logger.warn("/api/find_game error: ", error);
-        if (!res.aborted) {
-            res.writeStatus("500 Internal Server Error").end("500 Internal Server Error");
-        }
-    }
-});
-
 const pingHTTPRateLimit = new HTTPRateLimit(1, 3000);
 const pingWsRateLimit = new WebSocketRateLimit(50, 1000, 10);
 
@@ -240,53 +164,118 @@ interface pingSocketData {
     ip: string;
 }
 
-// ping test
-app.ws<pingSocketData>("/ptc", {
-    idleTimeout: 10,
-    maxPayloadLength: 2,
+async function handleJsonPost<T extends ZodObject>(
+    req: Request,
+    validator: T,
+    handler: (body: z.infer<T>) => Promise<Record<string, unknown>>,
+): Promise<Response> {
+    if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+        return serverHelpers.forbidden();
+    }
 
-    upgrade(res, req, context) {
-        res.onAborted((): void => {});
+    try {
+        const body = await serverHelpers.getJsonBody(req, validator);
+        return serverHelpers.returnJson(await handler(body));
+    } catch (error) {
+        server.logger.warn(`${new URL(req.url).pathname} error: `, error);
+        if (error instanceof HttpError) return error.response;
+        return new Response("500 Internal Server Error", { status: 500 });
+    }
+}
 
-        const ip = uwsHelpers.getIp(res, req, Config.gameServer.proxyIPHeader);
+const app = Bun.serve({
+    hostname: Config.gameServer.host,
+    port: Config.gameServer.port,
+    tls: serverHelpers.getTLSOptions(Config.gameServer),
+    maxRequestBodySize: serverHelpers.bodyLimit,
 
-        if (!ip) {
-            server.logger.warn("Invalid IP Found:", ip);
-            res.end();
-            return;
-        }
+    routes: {
+        "/health": {
+            GET: () => new Response("OK"),
+        },
 
-        if (pingHTTPRateLimit.isRateLimited(ip) || pingWsRateLimit.isIpRateLimited(ip)) {
-            res.writeStatus("429 Too Many Requests");
-            res.write("429 Too Many Requests");
-            res.end();
-            return;
-        }
-        pingWsRateLimit.ipConnected(ip);
+        "/private/status": {
+            GET: (req) => {
+                if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+                    return serverHelpers.forbidden();
+                }
 
-        res.upgrade(
-            {
-                rateLimit: {},
-                ip,
+                return serverHelpers.returnJson({
+                    gameCount: server.manager.processes.length,
+                    games: server.manager.processes.map(p => {
+                        return {
+                            state: ProcState[p.state],
+                            reusedCount: p.reusedCount,
+                            avaliableSlots: p.avaliableSlots,
+                            port: p.port,
+                            gameData: p.gameData,
+                        };
+                    }),
+                });
             },
-            req.getHeader("sec-websocket-key"),
-            req.getHeader("sec-websocket-protocol"),
-            req.getHeader("sec-websocket-extensions"),
-            context,
-        );
+        },
+
+        "/api/find_game": {
+            POST: (req) => handleJsonPost(req, zFindGamePrivateBody, (body) => server.findGame(body)),
+        },
+
+        "/api/spectate_game": {
+            POST: (req) => handleJsonPost(req, zSpectateGamePrivateBody, (body) => server.findGameToSpectate(body)),
+        },
+
+        // ping test
+        "/ptc": (req, httpServer) => {
+            const ip = serverHelpers.getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+
+            if (!ip) {
+                server.logger.warn("Invalid IP Found:", ip);
+                return new Response();
+            }
+
+            if (pingHTTPRateLimit.isRateLimited(ip) || pingWsRateLimit.isIpRateLimited(ip)) {
+                return new Response("429 Too Many Requests", { status: 429 });
+            }
+
+            const upgraded = httpServer.upgrade(req, {
+                data: {
+                    rateLimit: {},
+                    ip,
+                },
+            });
+            if (!upgraded) {
+                return new Response("426 Upgrade Required", { status: 426 });
+            }
+            pingWsRateLimit.ipConnected(ip);
+            return undefined;
+        },
     },
 
-    message(socket: WebSocket<pingSocketData>, message) {
-        if (pingWsRateLimit.isRateLimited(socket.getUserData().rateLimit)) {
-            server.logger.warn("Ping websocket rate limited, closing socket.");
-            socket.close();
-            return;
-        }
-        socket.send(message, true, false);
+    fetch() {
+        return new Response("404 Not Found", { status: 404 });
     },
 
-    close(ws) {
-        pingWsRateLimit.ipDisconnected(ws.getUserData().ip);
+    websocket: {
+        data: {} as pingSocketData,
+        ...uwsWebSocketDefaults,
+        idleTimeout: 10,
+        maxPayloadLength: 2,
+
+        open(socket) {
+            socket.binaryType = "arraybuffer";
+        },
+
+        message(socket, message) {
+            if (pingWsRateLimit.isRateLimited(socket.data.rateLimit)) {
+                server.logger.warn("Ping websocket rate limited, closing socket.");
+                socket.terminate();
+                return;
+            }
+            socket.sendBinary(typeof message === "string" ? Buffer.from(message) : message);
+        },
+
+        close(socket) {
+            pingWsRateLimit.ipDisconnected(socket.data.ip);
+        },
     },
 });
 
@@ -295,16 +284,11 @@ setInterval(() => {
     server.sendData();
 }, 20 * 1000);
 
-app.listen(Config.gameServer.host, Config.gameServer.port, 1, (socket) => {
-    if (!socket) {
-        throw new Error(`Port ${Config.gameServer.port} is already in use`);
-    }
-    server.logger.info(`Survev Game Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
-    server.logger.info(
-        `Listening on ${Config.gameServer.host}:${Config.gameServer.port}`,
-    );
-    server.logger.info("Press Ctrl+C to exit.");
-});
+server.logger.info(`Survev Game Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
+server.logger.info(
+    `Listening on ${app.hostname}:${app.port}`,
+);
+server.logger.info("Press Ctrl+C to exit.");
 
 // try to save lost games every hour
 new Cron("0 * * * *", async () => {

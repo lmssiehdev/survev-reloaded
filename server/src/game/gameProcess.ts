@@ -1,15 +1,15 @@
+import type { ServerWebSocket } from "bun";
 import fs from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
-import { App, SSLApp, type WebSocket } from "uWebSockets.js";
 import type { GameWsDisconnectReason } from "../../../shared/types/api.ts";
 import { Logger } from "../../../shared/utils/logger.ts";
 import { Config } from "../config.ts";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { logErrorToWebhook } from "../utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "../utils/rateLimit.ts";
+import { serverHelpers, uwsWebSocketDefaults } from "../utils/serverHelpers.ts";
 import type { SaveGameBody } from "../utils/types.ts";
-import { uwsHelpers } from "../utils/uwsHelpers.ts";
 import type { Client } from "./client.ts";
 import { Game } from "./game.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
@@ -261,15 +261,15 @@ interface GameSocketData {
     ip: string;
     rateLimit: Record<symbol, number>;
     disconnectReason?: GameWsDisconnectReason;
-    clientSocket?: UwsSocket;
+    clientSocket?: BunSocket;
 }
 
-class UwsSocket extends ClientSocket<Client> {
-    private _socket: WebSocket<GameSocketData>;
+class BunSocket extends ClientSocket<Client> {
+    private _socket: ServerWebSocket<GameSocketData>;
     private _ip: string;
 
     _closed = false;
-    constructor(socket: WebSocket<GameSocketData>, ip: string) {
+    constructor(socket: ServerWebSocket<GameSocketData>, ip: string) {
         super();
         this._socket = socket;
         this._ip = ip;
@@ -285,139 +285,137 @@ class UwsSocket extends ClientSocket<Client> {
 
     send(data: Uint8Array<ArrayBuffer>): void {
         if (this._closed) return;
-        this._socket.send(data, true, false);
+        this._socket.sendBinary(data);
     }
 
     close(reason?: GameWsDisconnectReason): void {
         if (this._closed) return;
         this._closed = true;
-        this._socket.end(reason ? 3000 : 0, reason);
+        if (reason) {
+            this._socket.close(3000, reason);
+        } else {
+            this._socket.close();
+        }
     }
 }
-
-const app = Config.gameServer.ssl
-    ? SSLApp({
-        key_file_name: Config.gameServer.ssl.keyFile,
-        cert_file_name: Config.gameServer.ssl.certFile,
-    })
-    : App();
 
 const gameHTTPRateLimit = new HTTPRateLimit(5, 1000);
 const gameWsRateLimit = new WebSocketRateLimit(500, 1000, 5);
 
-app.ws<GameSocketData>("/play", {
-    idleTimeout: 30,
-    maxPayloadLength: 1024,
-
-    async upgrade(res, req, context): Promise<void> {
-        res.onAborted((): void => {
-            res.aborted = true;
-        });
-        const wskey = req.getHeader("sec-websocket-key");
-        const wsProtocol = req.getHeader("sec-websocket-protocol");
-        const wsExtensions = req.getHeader("sec-websocket-extensions");
-
-        if (!game) {
-            procLogger.warn("Websocket upgrade closed: process not running a game");
-            res.end();
-            return;
-        }
-
-        const ip = uwsHelpers.getIp(res, req, Config.gameServer.proxyIPHeader);
-
-        if (!ip) {
-            game.logger.warn("Invalid IP Found");
-            res.end();
-            return;
-        }
-
-        if (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip)) {
-            res.cork(() => {
-                game!.logger.warn("Websocket upgrade closed: Rate limited");
-                res.writeStatus("429 Too Many Requests");
-                res.write("429 Too Many Requests");
-                res.end();
-            });
-            return;
-        }
-
-        gameWsRateLimit.ipConnected(ip);
-
-        let disconnectReason: GameWsDisconnectReason | undefined = undefined;
-
-        const ipData = await checkIp(ip);
-
-        if (ipData?.banned) {
-            disconnectReason = "ip_banned";
-        } else if (ipData?.behindProxy) {
-            disconnectReason = "behind_proxy";
-        }
-
-        if (res.aborted) return;
-        res.cork(() => {
-            if (res.aborted) return;
-            res.upgrade<GameSocketData>(
-                {
-                    rateLimit: {},
-                    ip,
-                    disconnectReason,
-                    clientSocket: undefined as unknown as UwsSocket,
-                },
-                wskey,
-                wsProtocol,
-                wsExtensions,
-                context,
-            );
-        });
-    },
-
-    open(socket: WebSocket<GameSocketData>) {
-        const data = socket.getUserData();
-
-        if (data.disconnectReason) {
-            socket.end(3000, data.disconnectReason);
-            return;
-        }
-
-        data.clientSocket = new UwsSocket(socket, data.ip);
-    },
-
-    message(socket: WebSocket<GameSocketData>, message) {
-        const data = socket.getUserData();
-        if (!game || !data.clientSocket) {
-            if (data.clientSocket) {
-                data.clientSocket.close();
-            } else {
-                socket.close();
-            }
-            return;
-        }
-        if (gameWsRateLimit.isRateLimited(socket.getUserData().rateLimit)) {
-            procLogger.warn("Game websocket rate limited, closing socket.");
-            socket.end(3000, "rate_limited");
-            return;
-        }
-        game.clientBarn.handleMsg(message, data.clientSocket);
-    },
-
-    close(socket: WebSocket<GameSocketData>) {
-        const data = socket.getUserData();
-        gameWsRateLimit.ipDisconnected(data.ip);
-        if (data.clientSocket) {
-            data.clientSocket._closed = true;
-            game?.clientBarn?.handleSocketClose(data.clientSocket);
-        }
-    },
-});
+const textEncoder = new TextEncoder();
 
 const port = parseInt(process.argv[2]);
 
-app.listen(Config.gameServer.host, port, 1, (socket) => {
-    if (!socket) {
-        throw new Error(`Port ${port} is already in use`);
-    }
+const app = Bun.serve({
+    hostname: Config.gameServer.host,
+    port,
+    tls: serverHelpers.getTLSOptions(Config.gameServer),
 
-    procLogger.info(
-        `Listening on ${Config.gameServer.host}:${port}`,
-    );
+    routes: {
+        "/play": async (req, httpServer) => {
+            if (!game) {
+                procLogger.warn("Websocket upgrade closed: process not running a game");
+                return new Response();
+            }
+
+            const ip = serverHelpers.getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+
+            if (!ip) {
+                game.logger.warn("Invalid IP Found");
+                return new Response();
+            }
+
+            if (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip)) {
+                game.logger.warn("Websocket upgrade closed: Rate limited");
+                return new Response("429 Too Many Requests", { status: 429 });
+            }
+
+            gameWsRateLimit.ipConnected(ip);
+
+            let disconnectReason: GameWsDisconnectReason | undefined = undefined;
+
+            const ipData = await checkIp(ip);
+
+            if (ipData?.banned) {
+                disconnectReason = "ip_banned";
+            } else if (ipData?.behindProxy) {
+                disconnectReason = "behind_proxy";
+            }
+
+            const upgraded = httpServer.upgrade(req, {
+                data: {
+                    rateLimit: {},
+                    ip,
+                    disconnectReason,
+                    clientSocket: undefined,
+                },
+            });
+            if (!upgraded) {
+                // request aborted or not a websocket request, close() won't be called
+                gameWsRateLimit.ipDisconnected(ip);
+                return new Response("426 Upgrade Required", { status: 426 });
+            }
+            return undefined;
+        },
+    },
+
+    fetch() {
+        return new Response("404 Not Found", { status: 404 });
+    },
+
+    websocket: {
+        data: {} as GameSocketData,
+        ...uwsWebSocketDefaults,
+        idleTimeout: 30,
+        maxPayloadLength: 1024,
+
+        open(socket) {
+            // Bun defaults to node Buffers, ClientBarn.handleMsg only accepts ArrayBuffers
+            socket.binaryType = "arraybuffer";
+
+            const data = socket.data;
+
+            if (data.disconnectReason) {
+                socket.close(3000, data.disconnectReason);
+                return;
+            }
+
+            data.clientSocket = new BunSocket(socket, data.ip);
+        },
+
+        message(socket, message) {
+            const data = socket.data;
+            if (!game || !data.clientSocket) {
+                if (data.clientSocket) {
+                    data.clientSocket.close();
+                } else {
+                    socket.terminate();
+                }
+                return;
+            }
+            if (gameWsRateLimit.isRateLimited(data.rateLimit)) {
+                procLogger.warn("Game websocket rate limited, closing socket.");
+                socket.close(3000, "rate_limited");
+                return;
+            }
+            // uWS delivered text frames as ArrayBuffers too
+            game.clientBarn.handleMsg(
+                typeof message === "string" ? textEncoder.encode(message).buffer : message,
+                data.clientSocket,
+            );
+        },
+
+        close(socket) {
+            const data = socket.data;
+            gameWsRateLimit.ipDisconnected(data.ip);
+            if (data.clientSocket) {
+                data.clientSocket._closed = true;
+                game?.clientBarn?.handleSocketClose(data.clientSocket);
+            }
+        },
+    },
 });
+
+procLogger.info(
+    `Listening on ${app.hostname}:${app.port}`,
+);
