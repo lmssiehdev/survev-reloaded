@@ -132,19 +132,23 @@ export const ModerationRouter = new Hono()
         return respond(
             c,
             await Result.gen(async function*() {
-                // the last account seen on one of these IPs
+                // every not-yet-banned account seen on one of these IPs
                 const seen = ban_associated_account
                     ? yield* Result.await(query(() =>
-                        db.query.playerIps.findFirst({
+                        db.query.playerIps.findMany({
                             where: {
                                 OR: [{ ipHash: { in: ipHashes } }, { findGameIpHash: { in: ipHashes } }],
                                 user: { banned: false },
                             },
                             columns: { userId: true },
-                            orderBy: { createdAt: "desc" },
+                            with: { user: { columns: { slug: true } } },
                         })
                     ))
-                    : undefined;
+                    : [];
+                const accounts = new Map<string, string>();
+                for (const row of seen) {
+                    if (row.userId) accounts.set(row.userId, row.user?.slug ?? row.userId);
+                }
 
                 yield* Result.await(query(() =>
                     db.transaction(async (tx) => {
@@ -153,8 +157,8 @@ export const ModerationRouter = new Hono()
                             bannedBy,
                             expiresAt: ipBanEnd(permanent, ip_ban_duration),
                         });
-                        if (seen?.userId) {
-                            await banAccount(tx, seen.userId, { reason, bannedBy });
+                        for (const userId of accounts.keys()) {
+                            await banAccount(tx, userId, { reason, bannedBy });
                         }
                     })
                 ));
@@ -164,7 +168,15 @@ export const ModerationRouter = new Hono()
                 }
 
                 const target = ipHashes.length === 1 ? `IP ${ipHashes[0]} has` : `IPs: [${ipHashes.join(", ")}] have`;
-                return Result.ok({ message: `${target} been banned ${ipBanLength(permanent, ip_ban_duration)}.` });
+                let message = `${target} been banned ${ipBanLength(permanent, ip_ban_duration)}.`;
+                if (ban_associated_account) {
+                    message += accounts.size
+                        ? ` Banned ${accounts.size} associated account${accounts.size === 1 ? "" : "s"}: ${
+                            [...accounts.values()].join(", ")
+                        }.`
+                        : " No associated accounts found.";
+                }
+                return Result.ok({ message });
             }),
         );
     })
