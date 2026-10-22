@@ -41,12 +41,8 @@
 
         <link href="css/app.css" rel="stylesheet">
         <link href="css/game.css" rel="stylesheet">
-        %VITE_DEBUG_CSS_LINK%
     </head>
     <body>
-        <div id="preroll-wrapper">
-            <div id="preroll"></div>
-        </div>
         <div id="fb-root"></div>
         <canvas tabindex="1" id="cvs"></canvas>
         <div id="game-area-wrapper" style="display: none" oncontextmenu="return false">
@@ -731,12 +727,6 @@
                         <div id="ui-stats-options"></div>
                         <div id="ui-stats-logo"></div>
                     </div>
-                    <div id="ui-stats-ad-container-desktop" class="ui-stats-ad-container">
-                        <div id="nitro-died-mrec" data-fuse="died_mrec" style="min-height: 90px"></div>
-                    </div>
-                    <div id="ui-stats-ad-container-mobile" class="ui-stats-ad-container">
-                        <div id="nitro-died-mrec-mobile" data-fuse="died_mrec_mobile" style="min-height: 200px"></div>
-                    </div>
                 </div>
             </div>
             <div id="ui-editor" style="display: none">
@@ -754,13 +744,6 @@
             <div id="start-main">
                 <div id="start-top-left">
                     <div id="btn-hamburger" class="icon-hamburger"></div>
-                    <a
-                        id="btn-discord-top-right"
-                        style="display: none"
-                        href="https://discord.gg/75RAK3p3K2"
-                        target="_blank"
-                        class="btn-social btn-darken btn-discord"
-                    ></a>
                     <div id="start-top-left-desktop">
                         <div id="featured-streamers">
                             <div class="streaming-header">
@@ -781,15 +764,6 @@
                             <a href="" target="_blank" class="btn-youtuber btn-darken"></a>
                         </div>
                     </div>
-                </div>
-                <div class="ad-block-header hide-on-mobile">
-                    <div id="nitro-header" data-fuse="header" style="min-height: 90px"></div>
-                </div>
-                <div class="ad-block-left-center hide-on-mobile">
-                    <div id="nitro-home-vrec" data-fuse="home_vrec" style="min-height: 250px"></div>
-                </div>
-                <div class="ad-block-right-center hide-on-mobile" style="min-height: 250px">
-                    <div id="nitro-home-mrec" data-fuse="home_mrec"></div>
                 </div>
                 <!-- Accounts Modals -->
                 <div id="modal-account-name-change" class="modal modal-account">
@@ -1049,8 +1023,10 @@
                             <span data-l10n="index-rotate-reminder">Rotate to landscape for a better experience.</span>
                         </div>
                         <div id="left-column" class="menu-column">
-                            <div id="ad-block-left">
-                                <div class="surviv-shirts"></div>
+                            <div id="promo-block-left">
+                                <div class="surviv-shirts" style="background-image: url(./img/survev-kofi.png)">
+                                    <a href="https://ko-fi.com/survev" target="_blank"></a>
+                                </div>
                             </div>
                             <div id="social-share-block-wrapper">
                                 <div id="social-share-block" class="menu-block">
@@ -1068,7 +1044,6 @@
                                         <a
                                             href="https://ko-fi.com/survev"
                                             target="_blank"
-                                            style="display: none"
                                             class="btn-social btn-darken btn-kofi"
                                         ></a>
                                         <a
@@ -1709,7 +1684,6 @@
                     </div>
                 </div>
 
-                <div class="ad-block-leaderboard-bottom" id="survevio_728x90"></div>
                 <div id="start-bottom-left">
                     <div id="mobile-settings-front">
                         <div class="btn-settings menu-option btn-darken btn-start-option"></div>
@@ -1791,9 +1765,6 @@
             </div>
             <!-- Loadouts -->
             <div id="modal-customize" class="modal">
-                <div class="ad-block-loadouts-left hide-on-mobile">
-                    <div id="nitro-loadout-vrec" data-fuse="loadout_vrec" style="min-height: 600px"></div>
-                </div>
                 <div id="modal-customize-wrapper" class="modal-close">
                     <div id="modal-content-left" class="modal-content-shadow">
                         <div id="modal-customize-cat-title"></div>

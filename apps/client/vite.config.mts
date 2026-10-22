@@ -3,7 +3,7 @@ import { getConfig } from "@survev/config/config.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { stripBlockPlugin } from "@survev/shared/utils/stripBlockPlugin.ts";
 import { resolve } from "node:path";
-import { type Connect, defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
+import { type Connect, defineConfig, PluginOption, type ServerOptions } from "vite";
 import pkgJson from "../../package.json" with { type: "json" };
 import { atlasBuilderPlugin } from "./atlas-builder/vitePlugin.ts";
 import { codefendPlugin } from "./vite-plugins/codefendPlugin.ts";
@@ -28,7 +28,6 @@ function statsRedirectPlugin(): PluginOption {
 }
 
 export default defineConfig(({ mode }) => {
-    const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
     const isDev = mode === "development";
 
     const Config = getConfig(!isDev, "../../");
@@ -39,13 +38,7 @@ export default defineConfig(({ mode }) => {
             `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>`;
     }
 
-    process.env.VITE_DEBUG_CSS_LINK = isDev
-        ? `<link href='css/dev.css' rel="stylesheet" />`
-        : "";
     process.env.VITE_GAME_VERSION = pkgJson.version;
-
-    process.env.VITE_SPELLSYNC_PROJECT_ID = Config.secrets.SPELLSYNC_PROJECT_ID;
-    process.env.VITE_SPELLSYNC_PUBLIC_TOKEN = Config.secrets.SPELLSYNC_PUBLIC_TOKEN;
 
     const plugins: PluginOption[] = [
         statsRedirectPlugin(),
@@ -116,11 +109,6 @@ export default defineConfig(({ mode }) => {
         },
         resolve: {
             extensions: [".ts", ".tsx", ".js"],
-            alias: {
-                "@/sdk.ts": viteEnv?.VITE_ENABLE_SURVEV_ADS === "true"
-                    ? "./sdk-manager.prod"
-                    : "./sdk-manager",
-            },
         },
         define: {
             GAME_REGIONS: Config.regions,
@@ -134,10 +122,6 @@ export default defineConfig(({ mode }) => {
                 };
             }),
             PASS_TYPE: JSON.stringify(Config.passType),
-            AD_PREFIX: JSON.stringify(Config.secrets.AD_PREFIX),
-            VITE_GAMEMONETIZE_ID: JSON.stringify(Config.secrets.GAMEMONETIZE_ID),
-            SPELLSYNC_PROJECT_ID: JSON.stringify(Config.secrets.SPELLSYNC_PROJECT_ID),
-            SPELLSYNC_PUBLIC_TOKEN: JSON.stringify(Config.secrets.SPELLSYNC_PUBLIC_TOKEN),
             IS_DEV: isDev,
             PROXY_DEFS: JSON.stringify(Config.proxies),
             TURNSTILE_SITE_KEY: JSON.stringify(Config.secrets.TURNSTILE_SITE_KEY),

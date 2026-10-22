@@ -5,7 +5,6 @@ import { api } from "../api.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { proxy } from "../proxy.ts";
-import { SDK } from "../sdk/sdk.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -324,7 +323,7 @@ export class ProfileUi {
             return false;
         });
 
-        const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
+        const loginSupported = proxy.anyLoginSupported();
 
         $(".account-block").toggle(loginSupported);
     }
