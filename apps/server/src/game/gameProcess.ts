@@ -3,6 +3,9 @@ import { getIp } from "@survev/config/utils/ip.ts";
 import { logErrorToWebhook } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { SaveGameBody } from "@survev/contracts";
+import type { Client } from "@survev/game/client.ts";
+import { Game } from "@survev/game/game.ts";
+import { ClientSocket } from "@survev/game/socket.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { Logger } from "@survev/shared/utils/logger.ts";
 import type { ServerWebSocket } from "bun";
@@ -11,11 +14,8 @@ import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { serverGameOptions } from "../utils/serverGameOptions.ts";
 import { LOST_GAME_DATA_DIR } from "../utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
-import type { Client } from "./client.ts";
-import { Game } from "./game.ts";
 import { type IdleSocketData, IdleSocketMonitor } from "./idleSockets.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
-import { ClientSocket } from "./socket.ts";
 
 function sendMsg(msg: ProcessMsg) {
     process.send!(msg);

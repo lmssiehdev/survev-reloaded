@@ -1,8 +1,8 @@
 import type { FindGamePrivateBody } from "@survev/contracts";
+import type { SpectateTokenData } from "@survev/game/game.ts";
+import type { ServerGameConfig } from "@survev/game/gameOptions.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
-import type { SpectateTokenData } from "./game.ts";
-import type { ServerGameConfig } from "./gameOptions.ts";
 
 export interface GameData {
     id: string;

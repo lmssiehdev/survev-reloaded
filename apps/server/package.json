@@ -13,6 +13,7 @@
   "dependencies": {
     "@survev/config": "workspace:*",
     "@survev/contracts": "workspace:*",
+    "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
     "hjson": "^3.2.2",
     "hono": "^4.13.8",

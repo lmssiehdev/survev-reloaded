@@ -1,4 +1,4 @@
-import { type FindGamePrivateBody } from "@survev/contracts";
+import type { FindGamePrivateBody } from "@survev/contracts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Loadout } from "@survev/shared/utils/loadout.ts";

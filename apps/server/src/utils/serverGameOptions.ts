@@ -1,6 +1,6 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
-import type { GameOptions } from "../game/gameOptions.ts";
+import type { GameOptions } from "@survev/game/gameOptions.ts";
 
 /** game options for a game hosted by this server, read from the server config */
 export function serverGameOptions(gameId: string): GameOptions {

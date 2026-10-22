@@ -91,6 +91,7 @@
       "dependencies": {
         "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
+        "@survev/game": "workspace:*",
         "@survev/shared": "workspace:*",
         "hjson": "^3.2.2",
         "hono": "^4.13.8",
@@ -120,6 +121,17 @@
       "dependencies": {
         "@survev/shared": "workspace:*",
         "zod": "^4.6.5",
+      },
+    },
+    "packages/game": {
+      "name": "@survev/game",
+      "dependencies": {
+        "@survev/config": "workspace:*",
+        "@survev/contracts": "workspace:*",
+        "@survev/shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
       },
     },
     "packages/shared": {
@@ -470,6 +482,8 @@
     "@survev/config": ["@survev/config@workspace:packages/config"],
 
     "@survev/contracts": ["@survev/contracts@workspace:packages/contracts"],
+
+    "@survev/game": ["@survev/game@workspace:packages/game"],
 
     "@survev/server": ["@survev/server@workspace:apps/server"],
 

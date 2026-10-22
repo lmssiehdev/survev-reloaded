@@ -24,6 +24,7 @@ COPY apps/client/package.json apps/client/
 COPY apps/server/package.json apps/server/
 COPY packages/config/package.json packages/config/
 COPY packages/contracts/package.json packages/contracts/
+COPY packages/game/package.json packages/game/
 COPY packages/shared/package.json packages/shared/
 
 FROM manifests AS deps

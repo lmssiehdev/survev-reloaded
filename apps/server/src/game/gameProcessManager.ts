@@ -1,13 +1,13 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
+import type { SpectateTokenData } from "@survev/game/game.ts";
+import type { ServerGameConfig } from "@survev/game/gameOptions.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { type ChildProcess, fork } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import type { SpectateTokenData } from "./game.ts";
-import type { ServerGameConfig } from "./gameOptions.ts";
 import { type GameData, type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
 // run the source in dev, the bundled build in production
