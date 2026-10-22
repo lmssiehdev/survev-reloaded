@@ -47,6 +47,7 @@ If you see a notice notifying you of the machine you have just logged into, cong
  * [NGINX](https://nginx.org)
  * [Node.js](https://nodejs.org)
  * [pnpm](https://pnpm.io)
+ * [PostgreSQL](https://www.postgresql.org)
 
 If you are logged in as root, start by making sure sudo is installed:
 ```sh
@@ -71,9 +72,14 @@ npm i -g pnpm
 
 ### Database support (optional)
 
-Accounts, leaderboards and IP bans are stored in a SQLite file (`data/survev.db` next to `survev-config.hjson` by default),
-there is no database server to install. Create it with `bun run db:migrate` after building,
-and back it up with `sqlite3 data/survev.db ".backup survev-backup.db"` (copying the file while the API runs is not safe).
+IF you want to have accounts, leaderboards and IP bans, you will have to install and set-up PostgreSQL database
+
+```sh
+sudo apt install -y postgresql
+sudo systemctl enable --now postgresql
+sudo -u postgres createuser survev
+sudo -u postgres createdb survev -O survev
+```
 
 
 ### Building source

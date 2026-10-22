@@ -148,11 +148,11 @@ export const PrivateRouter = new Hono()
 
             const deltaById = new Map(validEntries.map((e) => [e.id, e.delta]));
 
-            const saved = await query(async () =>
-                db.transaction((tx) => {
-                    const quests = tx.query.userQuests.findMany({
+            const saved = await query(() =>
+                db.transaction(async (tx) => {
+                    const quests = await tx.query.userQuests.findMany({
                         where: { userId, questType: { in: validEntries.map((e) => e.id) } },
-                    }).sync();
+                    });
 
                     let xpGain = 0;
                     for (const quest of quests) {
@@ -171,15 +171,14 @@ export const PrivateRouter = new Hono()
                             continue;
                         }
 
-                        tx
+                        await tx
                             .update(userQuests)
                             .set({ progress: nextProgress, complete: nowComplete })
-                            .where(eq(userQuests.id, quest.id))
-                            .run();
+                            .where(eq(userQuests.id, quest.id));
                     }
 
                     if (xpGain > 0) {
-                        incrementPassXp(tx, userId, xpGain);
+                        await incrementPassXp(tx, userId, xpGain);
                     }
                 })
             );

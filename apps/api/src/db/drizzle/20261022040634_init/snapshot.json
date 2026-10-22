@@ -1,1208 +1,2049 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "id": "c60fc835-59b7-4e50-8993-65466103e1e8",
+  "version": "8",
+  "dialect": "postgres",
+  "id": "74e86688-6595-42b6-850b-3b6d3bc440f6",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
+      "values": [
+        "ip",
+        "account"
+      ],
+      "name": "ban_kind",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
       "name": "account",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "bans",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "items",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "match_data",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "player_ips",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "server_settings",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "session",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "user_pass",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "user_quest",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "users",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
+      "isRlsEnabled": false,
       "name": "verification",
-      "entityType": "tables"
+      "entityType": "tables",
+      "schema": "public"
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "account_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "provider_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "access_token",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "refresh_token",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id_token",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "access_token_expires_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "refresh_token_expires_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "scope",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "password",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "account"
     },
     {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": true,
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
-      "type": "text",
+      "type": "ban_kind",
+      "typeSchema": "public",
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "kind",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "target",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "reason",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "banned_by",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "expires_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "revoked_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "revoked_by",
       "entityType": "columns",
+      "schema": "public",
       "table": "bans"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "items"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "type",
       "entityType": "columns",
+      "schema": "public",
       "table": "items"
     },
     {
-      "type": "integer",
+      "type": "bigint",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "time_acquired",
       "entityType": "columns",
+      "schema": "public",
       "table": "items"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "'unlock_new_account'",
       "generated": null,
+      "identity": null,
       "name": "source",
       "entityType": "columns",
+      "schema": "public",
       "table": "items"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "0",
       "generated": null,
+      "identity": null,
       "name": "status",
       "entityType": "columns",
+      "schema": "public",
       "table": "items"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "''",
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "user_banned",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "region",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "map_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "text",
+      "type": "uuid",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "game_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "integer",
+      "type": "bigint",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "map_seed",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "username",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "player_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "team_mode",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "team_count",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "team_total",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "team_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "time_alive",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "rank",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "died",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "kills",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "0",
       "generated": null,
+      "identity": null,
       "name": "team_kills",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "damage_dealt",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "damage_taken",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "killer_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "text",
+      "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 1,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "killed_ids",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "''",
       "generated": null,
+      "identity": null,
       "name": "role",
       "entityType": "columns",
+      "schema": "public",
       "table": "match_data"
     },
     {
-      "type": "text",
+      "type": "uuid",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "game_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "player_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "username",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "region",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "map_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "team_mode",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "ip",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "ip_hash",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "find_game_ip",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "find_game_ip_hash",
       "entityType": "columns",
+      "schema": "public",
       "table": "player_ips"
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "key",
       "entityType": "columns",
+      "schema": "public",
       "table": "server_settings"
     },
     {
-      "type": "text",
+      "type": "jsonb",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "value",
       "entityType": "columns",
+      "schema": "public",
       "table": "server_settings"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "server_settings"
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "token",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "expires_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "ip_address",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_agent",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "session"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "'pass_survivr1'",
       "generated": null,
+      "identity": null,
       "name": "pass_type",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "0",
       "generated": null,
+      "identity": null,
       "name": "total_xp",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
-      "type": "text",
+      "type": "json",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "'{}'",
       "generated": null,
+      "identity": null,
       "name": "unlocks",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "new_items",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_pass"
     },
     {
-      "type": "integer",
-      "notNull": false,
-      "autoincrement": true,
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "user_id",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "idx",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "quest_type",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "0",
       "generated": null,
+      "identity": null,
       "name": "progress",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "integer",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "target",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "complete",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "rerolled",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
-      "type": "integer",
+      "type": "bigint",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "time_acquired",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
-      "type": "integer",
+      "type": "bigint",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "next_refresh_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "user_quest"
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "email",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "email_verified",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "image",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "user_created",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "slug",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "banned",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "''",
       "generated": null,
+      "identity": null,
       "name": "username",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "boolean",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "false",
       "generated": null,
+      "identity": null,
       "name": "username_set",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "integer",
+      "type": "timestamp",
+      "typeSchema": null,
       "notNull": false,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "last_username_change_time",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
-      "type": "text",
+      "type": "json",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": "'{\"outfit\":\"outfitBase\",\"melee\":\"fists\",\"heal\":\"heal_basic\",\"boost\":\"boost_basic\",\"player_icon\":\"\",\"crosshair\":{\"type\":\"crosshair_default\",\"color\":16777215,\"size\":\"1.00\",\"stroke\":\"0.00\"},\"emotes\":[\"emote_happyface\",\"emote_thumbsup\",\"emote_surviv\",\"emote_sadface\",\"\",\"\"]}'",
       "generated": null,
+      "identity": null,
       "name": "loadout",
       "entityType": "columns",
+      "schema": "public",
       "table": "users"
     },
     {
       "type": "text",
-      "notNull": false,
-      "autoincrement": false,
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "id",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "identifier",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
       "type": "text",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "value",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
+      "dimensions": 0,
       "default": null,
       "generated": null,
+      "identity": null,
       "name": "expires_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "created_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
-      "type": "integer",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
       "notNull": true,
-      "autoincrement": false,
-      "default": "(cast(unixepoch('subsecond') * 1000 as integer))",
+      "dimensions": 0,
+      "default": "now()",
       "generated": null,
+      "identity": null,
       "name": "updated_at",
       "entityType": "columns",
+      "schema": "public",
       "table": "verification"
     },
     {
+      "nameExplicit": true,
       "columns": [
-        "user_id"
+        {
+          "value": "provider_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "account_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
-      "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_account_user_id_users_id_fk",
-      "entityType": "fks",
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "account_provider_account_idx",
+      "entityType": "indexes",
+      "schema": "public",
       "table": "account"
     },
     {
+      "nameExplicit": true,
       "columns": [
-        "user_id"
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "tableTo": "users",
-      "columnsTo": [
-        "id"
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "account_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "kind",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "target",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_items_user_id_users_id_fk",
-      "entityType": "fks",
+      "isUnique": true,
+      "where": "\"revoked_at\" is null",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "bans_unrevoked_target_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "bans"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "uq_items_user_type",
+      "entityType": "indexes",
+      "schema": "public",
       "table": "items"
     },
     {
+      "nameExplicit": true,
       "columns": [
-        "user_id"
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "team_mode",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "rank",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "kills",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "damage_dealt",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "time_alive",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "tableTo": "users",
-      "columnsTo": [
-        "id"
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "idx_match_data_user_stats",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "match_data"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "game_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_session_user_id_users_id_fk",
-      "entityType": "fks",
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "idx_game_id",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "match_data"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "idx_user_id",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "match_data"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_mode",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "map_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "game_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "region",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "kills",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "idx_match_data_team_query",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "match_data"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "username",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_username_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "ip_hash",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_ip_hash_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "find_game_ip_hash",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_find_game_ip_hash_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "player_ips_created_at_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "player_ips"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "session_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
       "table": "session"
     },
     {
+      "nameExplicit": true,
       "columns": [
-        "user_id"
+        {
+          "value": "expires_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "tableTo": "users",
-      "columnsTo": [
-        "id"
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "session_expires_at_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "session"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "pass_type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
       ],
-      "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_user_pass_user_id_users_id_fk",
-      "entityType": "fks",
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "user_pass_user_type",
+      "entityType": "indexes",
+      "schema": "public",
       "table": "user_pass"
     },
     {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "idx",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "user_quest_user_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "user_quest"
+    },
+    {
+      "nameExplicit": false,
       "columns": [
         "user_id"
       ],
+      "schemaTo": "public",
       "tableTo": "users",
       "columnsTo": [
         "id"
       ],
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
-      "nameExplicit": false,
-      "name": "fk_user_quest_user_id_users_id_fk",
+      "name": "account_user_id_users_id_fkey",
       "entityType": "fks",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "items_user_id_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "session_user_id_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "session"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "user_pass_user_id_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "user_pass"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "user_quest_user_id_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
       "table": "user_quest"
     },
     {
@@ -1211,8 +2052,9 @@
         "player_id"
       ],
       "nameExplicit": false,
-      "name": "match_data_pk",
+      "name": "match_data_pkey",
       "entityType": "pks",
+      "schema": "public",
       "table": "match_data"
     },
     {
@@ -1221,8 +2063,9 @@
         "player_id"
       ],
       "nameExplicit": false,
-      "name": "player_ips_pk",
+      "name": "player_ips_pkey",
       "entityType": "pks",
+      "schema": "public",
       "table": "player_ips"
     },
     {
@@ -1230,7 +2073,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "account_pk",
+      "name": "account_pkey",
+      "schema": "public",
       "table": "account",
       "entityType": "pks"
     },
@@ -1239,7 +2083,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "bans_pk",
+      "name": "bans_pkey",
+      "schema": "public",
       "table": "bans",
       "entityType": "pks"
     },
@@ -1248,7 +2093,8 @@
         "key"
       ],
       "nameExplicit": false,
-      "name": "server_settings_pk",
+      "name": "server_settings_pkey",
+      "schema": "public",
       "table": "server_settings",
       "entityType": "pks"
     },
@@ -1257,7 +2103,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "session_pk",
+      "name": "session_pkey",
+      "schema": "public",
       "table": "session",
       "entityType": "pks"
     },
@@ -1266,7 +2113,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "user_quest_pk",
+      "name": "user_quest_pkey",
+      "schema": "public",
       "table": "user_quest",
       "entityType": "pks"
     },
@@ -1275,7 +2123,8 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "users_pk",
+      "name": "users_pkey",
+      "schema": "public",
       "table": "users",
       "entityType": "pks"
     },
@@ -1284,342 +2133,43 @@
         "id"
       ],
       "nameExplicit": false,
-      "name": "verification_pk",
+      "name": "verification_pkey",
+      "schema": "public",
       "table": "verification",
       "entityType": "pks"
     },
     {
-      "columns": [
-        {
-          "value": "provider_id",
-          "isExpression": false
-        },
-        {
-          "value": "account_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "account_provider_account_idx",
-      "entityType": "indexes",
-      "table": "account"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "account_user_id_idx",
-      "entityType": "indexes",
-      "table": "account"
-    },
-    {
-      "columns": [
-        {
-          "value": "kind",
-          "isExpression": false
-        },
-        {
-          "value": "target",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": "\"bans\".\"revoked_at\" is null",
-      "origin": "manual",
-      "name": "bans_unrevoked_target_idx",
-      "entityType": "indexes",
-      "table": "bans"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        },
-        {
-          "value": "type",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "uq_items_user_type",
-      "entityType": "indexes",
-      "table": "items"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        },
-        {
-          "value": "team_mode",
-          "isExpression": false
-        },
-        {
-          "value": "rank",
-          "isExpression": false
-        },
-        {
-          "value": "kills",
-          "isExpression": false
-        },
-        {
-          "value": "damage_dealt",
-          "isExpression": false
-        },
-        {
-          "value": "time_alive",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_match_data_user_stats",
-      "entityType": "indexes",
-      "table": "match_data"
-    },
-    {
-      "columns": [
-        {
-          "value": "game_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_game_id",
-      "entityType": "indexes",
-      "table": "match_data"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_user_id",
-      "entityType": "indexes",
-      "table": "match_data"
-    },
-    {
-      "columns": [
-        {
-          "value": "team_mode",
-          "isExpression": false
-        },
-        {
-          "value": "map_id",
-          "isExpression": false
-        },
-        {
-          "value": "created_at",
-          "isExpression": false
-        },
-        {
-          "value": "game_id",
-          "isExpression": false
-        },
-        {
-          "value": "team_id",
-          "isExpression": false
-        },
-        {
-          "value": "region",
-          "isExpression": false
-        },
-        {
-          "value": "kills",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "idx_match_data_team_query",
-      "entityType": "indexes",
-      "table": "match_data"
-    },
-    {
-      "columns": [
-        {
-          "value": "username",
-          "isExpression": false
-        },
-        {
-          "value": "created_at",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "player_ips_username_idx",
-      "entityType": "indexes",
-      "table": "player_ips"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "player_ips_user_id_idx",
-      "entityType": "indexes",
-      "table": "player_ips"
-    },
-    {
-      "columns": [
-        {
-          "value": "ip_hash",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "player_ips_ip_hash_idx",
-      "entityType": "indexes",
-      "table": "player_ips"
-    },
-    {
-      "columns": [
-        {
-          "value": "find_game_ip_hash",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "player_ips_find_game_ip_hash_idx",
-      "entityType": "indexes",
-      "table": "player_ips"
-    },
-    {
-      "columns": [
-        {
-          "value": "created_at",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "player_ips_created_at_idx",
-      "entityType": "indexes",
-      "table": "player_ips"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "session_user_id_idx",
-      "entityType": "indexes",
-      "table": "session"
-    },
-    {
-      "columns": [
-        {
-          "value": "expires_at",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "session_expires_at_idx",
-      "entityType": "indexes",
-      "table": "session"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        },
-        {
-          "value": "pass_type",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "user_pass_user_type",
-      "entityType": "indexes",
-      "table": "user_pass"
-    },
-    {
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false
-        },
-        {
-          "value": "idx",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "user_quest_user_idx",
-      "entityType": "indexes",
-      "table": "user_quest"
-    },
-    {
+      "nameExplicit": false,
       "columns": [
         "token"
       ],
-      "nameExplicit": false,
-      "name": "session_token_unique",
-      "entityType": "uniques",
-      "table": "session"
+      "nullsNotDistinct": false,
+      "name": "session_token_key",
+      "schema": "public",
+      "table": "session",
+      "entityType": "uniques"
     },
     {
+      "nameExplicit": false,
       "columns": [
         "email"
       ],
-      "nameExplicit": false,
-      "name": "users_email_unique",
-      "entityType": "uniques",
-      "table": "users"
+      "nullsNotDistinct": false,
+      "name": "users_email_key",
+      "schema": "public",
+      "table": "users",
+      "entityType": "uniques"
     },
     {
+      "nameExplicit": false,
       "columns": [
         "slug"
       ],
-      "nameExplicit": false,
-      "name": "users_slug_unique",
-      "entityType": "uniques",
-      "table": "users"
+      "nullsNotDistinct": false,
+      "name": "users_slug_key",
+      "schema": "public",
+      "table": "users",
+      "entityType": "uniques"
     }
   ],
   "renames": []

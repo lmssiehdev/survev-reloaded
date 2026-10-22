@@ -206,7 +206,7 @@ export interface ConfigType {
     clientErrorLoggingWebhook?: string;
 
     /**
-     * SQLite database configuration, this will enable features like accounts, IP bans, leaderboards etc.
+     * PostgreSQL Database configuration, this will enable features like accounts, IP bans, leaderboards etc.
      */
     database: {
         /**
@@ -215,12 +215,16 @@ export interface ConfigType {
          */
         enabled: boolean;
 
-        /**
-         * Path of the SQLite database file, relative to the directory of survev-config.hjson.
-         * The folder is created if it doesn't exist.
-         * @default "data/survev.db"
-         */
-        file: string;
+        /** @default "127.0.0.1" */
+        host: string;
+        /** @default "survev" */
+        user: string;
+        /** @default "survev" */
+        password: string;
+        /** @default "survev" */
+        database: string;
+        /** @default 5432 */
+        port: number;
     };
 
     /**

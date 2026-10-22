@@ -26,7 +26,7 @@ import { z } from "zod";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { sanitizeSlug } from "../../auth/users.ts";
 import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "../../bans.ts";
-import { db } from "../../db/index.ts";
+import { db, rowCount } from "../../db/index.ts";
 import { items, matchData, userPasses, users } from "../../db/schema.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../../errors.ts";
 import { regionFetch } from "../../regions.ts";
@@ -79,10 +79,10 @@ export const ModerationRouter = new Hono()
                     ? user.playerIps.flatMap((row) => [row.ipHash, row.findGameIpHash])
                     : [];
 
-                yield* Result.await(query(async () =>
-                    db.transaction((tx) => {
-                        banAccount(tx, user.id, { reason, bannedBy });
-                        banIps(tx, ipHashes, {
+                yield* Result.await(query(() =>
+                    db.transaction(async (tx) => {
+                        await banAccount(tx, user.id, { reason, bannedBy });
+                        await banIps(tx, ipHashes, {
                             reason,
                             bannedBy,
                             expiresAt: ipBanEnd(ip_ban_permanent, ip_ban_duration),
@@ -111,7 +111,7 @@ export const ModerationRouter = new Hono()
                 if (!user.banned) {
                     return Result.err(new Conflict({ message: "User is not banned." }));
                 }
-                yield* Result.await(query(async () => db.transaction((tx) => unbanAccount(tx, user.id, "admin"))));
+                yield* Result.await(query(() => db.transaction((tx) => unbanAccount(tx, user.id, "admin"))));
                 return Result.ok({ message: "User has been unbanned." });
             }),
         );
@@ -150,15 +150,15 @@ export const ModerationRouter = new Hono()
                     if (row.userId) accounts.set(row.userId, row.user?.slug ?? row.userId);
                 }
 
-                yield* Result.await(query(async () =>
-                    db.transaction((tx) => {
-                        banIps(tx, ipHashes, {
+                yield* Result.await(query(() =>
+                    db.transaction(async (tx) => {
+                        await banIps(tx, ipHashes, {
                             reason,
                             bannedBy,
                             expiresAt: ipBanEnd(permanent, ip_ban_duration),
                         });
                         for (const userId of accounts.keys()) {
-                            banAccount(tx, userId, { reason, bannedBy });
+                            await banAccount(tx, userId, { reason, bannedBy });
                         }
                     })
                 ));
@@ -188,7 +188,7 @@ export const ModerationRouter = new Hono()
             c,
             await Result.gen(async function*() {
                 const revoked = yield* Result.await(
-                    query(async () => db.transaction((tx) => revokeBans(tx, "ip", [ipHash], "admin"))),
+                    query(() => db.transaction((tx) => revokeBans(tx, "ip", [ipHash], "admin"))),
                 );
                 if (!revoked) {
                     return Result.err(new NotFound({ message: `IP ${ipHash} is not banned.` }));
@@ -257,7 +257,7 @@ export const ModerationRouter = new Hono()
         );
     })
     .post("/clear_all_bans", async (c) => {
-        const revoked = await query(async () => db.transaction((tx) => revokeBans(tx, "ip", undefined, "admin")));
+        const revoked = await query(() => db.transaction((tx) => revokeBans(tx, "ip", undefined, "admin")));
         return respond(c, revoked.map((count) => ({ message: `All IP bans have been cleared (${count}).` })));
     })
     .post(
@@ -270,7 +270,7 @@ export const ModerationRouter = new Hono()
             const res = await query(() =>
                 db.update(matchData).set({ username: new_name }).where(eq(matchData.username, current_name))
             );
-            return respond(c, res.map((res) => ({ message: `Updated ${res.changes} rows` })));
+            return respond(c, res.map((res) => ({ message: `Updated ${rowCount(res)} rows` })));
         },
     )
     .post("/set_account_name", validateParams(zSetAccountNameParams), async (c) => {
@@ -290,7 +290,7 @@ export const ModerationRouter = new Hono()
                         .set({ username: sanitized.validName, slug: sanitizeSlug(sanitized.validName) })
                         .where(eq(users.slug, current_slug))
                 ));
-                if (!res.changes) {
+                if (!rowCount(res)) {
                     return Result.err(new NotFound({ message: "User not found" }));
                 }
 
@@ -309,7 +309,7 @@ export const ModerationRouter = new Hono()
             const { gameId } = c.req.valid("json");
 
             const res = await query(() => db.delete(matchData).where(eq(matchData.gameId, gameId)));
-            return respond(c, res.map((res) => ({ message: `Deleted ${res.changes} rows` })));
+            return respond(c, res.map((res) => ({ message: `Deleted ${rowCount(res)} rows` })));
         },
     )
     .post(
@@ -340,17 +340,15 @@ export const ModerationRouter = new Hono()
             await Result.gen(async function*() {
                 const user = yield* Result.await(userIdBySlug(slug));
 
-                yield* Result.await(query(async () =>
-                    db.transaction((tx) => {
-                        tx
+                yield* Result.await(query(() =>
+                    db.transaction(async (tx) => {
+                        await tx
                             .delete(userPasses)
-                            .where(and(eq(userPasses.userId, user.id), eq(userPasses.passType, passType)))
-                            .run();
+                            .where(and(eq(userPasses.userId, user.id), eq(userPasses.passType, passType)));
                         // also remove the pass items from their account
-                        tx
+                        await tx
                             .delete(items)
-                            .where(and(eq(items.userId, user.id), eq(items.source, passType)))
-                            .run();
+                            .where(and(eq(items.userId, user.id), eq(items.source, passType)));
                     })
                 ));
 
@@ -365,7 +363,7 @@ export const ModerationRouter = new Hono()
             c,
             await Result.gen(async function*() {
                 const user = yield* Result.await(userIdBySlug(slug));
-                yield* Result.await(query(async () => db.transaction((tx) => incrementPassXp(tx, user.id, xp))));
+                yield* Result.await(query(() => db.transaction((tx) => incrementPassXp(tx, user.id, xp))));
                 return Result.ok({ message: `Successfully gave ${xp} xp to ${slug}` });
             }),
         );
@@ -384,7 +382,7 @@ export const ModerationRouter = new Hono()
                         .set({ userId: null })
                         .where(and(eq(matchData.userId, user.id), eq(matchData.gameId, game_id)))
                 ));
-                if (!res.changes) {
+                if (!rowCount(res)) {
                     return Result.err(new NotFound({ message: `User ${slug} was not found on game ${game_id}` }));
                 }
 
@@ -405,7 +403,7 @@ export const ModerationRouter = new Hono()
                 );
 
                 return Result.ok({
-                    message: `Successfully reset stats for ${slug} (${res.changes} games affected).`,
+                    message: `Successfully reset stats for ${slug} (${rowCount(res)} games affected).`,
                 });
             }),
         );

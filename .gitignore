@@ -12,11 +12,8 @@ survev-config.hjson
 # env file
 .env
 
-# sqlite db (database.file, data/survev.db by default)
-/data/
+# sqlite db
 *.db
-*.db-wal
-*.db-shm
 lost_game_data/
 
 # Compiled source

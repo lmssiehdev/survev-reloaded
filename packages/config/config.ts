@@ -51,7 +51,11 @@ export function getConfig(isProduction: boolean, dir: string) {
         },
         database: {
             enabled: true,
-            file: "data/survev.db",
+            host: "127.0.0.1",
+            user: "survev",
+            password: "survev",
+            database: "survev",
+            port: 5432,
         },
         oauthRedirectURI: "",
         oauthBasePath: "/",
@@ -75,8 +79,7 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     const dirname = import.meta?.dirname || __dirname;
 
-    const configDir = path.join(dirname, dir);
-    const configPath = path.join(configDir, configFileName);
+    const configPath = path.join(dirname, dir, configFileName);
 
     let localConfig: PartialConfig = {};
 
@@ -109,9 +112,6 @@ export function getConfig(isProduction: boolean, dir: string) {
         config.oauthRedirectURI = `http://${config.vite.host}:${config.vite.port}`;
     }
     const baseUrl = new URL(config.oauthRedirectURI);
-
-    // relative to the config file, like the file itself
-    config.database.file = path.resolve(configDir, config.database.file);
 
     if (!config.gameServer.apiServerUrl) {
         // same as above, provide a more accurate default value if not set manually
