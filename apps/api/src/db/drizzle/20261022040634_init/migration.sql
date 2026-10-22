@@ -78,6 +78,12 @@ CREATE TABLE "player_ips" (
 	CONSTRAINT "player_ips_pkey" PRIMARY KEY("game_id","player_id")
 );
 --> statement-breakpoint
+CREATE TABLE "server_settings" (
+	"key" text PRIMARY KEY,
+	"value" jsonb NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "session" (
 	"id" text PRIMARY KEY,
 	"token" text NOT NULL UNIQUE,

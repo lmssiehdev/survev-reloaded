@@ -138,24 +138,3 @@ export function getConfig(isProduction: boolean, dir: string) {
 
     return config;
 }
-
-export function saveConfig(dir: string, config: PartialConfig) {
-    try {
-        const dirname = import.meta?.dirname || __dirname;
-
-        const configPath = path.join(dirname, dir, configFileName);
-
-        const configText = fs.readFileSync(configPath).toString();
-        const localConfig = hjson.parse(configText);
-
-        const finalConfig = util.mergeDeep({}, localConfig, config);
-
-        fs.writeFileSync(
-            configPath,
-            hjson.stringify(finalConfig, { bracesSameLine: true }),
-        );
-        console.log("Saved config file");
-    } catch (err) {
-        console.error("Failed saving config", err);
-    }
-}

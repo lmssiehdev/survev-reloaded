@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "85f90ef3-9c8e-4710-8512-cb85f8cd9baf",
+  "id": "74e86688-6595-42b6-850b-3b6d3bc440f6",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -42,6 +42,12 @@
     {
       "isRlsEnabled": false,
       "name": "player_ips",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "server_settings",
       "entityType": "tables",
       "schema": "public"
     },
@@ -880,6 +886,45 @@
       "entityType": "columns",
       "schema": "public",
       "table": "player_ips"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "server_settings"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "value",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "server_settings"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "server_settings"
     },
     {
       "type": "text",
@@ -2041,6 +2086,16 @@
       "name": "bans_pkey",
       "schema": "public",
       "table": "bans",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": false,
+      "name": "server_settings_pkey",
+      "schema": "public",
+      "table": "server_settings",
       "entityType": "pks"
     },
     {

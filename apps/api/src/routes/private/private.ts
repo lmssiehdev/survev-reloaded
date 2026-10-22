@@ -47,7 +47,7 @@ export const PrivateRouter = new Hono()
         updateRegion(regionId, data.playerCount);
         return c.json({}, 200);
     })
-    .post("/set_game_mode", validateParams(zSetGameModeBody), (c) => {
+    .post("/set_game_mode", validateParams(zSetGameModeBody), async (c) => {
         const {
             index,
             map_name: mapName,
@@ -59,23 +59,23 @@ export const PrivateRouter = new Hono()
             return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
-        if (!settings.setMode(index, { mapName: mapName as MapDefKey | undefined, teamMode, enabled })) {
-            return errorResponse(c, new InvalidParams({ message: "Invalid mode index" }));
-        }
+        const set = await settings.setMode(index, { mapName: mapName as MapDefKey, teamMode, enabled });
+        if (set.isErr()) return errorResponse(c, set.error);
 
         return c.json(
             { message: `Set mode ${index} to ${JSON.stringify(settings.modes[index])}` },
             200,
         );
     })
-    .post("/set_client_theme", validateParams(zSetClientThemeBody), (c) => {
+    .post("/set_client_theme", validateParams(zSetClientThemeBody), async (c) => {
         const { theme } = c.req.valid("json");
 
         if (!MapDefs[theme as MapDefKey]) {
             return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
-        settings.setClientTheme(theme as MapDefKey);
+        const set = await settings.setClientTheme(theme as MapDefKey);
+        if (set.isErr()) return errorResponse(c, set.error);
 
         return c.json({ message: `Set client theme to ${theme}` }, 200);
     })
@@ -86,10 +86,11 @@ export const PrivateRouter = new Hono()
                 enabled: z.boolean(),
             }),
         ),
-        (c) => {
+        async (c) => {
             const { enabled } = c.req.valid("json");
 
-            settings.setCaptchaEnabled(enabled);
+            const set = await settings.setCaptchaEnabled(enabled);
+            if (set.isErr()) return errorResponse(c, set.error);
 
             return c.json({ state: enabled, message: `Captcha ${enabled ? "enabled" : "disabled"}` }, 200);
         },
