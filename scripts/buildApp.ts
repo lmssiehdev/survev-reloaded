@@ -16,31 +16,6 @@ if (!entries.length) {
     process.exit(1);
 }
 
-/**
- * Keeps npm packages external (loaded from node_modules at runtime) but bundles
- * the @survev/* workspace packages, like the relative imports they replaced.
- */
-function externalNpmPackagesPlugin(): BunPlugin {
-    return {
-        name: "external-npm-packages",
-        setup(build) {
-            build.onResolve({ filter: /^[^./]/ }, (args) => {
-                if (args.path.startsWith("@survev/") || args.path.startsWith("bun") || args.path.startsWith("node:")) {
-                    return undefined;
-                }
-                // dist/ loads it from the app's node_modules at runtime, so the app must depend on it
-                // (bun's isolated installs don't expose a workspace package's dependencies to the app)
-                try {
-                    Bun.resolveSync(args.path, appDir);
-                } catch {
-                    throw new Error(`"${args.path}" (imported by ${args.importer}) is not a dependency of ${appDir}`);
-                }
-                return { path: args.path, external: true };
-            });
-        },
-    };
-}
-
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: Copyright (c) 2023 gyeongseok.seo
 // Bun port of https://github.com/gseok/vite-plugin-strip-block
@@ -78,7 +53,7 @@ const result = await Bun.build({
     target: "bun",
     format: "esm",
     sourcemap: "linked",
-    // bundle our own code (including @survev/* workspace packages), keep npm packages in node_modules
+    // everything is bundled, dist/ runs without node_modules
     minify: {
         syntax: true,
         whitespace: false,
@@ -88,7 +63,6 @@ const result = await Bun.build({
         "process.env.NODE_ENV": "'production'",
     },
     plugins: [
-        externalNpmPackagesPlugin(),
         stripBlockPlugin({
             start: "STRIP_FROM_PROD_SERVER:START",
             end: "STRIP_FROM_PROD_SERVER:END",

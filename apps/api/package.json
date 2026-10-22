@@ -8,12 +8,12 @@
     }
   },
   "scripts": {
-    "build": "bun ../../scripts/buildApp.ts src/index.ts",
+    "build": "bun ../../scripts/buildApp.ts src/index.ts src/db/migrate.ts && cp -r src/db/drizzle dist/drizzle",
     "typecheck": "bun check",
     "start": "bun dist/index.js",
     "dev": "bun --watch --no-clear-screen src/index.ts",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
-    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:migrate": "bun src/db/migrate.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
     "db:wipe": "bun src/db/wipe.ts",
     "lint": "cd ../.. && bun run lint"

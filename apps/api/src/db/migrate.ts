@@ -1,6 +1,5 @@
-// Applies the API's drizzle migrations on container start (same journal table as `bun run db:migrate`,
-// which needs drizzle-kit, a dev dependency). Bundled to apps/api/dist/migrate.js by the Dockerfile,
-// the migrations are copied to apps/api/dist/drizzle.
+// Applies the drizzle migrations, `bun run db:migrate` from source and on container start from dist
+// (the build copies src/db/drizzle to dist/drizzle, next to dist/migrate.js)
 import { Config } from "@survev/config/serverConfig.ts";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";

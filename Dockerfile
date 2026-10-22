@@ -33,11 +33,9 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 FROM deps AS build
 COPY . .
-# docker/migrate.ts is bundled next to the server and reads the migrations from dist/drizzle
-RUN cd apps/api \
-    && bun ../../scripts/buildApp.ts src/index.ts ../../docker/migrate.ts \
-    && cp -r src/db/drizzle dist/drizzle
+RUN bun run build:api
 RUN bun run build:game
+RUN bun run build:bot
 
 # The client bakes regions, proxies and some secrets from the config in at build time.
 # The config is bind-mounted (never stored in a layer), the build re-runs when it changes.
@@ -48,26 +46,9 @@ RUN --mount=type=bind,source=${SURVEV_CONFIG},target=/app/survev-config.hjson \
     --mount=type=cache,target=/app/apps/client/node_modules/.atlas-cache \
     bun run build:client
 
-# production dependencies of one app (isolated install: root node_modules/.bun + the app's links)
-FROM manifests AS api-deps
-# drizzle-kit (and its esbuild) come in as optional peers of better-auth, the bundle never loads them
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --production --filter @survev/api \
-    && rm -rf node_modules/.bun/drizzle-kit@* node_modules/.bun/esbuild@* node_modules/.bun/@esbuild+*
-
-FROM manifests AS game-deps
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --production --filter @survev/server
-
-FROM manifests AS bot-deps
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --production --filter @survev/bot
-
 # survev-config.hjson is mounted at /app/survev-config.hjson (the bundles look 3 levels up from apps/<app>/dist)
 FROM base AS api
 ENV NODE_ENV=production
-COPY --from=api-deps /app/node_modules /app/node_modules
-COPY --from=api-deps /app/apps/api/node_modules /app/apps/api/node_modules
 COPY --from=build /app/apps/api/dist /app/apps/api/dist
 WORKDIR /app/apps/api
 USER bun
@@ -76,8 +57,6 @@ CMD ["sh", "-c", "bun dist/migrate.js && exec bun dist/index.js"]
 
 FROM base AS game
 ENV NODE_ENV=production
-COPY --from=game-deps /app/node_modules /app/node_modules
-COPY --from=game-deps /app/apps/server/node_modules /app/apps/server/node_modules
 COPY --from=build /app/apps/server/dist /app/apps/server/dist
 # games that couldn't be saved to the API are kept here and retried (a volume in compose)
 RUN mkdir -p /app/apps/server/lost_game_data && chown bun:bun /app/apps/server/lost_game_data
@@ -87,18 +66,12 @@ USER bun
 EXPOSE 8001
 CMD ["bun", "dist/gameServer.js"]
 
-# runs from source; NODE_ENV stays unset so it finds the config at /app/survev-config.hjson
 FROM base AS bot
-COPY --from=bot-deps /app/node_modules /app/node_modules
-COPY --from=bot-deps /app/apps/bot/node_modules /app/apps/bot/node_modules
-COPY --from=bot-deps /app/packages /app/packages
-COPY package.json /app/
-COPY packages /app/packages
-COPY apps/bot /app/apps/bot
-COPY apps/api/package.json /app/apps/api/
+ENV NODE_ENV=production
+COPY --from=build /app/apps/bot/dist /app/apps/bot/dist
 WORKDIR /app/apps/bot
 USER bun
-CMD ["bun", "src/index.ts"]
+CMD ["bun", "dist/index.js"]
 
 FROM ${CADDY_IMAGE} AS web
 COPY docker/caddy-run.sh /usr/local/bin/caddy-run.sh
