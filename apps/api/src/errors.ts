@@ -47,7 +47,7 @@ export interface ErrorBody {
     issues?: unknown;
 }
 
-/** failures are logged where they happen (query, fetchResult), not here */
+/** failures are logged where they happen (query, fetchJson), not here */
 export function errorResponse(c: Context, error: ApiError) {
     const status = statusByTag[error._tag];
     return c.json<ErrorBody, typeof status>(
@@ -81,39 +81,22 @@ export function queryOne<T>(fn: () => Promise<T | undefined>, notFound: string) 
     );
 }
 
-/**
- * a fetch that times out and never rejects; a non 2xx status is an UpstreamError too.
- * `retries` only retries network failures / timeouts, use it for idempotent requests only
- */
-export function fetchResult(
+/** POST/GET a JSON api with a timeout; a network error, timeout, non 2xx or bad json is an UpstreamError */
+export async function fetchJson<T>(
     name: string,
-    input: string | URL,
-    init: RequestInit & { timeoutMs?: number; retries?: number } = {},
-) {
-    const { timeoutMs = 10_000, retries = 0, ...rest } = init;
+    url: string | URL,
+    { timeoutMs = 10_000, ...init }: RequestInit & { timeoutMs?: number } = {},
+): Promise<Result<T, UpstreamError>> {
     // never log the url, it can hold api keys
-    return Result.tryPromise(
-        {
-            try: () => fetch(input, { ...rest, signal: AbortSignal.timeout(timeoutMs) }),
-            catch: (cause) => new UpstreamError({ message: `${name} request failed`, cause }),
-        },
-        { retry: { times: retries, delayMs: 500, backoff: "exponential" } },
-    )
-        .then(Result.andThen((res: Response) =>
-            res.ok
-                ? Result.ok(res)
-                : Result.err(new UpstreamError({ message: `${name} responded ${res.status}` }))
-        ))
-        .then(Result.tapError((err: UpstreamError) => logger.warn(err.message, err.cause ?? "")));
-}
-
-/** read a json body, a bad body is an UpstreamError */
-export function readJson<T>(name: string, res: Response) {
-    return Result.tryPromise({
-        try: () => res.json() as Promise<T>,
-        catch: (cause) => {
-            logger.warn(`${name} sent invalid json`, cause);
-            return new UpstreamError({ message: `${name} sent invalid json`, cause });
-        },
-    });
+    try {
+        const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+        if (!res.ok) {
+            logger.warn(`${name} responded ${res.status}`);
+            return Result.err(new UpstreamError({ message: `${name} responded ${res.status}` }));
+        }
+        return Result.ok(await res.json() as T);
+    } catch (cause) {
+        logger.warn(`${name} request failed`, cause);
+        return Result.err(new UpstreamError({ message: `${name} request failed`, cause }));
+    }
 }

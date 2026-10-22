@@ -1,11 +1,10 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
-import { Result } from "better-result";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { db } from "./db/index.ts";
-import { fetchResult, readJson } from "./errors.ts";
+import { fetchJson } from "./errors.ts";
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader
@@ -18,21 +17,18 @@ export function getHonoIp(c: Context, proxyHeader?: string): string | undefined 
 }
 
 /** Ok(false): the token was rejected, Err: turnstile could not be reached */
-export function verifyTurnstile(token: string, ip: string) {
-    return fetchResult("Turnstile", "https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-        body: JSON.stringify({
-            secret: Config.secrets.TURNSTILE_SECRET_KEY,
-            response: token,
-            remoteip: ip,
-        }),
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
+export async function verifyTurnstile(token: string, ip: string) {
+    const res = await fetchJson<{ success?: boolean }>(
+        "Turnstile",
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: Config.secrets.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
+            timeoutMs: 5000,
         },
-        timeoutMs: 5000,
-    })
-        .then(Result.andThenAsync((res: Response) => readJson<{ success?: boolean }>("Turnstile", res)))
-        .then(Result.map((outcome: { success?: boolean }) => outcome.success === true));
+    );
+    return res.map((outcome) => outcome.success === true);
 }
 
 export async function getFindGamePlayerData(

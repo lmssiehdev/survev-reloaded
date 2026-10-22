@@ -8,7 +8,6 @@ import { app } from "./app.ts";
 import { cleanupOldPlayerIps } from "./bans.ts";
 import { db } from "./db/index.ts";
 import { sessions } from "./db/schema.ts";
-import { watchRegions } from "./regions.ts";
 import { teamMenu } from "./teamMenu.ts";
 
 const logger = new ServerLogger("Server");
@@ -27,7 +26,6 @@ process.on("SIGINT", () => {
     process.exit(130);
 });
 
-watchRegions();
 teamMenu.start();
 
 Bun.serve({

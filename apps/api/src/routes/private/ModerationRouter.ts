@@ -29,7 +29,7 @@ import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "../../bans
 import { db, rowCount } from "../../db/index.ts";
 import { items, matchData, userPasses, users } from "../../db/schema.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../../errors.ts";
-import { regions } from "../../regions.ts";
+import { regionFetch } from "../../regions.ts";
 import { teamMenu } from "../../teamMenu.ts";
 import { incrementPassXp } from "./passXp.ts";
 
@@ -419,16 +419,16 @@ export const ModerationRouter = new Hono()
         }
 
         return streamText(c, async (stream) => {
-            const all = Object.values(regions);
+            const regionIds = Object.keys(Config.regions);
             let requestsDone = 0;
 
-            await Promise.all(all.map(async (region) => {
-                const res = await region.fetch<SpectateGamePrivateRes>("api/spectate_game", { filter });
+            await Promise.all(regionIds.map(async (regionId) => {
+                const res = await regionFetch<SpectateGamePrivateRes>(regionId, "api/spectate_game", { filter });
                 requestsDone++;
                 await stream.writeln(JSON.stringify(
                     {
-                        region: region.id,
-                        done: requestsDone === all.length,
+                        region: regionId,
+                        done: requestsDone === regionIds.length,
                         ...res.unwrapOr({ players: [] }),
                     } satisfies ModRouterSpectateGameRes,
                 ));

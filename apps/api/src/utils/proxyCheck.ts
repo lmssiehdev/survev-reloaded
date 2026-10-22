@@ -1,7 +1,6 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { defaultLogger } from "@survev/config/utils/logger.ts";
-import { Result } from "better-result";
-import { fetchResult, readJson } from "../errors.ts";
+import { fetchJson } from "../errors.ts";
 
 type IpInfo = {
     network: {
@@ -79,8 +78,7 @@ async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
     const url = new URL(`https://proxycheck.io/v3/${ip}`);
     url.searchParams.set("key", Config.secrets.PROXYCHECK_KEY!);
 
-    const data = await fetchResult("ProxyCheck", url, { timeoutMs: 5000, retries: 2 })
-        .then(Result.andThenAsync((res: Response) => readJson<ProxyCheckRes<string>>("ProxyCheck", res)));
+    const data = await fetchJson<ProxyCheckRes<string>>("ProxyCheck", url, { timeoutMs: 5000 });
     if (data.isErr()) return undefined;
 
     const res = data.value;

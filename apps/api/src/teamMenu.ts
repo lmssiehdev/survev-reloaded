@@ -23,7 +23,7 @@ import { randomUUID } from "node:crypto";
 import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "./apiHelpers.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
 import { findIpBan, hashIp } from "./bans.ts";
-import { findGame } from "./regions.ts";
+import { findGame, isRegion } from "./regions.ts";
 import { settings } from "./settings.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
 
@@ -173,7 +173,7 @@ class Room {
 
     setProps(props: ClientRoomData) {
         let region = props.region;
-        if (!(region in Config.regions)) {
+        if (!isRegion(region)) {
             region = Object.keys(Config.regions)[0];
         }
         this.data.region = region;
@@ -237,7 +237,7 @@ class Room {
         this.sendState();
 
         let region = data.region;
-        if (!(region in Config.regions)) {
+        if (!isRegion(region)) {
             region = Object.keys(Config.regions)[0];
         }
         this.data.region = region;

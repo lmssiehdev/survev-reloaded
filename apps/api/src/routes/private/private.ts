@@ -44,7 +44,7 @@ export const PrivateRouter = new Hono()
     .post("/update_region", validateParams(zUpdateRegionBody), (c) => {
         const { regionId, data } = c.req.valid("json");
 
-        updateRegion(regionId, data);
+        updateRegion(regionId, data.playerCount);
         return c.json({}, 200);
     })
     .post("/set_game_mode", validateParams(zSetGameModeBody), (c) => {
