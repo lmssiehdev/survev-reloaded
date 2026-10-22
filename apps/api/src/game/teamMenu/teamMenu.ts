@@ -1,4 +1,5 @@
 import { getLogger } from "@survev/logger/node.ts";
+import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { type ClientRoomData, type ClientToServerTeamMsg, zTeamClientMsg } from "@survev/shared/types/team.ts";
 import { settings } from "../../admin/settings.ts";
 import { Player, type Socket } from "./player.ts";
@@ -57,7 +58,7 @@ export class TeamMenu {
             .map((_, i) => i)
             .filter((i) => {
                 const mode = settings.modes[i];
-                return mode.enabled && mode.teamMode > 1;
+                return mode.enabled && mode.teamMode != TeamMode.Solo;
             });
     }
 

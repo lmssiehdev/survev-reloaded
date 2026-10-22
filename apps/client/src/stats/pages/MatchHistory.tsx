@@ -1,24 +1,15 @@
 import { ToggleGroup } from "@kobalte/core/toggle-group";
 import type { JSX } from "@solidjs/web";
 import { createMemo, createSignal, Errored, For, Loading, onSettled, Repeat, Show } from "solid-js";
-import type { TeamMode } from "@survev/shared/gameConfig.ts";
+import { GameConfig, type TeamMode } from "@survev/shared/gameConfig.ts";
 import type { MatchData, MatchHistory } from "@survev/shared/types/stats.ts";
-import { ALL_TEAM_MODES } from "@survev/shared/types/statsFilters.ts";
+import { ALL_TEAM_MODES, TEAM_MODE_FILTERS, type TeamModeFilter } from "@survev/shared/types/statsFilters.ts";
 import { getMatchData, getMatchHistory } from "../api.ts";
 import { Spinner } from "../components/Spinner.tsx";
-import { formatTime, gameModes, teamModeNames, timeAgo } from "../format.ts";
+import { formatTime, gameModes, teamModeFilterLabel, timeAgo } from "../format.ts";
 import { type StatsKey, t } from "../i18n.ts";
 
-export type TeamModeFilter = TeamMode | typeof ALL_TEAM_MODES;
-
 export const PAGE_SIZE = 10;
-
-const filters = [
-    [ALL_TEAM_MODES, "stats-all"],
-    [1, "stats-solo"],
-    [2, "stats-duo"],
-    [4, "stats-squad"],
-] satisfies [TeamModeFilter, StatsKey][];
 
 interface MatchListProps {
     slug: string;
@@ -43,11 +34,11 @@ export function MatchHistorySection(props: MatchListProps) {
                 }}
             >
                 <div class="row m-0">
-                    <For each={filters}>
-                        {([value, label], i) => (
+                    <For each={TEAM_MODE_FILTERS}>
+                        {(value, i) => (
                             <div class={["col-3 col-md-1 p-0", { "offset-0 offset-md-8": i() === 0 }]}>
                                 <ToggleGroup.Item class="extra-team-mode-filter btn-darken" value={String(value)}>
-                                    {t(label)}
+                                    {t(teamModeFilterLabel(value))}
                                 </ToggleGroup.Item>
                             </div>
                         )}
@@ -171,7 +162,7 @@ function MatchRow(props: {
     scrollIntoView: boolean;
     onToggle: () => void;
 }) {
-    const mode = () => teamModeNames[props.game.team_mode as TeamMode];
+    const mode = () => GameConfig.TeamModeToString[props.game.team_mode as TeamMode];
     const icon = () => gameModes.find((m) => m.mapId == props.game.map_id)?.desc.icon;
 
     let el!: HTMLDivElement;
