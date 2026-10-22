@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import type { EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
@@ -52,7 +51,7 @@ export class ClientBarn {
     }
 
     addClientWithPlayer(socket: ClientSocket<Client>, joinData: JoinTokenData, joinMsg: net.JoinMsg) {
-        if (Config.rateLimitsEnabled) {
+        if (this.game.options.rateLimitsEnabled) {
             const count = this.clients.filter(
                 (c) => {
                     return c.ip === socket.ip()
@@ -158,7 +157,7 @@ export class ClientBarn {
                 msg.deserialize(stream);
                 break;
             case net.MsgType.Edit:
-                if (!Config.debug.allowEditMsg) break;
+                if (!this.game.options.debug.allowEditMsg) break;
                 msg = new net.EditMsg();
                 msg.deserialize(stream);
                 break;

@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { validateUserName } from "@survev/config/utils/badWords.ts";
 import { type GameObjectDef, type LootDef, WeaponTypeToDefs } from "@survev/shared/defs/gameObjectDefs.ts";
 import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
@@ -34,10 +33,10 @@ import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
-import { IDAllocator } from "../../utils/IDAllocator.ts";
 import { Client } from "../client.ts";
 import type { Game, JoinTokenData } from "../game.ts";
 import { Group, Team } from "../group.ts";
+import { IDAllocator } from "../IDAllocator.ts";
 import { InventoryManager } from "../inventoryManager.ts";
 import { QuestManager } from "../questManager.ts";
 import { NoOpSocket } from "../socket.ts";
@@ -114,11 +113,7 @@ export class PlayerBarn {
     playerStatusTicker = 0;
     playerStatusRate = 0;
 
-    defaultItems = util.mergeDeep<typeof GameConfig["player"]["defaultItems"]>(
-        {},
-        GameConfig.player.defaultItems,
-        Config.defaultItems,
-    );
+    defaultItems: (typeof GameConfig)["player"]["defaultItems"];
 
     bagSizes: (typeof GameConfig)["bagSizes"];
 
@@ -132,6 +127,11 @@ export class PlayerBarn {
     factionsMvp?: Player = undefined;
 
     constructor(readonly game: Game) {
+        this.defaultItems = util.mergeDeep<typeof GameConfig["player"]["defaultItems"]>(
+            {},
+            GameConfig.player.defaultItems,
+            this.game.options.defaultItems,
+        );
         this.bagSizes = util.mergeDeep<typeof GameConfig["bagSizes"]>(
             {},
             GameConfig.bagSizes,
@@ -171,7 +171,7 @@ export class PlayerBarn {
         const originalName = validateUserName(joinMsg.name).validName;
         let finalName = originalName;
 
-        if (Config.uniqueInGameNames) {
+        if (this.game.options.uniqueInGameNames) {
             let count = 0;
             const loggedOutPlayers = this.game.playerBarn.players.filter(
                 (p) => !p.client.userId,
@@ -1381,7 +1381,7 @@ export class Player extends BaseGameObject {
         this.name = name;
         this.client = client;
         this.isMobile = isMobile;
-        this.bot = Config.debug.allowBots && isBot;
+        this.bot = this.game.options.debug.allowBots && isBot;
 
         this.questManager.quests = (questIds ?? []).map((id) => ({
             id,
@@ -4389,7 +4389,7 @@ export class Player extends BaseGameObject {
     }
 
     processEditMsg(msg: net.EditMsg) {
-        if (!Config.debug.allowEditMsg) return;
+        if (!this.game.options.debug.allowEditMsg) return;
 
         if (msg.loadNewMap) {
             this.game.map.regenerate(msg.newMapSeed);

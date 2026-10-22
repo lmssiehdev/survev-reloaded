@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { type MapDef, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import type { BuildingDef } from "@survev/shared/defs/mapObjects/buildings/buildingDefs.ts";
 import type { ObstacleDef } from "@survev/shared/defs/mapObjects/obstacles/obstacleDefs.ts";
@@ -16,7 +15,6 @@ import type { River } from "@survev/shared/utils/river.ts";
 import { generateTerrain, type MapRiverData } from "@survev/shared/utils/terrainGen.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
-import { styleText } from "node:util";
 import type { Game } from "./game.ts";
 import type { Group, Team } from "./group.ts";
 import { Building } from "./objects/building.ts";
@@ -266,7 +264,7 @@ export class GameMap {
         const old = this.loggingTimes.pop();
 
         const time = `${Math.round(now - old!)}ms`.padEnd(6);
-        this.game.logger.debug(styleText(["green"], time), msg);
+        this.game.logger.debug(time, msg);
     }
 
     constructor(game: Game) {
@@ -2142,8 +2140,9 @@ export class GameMap {
     }
 
     getSpawnPos(group?: Group, team?: Team): Vec2 {
-        if (Config.debug.spawnMode === "fixed") {
-            return v2.copy(Config.debug.spawnPos ?? this.center);
+        const { debug } = this.game.options;
+        if (debug.spawnMode === "fixed") {
+            return v2.copy(debug.spawnPos ?? this.center);
         }
 
         let getPos: () => Vec2;

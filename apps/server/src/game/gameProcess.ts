@@ -9,6 +9,7 @@ import type { ServerWebSocket } from "bun";
 import { platform } from "node:os";
 import path from "node:path";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
+import { serverGameOptions } from "../utils/serverGameOptions.ts";
 import { LOST_GAME_DATA_DIR } from "../utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import type { Client } from "./client.ts";
@@ -205,7 +206,7 @@ process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
 
     if (msg.type === ProcessMsgType.Create && !game) {
-        game = new ServerGame(msg.id, msg.config);
+        game = new ServerGame(msg.id, msg.config, serverGameOptions(msg.id));
         gameWeakRef = new WeakRef(game);
     }
 

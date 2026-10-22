@@ -1,13 +1,11 @@
-import { Config } from "@survev/config/serverConfig.ts";
-import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type FindGamePrivateBody } from "@survev/contracts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Loadout } from "@survev/shared/utils/loadout.ts";
 import { math } from "@survev/shared/utils/math.ts";
-import type { ServerGameConfig } from "../utils/types.ts";
 import { ClientBarn } from "./client.ts";
 import { GameModeManager } from "./gameModeManager.ts";
+import type { GameLogger, GameOptions, ServerGameConfig } from "./gameOptions.ts";
 import { Grid } from "./grid.ts";
 import { GameMap } from "./map.ts";
 import { AirdropBarn } from "./objects/airdrop.ts";
@@ -76,10 +74,10 @@ export class Game {
     perfTicker = 0;
     tickTimes: number[] = [];
 
-    tickTimeWarnThreshold = (1000 / Config.gameTps) * 4;
+    tickTimeWarnThreshold: number;
     gameTickWarnings = 0;
 
-    netSyncWarnThreshold = (1000 / Config.netSyncTps) * 4;
+    netSyncWarnThreshold: number;
     netSyncWarnings = 0;
 
     joinTokens = new Map<string, JoinToken>();
@@ -106,16 +104,20 @@ export class Game {
     planeBarn: PlaneBarn;
     mapIndicatorBarn: MapIndicatorBarn;
 
-    logger: ServerLogger;
+    readonly options: GameOptions;
+    logger: GameLogger;
 
     // for debug
     preventStart = false;
     debugSpeedMulti = 1;
 
-    constructor(id: string, config: ServerGameConfig) {
+    constructor(id: string, config: ServerGameConfig, options: GameOptions) {
         const start = Date.now();
         this.id = id;
-        this.logger = new ServerLogger(`Game #${this.id.substring(0, 4)}`);
+        this.options = options;
+        this.logger = options.logger;
+        this.tickTimeWarnThreshold = (1000 / options.gameTps) * 4;
+        this.netSyncWarnThreshold = (1000 / options.netSyncTps) * 4;
         this.logger.info("Creating");
 
         this.config = config;
@@ -284,7 +286,7 @@ export class Game {
             }
         }
 
-        if (Config.logging.debugLogs) {
+        if (this.options.debugLogs) {
             this.tickTimes.push(tickTime);
 
             this.perfTicker += dt;
@@ -293,7 +295,9 @@ export class Game {
                 const mspt = this.tickTimes.reduce((a, b) => a + b) / this.tickTimes.length;
 
                 this.logger.debug(
-                    `Avg ms/tick: ${mspt.toFixed(2)} | Load: ${((mspt / (1000 / Config.gameTps)) * 100).toFixed(1)}%`,
+                    `Avg ms/tick: ${mspt.toFixed(2)} | Load: ${
+                        ((mspt / (1000 / this.options.gameTps)) * 100).toFixed(1)
+                    }%`,
                 );
                 this.tickTimes = [];
             }
