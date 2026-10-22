@@ -159,10 +159,10 @@ export const UserRouter = new Hono<AuthEnv>()
         await logout(c);
 
         // sessions, accounts, items and pass data cascade with the user row
-        const deleted = await query(() =>
-            db.transaction(async (tx) => {
-                await tx.delete(users).where(eq(users.id, user.id));
-                await tx.update(matchData).set({ userId: null }).where(eq(matchData.userId, user.id));
+        const deleted = await query(async () =>
+            db.transaction((tx) => {
+                tx.delete(users).where(eq(users.id, user.id)).run();
+                tx.update(matchData).set({ userId: null }).where(eq(matchData.userId, user.id)).run();
             })
         );
 

@@ -1,6 +1,7 @@
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { type LeaderboardRequest, type LeaderboardResponse, zLeaderboardsRequest } from "@survev/shared/types/stats.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { validateParams } from "../../auth/middleware.ts";
@@ -59,15 +60,18 @@ const MAX_RESULT_COUNT = LEADERBOARD_SIZE;
 const typeToQuery: Record<LeaderboardRequest["type"], string> = {
     kills: "SUM(match_data.kills)",
     most_damage_dealt: "MAX(match_data.damage_dealt)",
-    kpg: "ROUND(SUM(match_data.kills) * 1.0 / COUNT(*), 1)",
+    // not ROUND(x, 1): that rounds the double, 73 / 20 = 3.6499.. would give 3.6 instead of 3.7
+    kpg: "ROUND(SUM(match_data.kills) * 10.0 / COUNT(*)) / 10",
     most_kills: "match_data.kills",
     wins: "COUNT(CASE WHEN match_data.rank = 1 THEN 1 END)",
 };
 
-const intervalFilter = {
-    daily: gte(matchData.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchData.createdAt, sql`NOW() - INTERVAL '7 days'`),
-};
+/** games played in the last day / week, undefined for alltime */
+function intervalFilter(interval: LeaderboardRequest["interval"]) {
+    if (interval === "alltime") return undefined;
+    const days = interval === "daily" ? 1 : 7;
+    return gte(matchData.createdAt, new Date(Date.now() - util.daysToMs(days)));
+}
 
 async function soloLeaderboardQuery(params: LeaderboardRequest) {
     const { interval, mapId, teamMode, type } = params;
@@ -91,7 +95,7 @@ async function soloLeaderboardQuery(params: LeaderboardRequest) {
             and(
                 eq(matchData.teamMode, teamMode),
                 eq(users.banned, false),
-                interval === "alltime" ? undefined : intervalFilter[interval],
+                intervalFilter(interval),
                 ne(matchData.userId, ""),
                 eq(matchData.mapId, mapId),
             ),
@@ -119,24 +123,19 @@ async function multiplePlayersQuery({
 }: LeaderboardRequest): Promise<LeaderboardResponse[]> {
     const data = await db
         .select({
-            matchedUsers: sql<
-                {
-                    username: string;
-                    userId: string | null;
-                }[]
-            >`json_agg(
-                json_build_object(
+            matchedUsers: sql`json_group_array(
+                json_object(
                     'username', ${matchData.username},
                     'userId', ${matchData.userId}
                 )
-            )`,
+            )`.mapWith((json) => JSON.parse(String(json)) as { username: string; userId: string | null }[]),
             region: matchData.region,
             val: sql<number>`SUM(${matchData.kills}) as val`,
         })
         .from(matchData)
         .where(
             and(
-                interval === "alltime" ? undefined : intervalFilter[interval],
+                intervalFilter(interval),
                 eq(matchData.userBanned, false),
                 eq(matchData.teamMode, teamMode),
                 eq(matchData.mapId, mapId),

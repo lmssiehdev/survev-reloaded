@@ -4,7 +4,8 @@ import {
     type UserStatsResponse,
     zUserStatsRequest,
 } from "@survev/shared/types/stats.ts";
-import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
+import { util } from "@survev/shared/utils/util.ts";
+import { and, eq, gte, max, sql, sum } from "drizzle-orm";
 import { Hono } from "hono";
 import { validateParams } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
@@ -37,11 +38,15 @@ UserStatsRouter.post(
     },
 );
 
-const intervalFilter: Record<string, SQL<unknown>> = {
-    daily: gte(matchData.createdAt, sql`NOW() - INTERVAL '1 day'`),
-    weekly: gte(matchData.createdAt, sql`NOW() - INTERVAL '7 days'`),
-};
+/** games played in the last day / week, undefined for alltime */
+function intervalFilter(interval: UserStatsRequest["interval"]) {
+    if (interval !== "daily" && interval !== "weekly") return undefined;
+    const days = interval === "daily" ? 1 : 7;
+    return gte(matchData.createdAt, new Date(Date.now() - util.daysToMs(days)));
+}
 
+// one decimal rounding is ROUND(x * 10) / 10, not ROUND(x, 1): that rounds the double,
+// 73 / 20 = 3.6499.. would give 3.6 where postgres' exact numeric gave 3.7
 async function userStatsSqlQuery(
     userId: string,
     mapIdFilter: string,
@@ -56,13 +61,13 @@ async function userStatsSqlQuery(
                     "wins",
                 ),
                 kills: sum(matchData.kills).as("kills"),
-                winPct: sql`ROUND(SUM(CASE WHEN ${matchData.rank} = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)`
+                winPct: sql`ROUND(SUM(CASE WHEN ${matchData.rank} = 1 THEN 1 ELSE 0 END) * 1000.0 / COUNT(*)) / 10`
                     .as(
                         "winpct",
                     ),
                 most_kills: max(matchData.kills).as("most_kills"),
                 most_damage: max(matchData.damageDealt).as("most_damage"),
-                kpg: sql`ROUND(SUM(${matchData.kills}) * 1.0 / COUNT(*), 1)`.as(
+                kpg: sql`ROUND(SUM(${matchData.kills}) * 10.0 / COUNT(*)) / 10`.as(
                     "kpg",
                 ),
                 avg_damage: sql`ROUND(AVG(${matchData.damageDealt}))`.as(
@@ -79,7 +84,7 @@ async function userStatsSqlQuery(
                     mapIdFilter !== ALL_MAPS
                         ? eq(matchData.mapId, parseInt(mapIdFilter))
                         : undefined,
-                    interval in intervalFilter ? intervalFilter[interval] : undefined,
+                    intervalFilter(interval),
                 ),
             )
             .groupBy(matchData.teamMode),
@@ -91,15 +96,15 @@ async function userStatsSqlQuery(
             slug: users.slug,
             username: users.username,
             banned: users.banned,
-            player_icon: sql`JSON_EXTRACT_PATH(ANY_VALUE(${users.loadout}), 'player_icon')`,
+            player_icon: sql`json_extract(${users.loadout}, '$.player_icon')`,
             games: sql`COALESCE(SUM("mode_stats".games), 0)`,
             wins: sql`COALESCE(SUM("mode_stats".wins), 0)`,
             kills: sql`COALESCE(SUM("mode_stats".kills), 0)`,
-            kpg: sql`COALESCE(ROUND(SUM("mode_stats".kills) * 1.0 / NULLIF(SUM("mode_stats".games), 0), 1), 0)`,
+            kpg: sql`COALESCE(ROUND(SUM("mode_stats".kills) * 10.0 / NULLIF(SUM("mode_stats".games), 0)) / 10, 0)`,
             modes: sql`
-        COALESCE(JSON_AGG(
+        json_group_array(
             CASE WHEN "mode_stats".team_mode IS NOT NULL THEN
-                JSON_BUILD_OBJECT(
+                json_object(
                     'wins', "mode_stats".wins,
                     'kills', "mode_stats".kills,
                     'teamMode', "mode_stats".team_mode,
@@ -112,7 +117,7 @@ async function userStatsSqlQuery(
                     'games', "mode_stats".games
                 )
             END
-        ), '[]')`,
+        )`.mapWith((json) => JSON.parse(String(json))),
         })
         .from(users)
         .leftJoin(withSelect, eq(sql`1`, 1))

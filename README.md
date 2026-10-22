@@ -33,21 +33,13 @@ The repo is a Bun workspace:
 Apps may import packages, but not each other (except the type-only `@survev/api/types`).
 
 ### Database and accounts
-Accounts are optional, they require a PostgreSQL database, to disable them add `database: { enabled: false }` to `survev-config.hjson`.
+Accounts are optional, they are stored in a SQLite database (Bun's built-in `bun:sqlite`, nothing to install).
+To disable them add `database: { enabled: false }` to `survev-config.hjson`.
 
-After installing [PostgreSQL](https://www.postgresql.org), start the service and create a database:
+The database is a single file, `data/survev.db` next to `survev-config.hjson` by default
+(change it with `database: { file: "path/to/file.db" }`). Create it and apply the schema with:
 ```sh
-sudo -u postgres initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
-
-systemctl enable --now postgresql.service
-
-sudo -u postgres createuser survev
-sudo -u postgres createdb survev -O survev
-```
-
-Then populate the database with the schema:
-```sh
-# Run this everytime you make changes to schema.ts.
+# Run db:generate everytime you make changes to schema.ts.
 bun run db:generate
 bun run db:migrate
 
@@ -63,13 +55,10 @@ To interact with the database through an interface:
 bun run db:studio 
 ```
 
-To wipe the database and start over:
+To wipe the database (deletes the file) and start over:
 ```sh
-# Set database permissions.
-sudo -u postgres psql -c "ALTER USER survev WITH PASSWORD 'survev';"
-
-# Wipe database.
 bun run db:wipe
+bun run db:migrate
 ```
 
 **NOTE:** Do not run this in production!

@@ -4,11 +4,9 @@ import { util } from "@survev/shared/utils/util.ts";
 import { Result } from "better-result";
 import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { db } from "./db/index.ts";
+import { db, type Tx } from "./db/index.ts";
 import { type Ban, bans, matchData, playerIps, users } from "./db/schema.ts";
 import { query } from "./errors.ts";
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface BanInput {
     reason: string;
@@ -49,16 +47,20 @@ export function banInfo(ban: Ban) {
     return { reason: ban.reason, expiresAt: ban.expiresAt };
 }
 
+//
+// the helpers below run inside a (synchronous) transaction, see db/index.ts
+//
+
 /** places a ban on every target, an unrevoked older ban is revoked and kept as history */
-async function placeBans(tx: Tx, kind: Ban["kind"], targets: string[], input: BanInput) {
+function placeBans(tx: Tx, kind: Ban["kind"], targets: string[], input: BanInput) {
     if (!targets.length) return;
-    await revokeBans(tx, kind, targets, input.bannedBy);
-    await tx.insert(bans).values(targets.map((target) => ({ kind, target, ...input })));
+    revokeBans(tx, kind, targets, input.bannedBy);
+    tx.insert(bans).values(targets.map((target) => ({ kind, target, ...input }))).run();
 }
 
 /** revokes the unrevoked bans on the targets (all of that kind when undefined), returns how many */
-export async function revokeBans(tx: Tx, kind: Ban["kind"], targets: string[] | undefined, revokedBy: string) {
-    const revoked = await tx
+export function revokeBans(tx: Tx, kind: Ban["kind"], targets: string[] | undefined, revokedBy: string) {
+    const revoked = tx
         .update(bans)
         .set({ revokedAt: new Date(), revokedBy })
         .where(and(
@@ -66,7 +68,8 @@ export async function revokeBans(tx: Tx, kind: Ban["kind"], targets: string[] | 
             isNull(bans.revokedAt),
             targets && inArray(bans.target, targets),
         ))
-        .returning({ id: bans.id });
+        .returning({ id: bans.id })
+        .all();
     return revoked.length;
 }
 
@@ -74,18 +77,18 @@ export function banIps(tx: Tx, ipHashes: string[], input: BanInput) {
     return placeBans(tx, "ip", [...new Set(ipHashes)], input);
 }
 
-export async function banAccount(tx: Tx, userId: string, input: Omit<BanInput, "expiresAt">) {
-    await tx.update(users).set({ banned: true }).where(eq(users.id, userId));
+export function banAccount(tx: Tx, userId: string, input: Omit<BanInput, "expiresAt">) {
+    tx.update(users).set({ banned: true }).where(eq(users.id, userId)).run();
     // NOTE: some lb queries join with the userTable so we do
     // this so it's easier to filter them
-    await tx.update(matchData).set({ userBanned: true }).where(eq(matchData.userId, userId));
-    await placeBans(tx, "account", [userId], { ...input, expiresAt: null });
+    tx.update(matchData).set({ userBanned: true }).where(eq(matchData.userId, userId)).run();
+    placeBans(tx, "account", [userId], { ...input, expiresAt: null });
 }
 
-export async function unbanAccount(tx: Tx, userId: string, revokedBy: string) {
-    await tx.update(users).set({ banned: false }).where(eq(users.id, userId));
-    await tx.update(matchData).set({ userBanned: false }).where(eq(matchData.userId, userId));
-    await revokeBans(tx, "account", [userId], revokedBy);
+export function unbanAccount(tx: Tx, userId: string, revokedBy: string) {
+    tx.update(users).set({ banned: false }).where(eq(users.id, userId)).run();
+    tx.update(matchData).set({ userBanned: false }).where(eq(matchData.userId, userId)).run();
+    revokeBans(tx, "account", [userId], revokedBy);
 }
 
 /** a game can be saved again (lost game files), the key makes that a no-op */

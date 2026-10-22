@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import z from "zod";
 import { validateParams } from "../../auth/middleware.ts";
 import type { AuthEnv } from "../../auth/middleware.ts";
-import { db } from "../../db/index.ts";
+import { db, type Tx } from "../../db/index.ts";
 import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../../db/schema.ts";
 import { errorResponse, query, respond } from "../../errors.ts";
 import { settings } from "../../settings.ts";
@@ -18,11 +18,11 @@ import { questHelpers } from "../../utils/questHelpers.ts";
 export const questSlotIndexes = [0, 1];
 
 /** the active pass of a user with its quest slots in order */
-async function findPassWithQuests(
+function findPassWithQuests(
     tx: Pick<typeof db, "query">,
     userId: string,
-): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined> {
-    const row = await tx.query.userPasses.findFirst({
+): { pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined {
+    const row = tx.query.userPasses.findFirst({
         where: { userId, passType: Config.passType },
         with: {
             quests: {
@@ -30,7 +30,7 @@ async function findPassWithQuests(
                 orderBy: { idx: "asc" },
             },
         },
-    });
+    }).sync();
     if (!row) return undefined;
     const { quests, ...pass } = row;
     return { pass, quests };
@@ -43,7 +43,7 @@ async function getPassAndQuests(
     userId: string,
     now: number,
 ): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] }> {
-    const found = await findPassWithQuests(db, userId);
+    const found = findPassWithQuests(db, userId);
     const existingPass = found?.pass ?? null;
     const existingQuests = found?.quests ?? [];
 
@@ -69,22 +69,24 @@ async function getPassAndQuests(
     }
 
     // create them
-    return db.transaction(async (tx) => {
-        await tx
+    return db.transaction((tx) => {
+        tx
             .insert(userPasses)
             .values({ userId, passType: Config.passType })
             .onConflictDoNothing({
                 target: [userPasses.userId, userPasses.passType],
-            });
+            })
+            .run();
 
-        await tx
+        tx
             .delete(userQuests)
             .where(
                 and(
                     eq(userQuests.userId, userId),
                     inArray(userQuests.idx, questSlotIndexes),
                 ),
-            );
+            )
+            .run();
 
         const currentQuests = new Set<string>();
         const inserts = questSlotIndexes.map((slot) => {
@@ -104,9 +106,9 @@ async function getPassAndQuests(
             };
         });
 
-        await tx.insert(userQuests).values(inserts);
+        tx.insert(userQuests).values(inserts).run();
 
-        const created = await findPassWithQuests(tx, userId);
+        const created = findPassWithQuests(tx, userId);
 
         if (!created?.quests.length) {
             throw new Error("failed_to_create_user_pass_and_quests");
@@ -116,18 +118,18 @@ async function getPassAndQuests(
     });
 }
 
-async function rerollSlot(
+function rerollSlot(
     userId: string,
     idx: number,
     now: number,
     rerolled: boolean,
     loadedQuests: UserQuestTableSelect[],
-    transaction?: Parameters<Parameters<typeof db.transaction>[0]>[0],
+    transaction?: Tx,
 ) {
     const currentQuests = new Set(loadedQuests.map((quest) => quest.questType));
     const questType = getRandomQuestType(currentQuests, rerolled ? loadedQuests[idx].questType : undefined);
 
-    await (transaction ?? db)
+    (transaction ?? db)
         .update(userQuests)
         .set({
             questType,
@@ -138,7 +140,8 @@ async function rerollSlot(
             timeAcquired: now,
             nextRefreshAt: passUtil.getNextQuestRefreshAt(now),
         })
-        .where(and(eq(userQuests.userId, userId), eq(userQuests.idx, idx)));
+        .where(and(eq(userQuests.userId, userId), eq(userQuests.idx, idx)))
+        .run();
 
     return questType;
 }
@@ -165,7 +168,7 @@ export const PassRouter = new Hono<AuthEnv>()
                     (quest) => quest.nextRefreshAt - now < 0,
                 );
                 for (const quest of expiredQuests) {
-                    const newType = await rerollSlot(
+                    const newType = rerollSlot(
                         user.id,
                         quest.idx,
                         now,
@@ -232,7 +235,8 @@ export const PassRouter = new Hono<AuthEnv>()
         /**
          * Refreshing quests can have a race condition that may end up with the user getting duplicated quests
          *
-         * Fix it by putting an "update" lock on the transaction
+         * Fixed by reading and writing in one synchronous transaction: sqlite runs it to the end
+         * before any other request can touch the quests
          *
          * The race condition happens like this:
          *  - Client makes request to refresh quest IDX 0
@@ -245,9 +249,9 @@ export const PassRouter = new Hono<AuthEnv>()
         const user = c.get("user");
         const { idx } = c.req.valid("json");
 
-        const success = await query(() =>
-            db.transaction(async (transaction) => {
-                const quests = await transaction
+        const success = await query(async () =>
+            db.transaction((transaction) => {
+                const quests = transaction
                     .select()
                     .from(userQuests)
                     .where(
@@ -256,7 +260,7 @@ export const PassRouter = new Hono<AuthEnv>()
                             inArray(userQuests.idx, questSlotIndexes),
                         ),
                     )
-                    .for("update");
+                    .all();
 
                 const quest = quests.find((entry) => entry.idx === idx);
 
@@ -275,7 +279,7 @@ export const PassRouter = new Hono<AuthEnv>()
                 if (!refreshEnabled) {
                     return false;
                 }
-                await rerollSlot(user.id, idx, now, !expired && !badMap, quests, transaction);
+                rerollSlot(user.id, idx, now, !expired && !badMap, quests, transaction);
                 return true;
             })
         );

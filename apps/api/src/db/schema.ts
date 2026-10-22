@@ -1,47 +1,40 @@
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { ItemStatus, type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import { sql } from "drizzle-orm";
-import {
-    bigint,
-    boolean,
-    customType,
-    index,
-    integer,
-    json,
-    pgEnum,
-    pgTable,
-    primaryKey,
-    serial,
-    text,
-    timestamp,
-    uniqueIndex,
-    uuid,
-} from "drizzle-orm/pg-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+/** dates are stored as unix milliseconds */
+function timestamp(name: string) {
+    return integer(name, { mode: "timestamp_ms" });
+}
+
+/** the current time in unix milliseconds, as a column default */
+const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
 //
 // AUTH (shape owned by better-auth, see auth/auth.ts)
 //
-export const users = pgTable("users", {
+export const users = sqliteTable("users", {
     id: text("id").notNull().primaryKey(),
     // better-auth core fields
     email: text("email").notNull().unique(),
-    emailVerified: boolean("email_verified").notNull().default(false),
+    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
     image: text("image"),
-    userCreated: timestamp("user_created", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+    userCreated: timestamp("user_created").notNull().default(now),
+    updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
     // game fields
     slug: text("slug").notNull().unique(),
-    banned: boolean("banned").notNull().default(false),
+    banned: integer("banned", { mode: "boolean" }).notNull().default(false),
     username: text("username").notNull().default(""),
-    usernameSet: boolean("username_set").notNull().default(false),
+    usernameSet: integer("username_set", { mode: "boolean" }).notNull().default(false),
     lastUsernameChangeTime: timestamp("last_username_change_time"),
-    loadout: json("loadout")
+    loadout: text("loadout", { mode: "json" })
         .notNull()
         .default(loadout.validate({} as Loadout))
         .$type<Loadout>(),
 });
 
-export const sessions = pgTable(
+export const sessions = sqliteTable(
     "session",
     {
         id: text("id").primaryKey(),
@@ -49,17 +42,17 @@ export const sessions = pgTable(
         userId: text("user_id")
             .notNull()
             .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
-        expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+        expiresAt: timestamp("expires_at").notNull(),
         ipAddress: text("ip_address"),
         userAgent: text("user_agent"),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+        createdAt: timestamp("created_at").notNull().default(now),
+        updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
     },
     (table) => [index("session_user_id_idx").on(table.userId), index("session_expires_at_idx").on(table.expiresAt)],
 );
 
 /** one row per linked login provider (discord / google) */
-export const accounts = pgTable(
+export const accounts = sqliteTable(
     "account",
     {
         id: text("id").primaryKey(),
@@ -71,12 +64,12 @@ export const accounts = pgTable(
         accessToken: text("access_token"),
         refreshToken: text("refresh_token"),
         idToken: text("id_token"),
-        accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
-        refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+        accessTokenExpiresAt: timestamp("access_token_expires_at"),
+        refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
         scope: text("scope"),
         password: text("password"),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+        createdAt: timestamp("created_at").notNull().default(now),
+        updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
     },
     (table) => [
         uniqueIndex("account_provider_account_idx").on(table.providerId, table.accountId),
@@ -84,19 +77,19 @@ export const accounts = pgTable(
     ],
 );
 
-export const verifications = pgTable("verification", {
+export const verifications = sqliteTable("verification", {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().default(now),
+    updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
 });
 
 export type UsersTableInsert = typeof users.$inferInsert;
 export type UsersTableSelect = typeof users.$inferSelect;
 
-export const items = pgTable(
+export const items = sqliteTable(
     "items",
     {
         userId: text("user_id")
@@ -106,7 +99,7 @@ export const items = pgTable(
                 onUpdate: "cascade",
             }),
         type: text("type").notNull(),
-        timeAcquired: bigint("time_acquired", { mode: "number" }).notNull(),
+        timeAcquired: integer("time_acquired").notNull(),
         source: text("source").notNull().default("unlock_new_account"),
         status: integer("status").notNull().default(ItemStatus.New),
     },
@@ -115,7 +108,7 @@ export const items = pgTable(
 /** the item fields the client gets */
 export const itemColumns = { type: true, timeAcquired: true, source: true, status: true } as const;
 
-export const userPasses = pgTable(
+export const userPasses = sqliteTable(
     "user_pass",
     {
         userId: text("user_id")
@@ -126,20 +119,20 @@ export const userPasses = pgTable(
             }),
         passType: text("pass_type").notNull().default("pass_survivr1"),
         totalXp: integer("total_xp").notNull().default(0),
-        unlocks: json("unlocks").notNull().default({}).$type<Record<string, boolean>>(),
-        newItems: boolean("new_items").notNull().default(false),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-        updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+        unlocks: text("unlocks", { mode: "json" }).notNull().default({}).$type<Record<string, boolean>>(),
+        newItems: integer("new_items", { mode: "boolean" }).notNull().default(false),
+        createdAt: timestamp("created_at").notNull().default(now),
+        updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
     },
     (table) => [uniqueIndex("user_pass_user_type").on(table.userId, table.passType)],
 );
 
 export type UserPassTableSelect = typeof userPasses.$inferSelect;
 
-export const userQuests = pgTable(
+export const userQuests = sqliteTable(
     "user_quest",
     {
-        id: serial("id").primaryKey(),
+        id: integer("id").primaryKey({ autoIncrement: true }),
         userId: text("user_id")
             .notNull()
             .references(() => users.id, {
@@ -150,26 +143,26 @@ export const userQuests = pgTable(
         questType: text("quest_type").notNull(),
         progress: integer("progress").notNull().default(0),
         target: integer("target").notNull(),
-        complete: boolean("complete").notNull().default(false),
-        rerolled: boolean("rerolled").notNull().default(false),
-        timeAcquired: bigint("time_acquired", { mode: "number" }).notNull(),
-        nextRefreshAt: bigint("next_refresh_at", { mode: "number" }).notNull(),
+        complete: integer("complete", { mode: "boolean" }).notNull().default(false),
+        rerolled: integer("rerolled", { mode: "boolean" }).notNull().default(false),
+        timeAcquired: integer("time_acquired").notNull(),
+        nextRefreshAt: integer("next_refresh_at").notNull(),
     },
     (table) => [uniqueIndex("user_quest_user_idx").on(table.userId, table.idx)],
 );
 
 export type UserQuestTableSelect = typeof userQuests.$inferSelect;
 
-export const matchData = pgTable(
+export const matchData = sqliteTable(
     "match_data",
     {
         userId: text("user_id").default(""),
-        userBanned: boolean("user_banned").default(false),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        userBanned: integer("user_banned", { mode: "boolean" }).default(false),
+        createdAt: timestamp("created_at").notNull().default(now),
         region: text("region").notNull(),
         mapId: integer("map_id").notNull(),
-        gameId: uuid("game_id").notNull(),
-        mapSeed: bigint("map_seed", { mode: "number" }).notNull(),
+        gameId: text("game_id").notNull(),
+        mapSeed: integer("map_seed").notNull(),
         username: text("username").notNull(),
         playerId: integer("player_id").notNull(),
         teamMode: integer("team_mode").$type<TeamMode>().notNull(),
@@ -178,13 +171,13 @@ export const matchData = pgTable(
         teamId: integer("team_id").notNull(),
         timeAlive: integer("time_alive").notNull(),
         rank: integer("rank").notNull(),
-        died: boolean("died").notNull(),
+        died: integer("died", { mode: "boolean" }).notNull(),
         kills: integer("kills").notNull(),
         teamKills: integer("team_kills").notNull().default(0),
         damageDealt: integer("damage_dealt").notNull(),
         damageTaken: integer("damage_taken").notNull(),
         killerId: integer("killer_id").notNull(),
-        killedIds: integer("killed_ids").array().notNull(),
+        killedIds: text("killed_ids", { mode: "json" }).$type<number[]>().notNull(),
         role: text("role").notNull().default(""),
     },
     (table) => [
@@ -222,12 +215,12 @@ export type MatchDataTable = typeof matchData.$inferInsert;
  * self-contained (no FK, own username / user id): moderation evidence survives
  * delete_game, renames and stat resets. raw IPs are kept, mods only ever see the hashes
  */
-export const playerIps = pgTable(
+export const playerIps = sqliteTable(
     "player_ips",
     {
-        gameId: uuid("game_id").notNull(),
+        gameId: text("game_id").notNull(),
         playerId: integer("player_id").notNull(),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at").notNull().default(now),
         userId: text("user_id"),
         username: text("username").notNull(),
         region: text("region").notNull(),
@@ -251,26 +244,24 @@ export const playerIps = pgTable(
     ],
 );
 
-export const banKind = pgEnum("ban_kind", ["ip", "account"]);
-
 /**
  * every ban ever placed. a ban is active while it's not revoked and not expired,
  * at most one unrevoked ban per target. users.banned mirrors the active account ban
  * (read on every request through the session)
  */
-export const bans = pgTable(
+export const bans = sqliteTable(
     "bans",
     {
-        id: serial("id").primaryKey(),
-        kind: banKind("kind").notNull(),
+        id: integer("id").primaryKey({ autoIncrement: true }),
+        kind: text("kind", { enum: ["ip", "account"] }).notNull(),
         /** ip: the ip hash, account: the user id */
         target: text("target").notNull(),
         reason: text("reason").notNull(),
         bannedBy: text("banned_by").notNull(),
-        createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+        createdAt: timestamp("created_at").notNull().default(now),
         /** null: permanent */
-        expiresAt: timestamp("expires_at", { withTimezone: true }),
-        revokedAt: timestamp("revoked_at", { withTimezone: true }),
+        expiresAt: timestamp("expires_at"),
+        revokedAt: timestamp("revoked_at"),
         revokedBy: text("revoked_by"),
     },
     (table) => [
@@ -286,18 +277,9 @@ export type Ban = typeof bans.$inferSelect;
 // SETTINGS
 //
 
-/**
- * jsonb stored as real json. drizzle's json/jsonb send a JSON string that Bun SQL encodes again,
- * so every value would land as a json string, and an upsert's `set` sends the raw value
- */
-const jsonb = customType<{ data: unknown; driverData: unknown }>({
-    dataType: () => "jsonb",
-    toDriver: (value) => sql`${JSON.stringify(value)}::text::jsonb`,
-});
-
 /** what admins changed at runtime through /private; overrides the config file defaults (see settings.ts) */
-export const serverSettings = pgTable("server_settings", {
+export const serverSettings = sqliteTable("server_settings", {
     key: text("key").primaryKey(),
-    value: jsonb("value").notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+    value: text("value", { mode: "json" }).notNull(),
+    updatedAt: timestamp("updated_at").notNull().default(now).$onUpdate(() => new Date()),
 });

@@ -5,23 +5,20 @@ import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
-import type { db } from "../../db/index.ts";
+import type { Tx } from "../../db/index.ts";
 import { items, userPasses } from "../../db/schema.ts";
 
 const logger = new ServerLogger("Pass");
 
-export async function incrementPassXp(
-    transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
-    userId: string,
-    xpGain: number,
-) {
+/** runs inside a (synchronous) transaction, see db/index.ts */
+export function incrementPassXp(transaction: Tx, userId: string, xpGain: number) {
     if (xpGain <= 0) return;
 
     const passDef = PassDefs[Config.passType];
 
-    const pass = await transaction.query.userPasses.findFirst({
+    const pass = transaction.query.userPasses.findFirst({
         where: { userId, passType: Config.passType },
-    });
+    }).sync();
 
     if (!pass) {
         logger.error(`Could not find pass for user ${userId}`);
@@ -42,7 +39,7 @@ export async function incrementPassXp(
 
     const now = Date.now();
     if (unlockedRewardItems.length > 0) {
-        const insertedRewards = await transaction
+        const insertedRewards = transaction
             .insert(items)
             .values(
                 unlockedRewardItems.map((item) => ({
@@ -55,12 +52,13 @@ export async function incrementPassXp(
             .onConflictDoNothing()
             .returning({
                 type: items.type,
-            });
+            })
+            .all();
 
         unlockedNewItems = insertedRewards.length > 0;
     }
 
-    await transaction
+    transaction
         .insert(userPasses)
         .values({
             userId,
@@ -74,5 +72,6 @@ export async function incrementPassXp(
                 totalXp: newTotalXp,
                 newItems: unlockedNewItems ? true : sql`${userPasses.newItems}`,
             },
-        });
+        })
+        .run();
 }

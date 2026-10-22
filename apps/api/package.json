@@ -12,9 +12,9 @@
     "typecheck": "bun check",
     "start": "bun dist/index.js",
     "dev": "bun --watch --no-clear-screen src/index.ts",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:generate": "bun --bun drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "bun src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "db:studio": "bun --bun drizzle-kit studio --config=drizzle.config.ts",
     "db:wipe": "bun src/db/wipe.ts",
     "lint": "cd ../.. && bun run lint"
   },
