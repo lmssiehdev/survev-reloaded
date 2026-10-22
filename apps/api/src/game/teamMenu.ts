@@ -20,12 +20,12 @@ import { Hono } from "hono";
 import { upgradeWebSocket } from "hono/bun";
 import type { WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
-import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "./apiHelpers.ts";
-import { sessionMiddleware } from "./auth/middleware.ts";
-import { findIpBan, hashIp } from "./bans.ts";
+import { settings } from "../admin/settings.ts";
+import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "../apiHelpers.ts";
+import { isBehindProxy } from "../lib/ip.ts";
+import { sessionMiddleware } from "../lib/middleware.ts";
+import { findIpBan, hashIp } from "../moderation/bans.ts";
 import { findGame, isRegion } from "./regions.ts";
-import { settings } from "./settings.ts";
-import { isBehindProxy } from "./utils/proxyCheck.ts";
 
 interface SocketData {
     rateLimit: Record<symbol, number>;

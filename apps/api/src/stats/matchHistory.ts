@@ -2,9 +2,9 @@ import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import { ALL_TEAM_MODES, type MatchHistoryResponse, zMatchHistoryRequest } from "@survev/shared/types/stats.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { Hono } from "hono";
-import { validateParams } from "../../auth/middleware.ts";
-import { db } from "../../db/index.ts";
-import { query, respond } from "../../errors.ts";
+import { db } from "../db/index.ts";
+import { query, respond } from "../lib/errors.ts";
+import { validateParams } from "../lib/middleware.ts";
 
 export const matchHistoryRouter = new Hono();
 

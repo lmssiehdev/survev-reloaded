@@ -5,12 +5,12 @@ import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import { type FindGameResponse, type SiteInfoRes, zFindGameBody } from "@survev/shared/types/api.ts";
 import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
+import { settings } from "../admin/settings.ts";
 import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "../apiHelpers.ts";
-import { rateLimitMiddleware, sessionMiddleware, validateParams } from "../auth/middleware.ts";
-import { banInfo, findIpBan } from "../bans.ts";
-import { findGame, regionPops } from "../regions.ts";
-import { settings } from "../settings.ts";
-import { isBehindProxy } from "../utils/proxyCheck.ts";
+import { isBehindProxy } from "../lib/ip.ts";
+import { rateLimitMiddleware, sessionMiddleware, validateParams } from "../lib/middleware.ts";
+import { banInfo, findIpBan } from "../moderation/bans.ts";
+import { findGame, regionPops } from "./regions.ts";
 
 // not using the middleware here to not add extra indentation... smh
 const findGameRateLimit = new HTTPRateLimit(5, 3000);

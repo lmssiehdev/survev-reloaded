@@ -3,11 +3,11 @@ import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { type LeaderboardRequest, type LeaderboardResponse, zLeaderboardsRequest } from "@survev/shared/types/stats.ts";
 import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { validateParams } from "../../auth/middleware.ts";
-import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "../../cache.ts";
-import { db } from "../../db/index.ts";
-import { matchData, users } from "../../db/schema.ts";
-import { query, respond } from "../../errors.ts";
+import { db } from "../db/index.ts";
+import { matchData, users } from "../db/schema.ts";
+import { query, respond } from "../lib/errors.ts";
+import { validateParams } from "../lib/middleware.ts";
+import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "./cache.ts";
 
 const logger = new ServerLogger("Leaderboard");
 

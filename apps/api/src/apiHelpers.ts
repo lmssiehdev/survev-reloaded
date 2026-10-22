@@ -4,7 +4,7 @@ import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { db } from "./db/index.ts";
-import { fetchJson } from "./errors.ts";
+import { fetchJson } from "./lib/errors.ts";
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader

@@ -6,8 +6,8 @@ import type { Context, Next } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { z } from "zod";
 import { getHonoIp } from "../apiHelpers.ts";
-import { errorResponse, Forbidden, InvalidParams, RateLimited, Unauthorized } from "../errors.ts";
-import { auth, type AuthSession, type AuthUser } from "./auth.ts";
+import { auth, type AuthSession, type AuthUser } from "../auth/auth.ts";
+import { errorResponse, Forbidden, InvalidParams, RateLimited, Unauthorized } from "./errors.ts";
 
 const logger = new ServerLogger("Auth");
 

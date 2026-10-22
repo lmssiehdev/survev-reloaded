@@ -7,20 +7,20 @@ import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.
 import { and, eq, inArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import z from "zod";
-import { auth } from "../../auth/auth.ts";
+import { auth } from "../auth/auth.ts";
+import { db } from "../db/index.ts";
+import { itemColumns, items, matchData, users } from "../db/schema.ts";
+import { errorResponse, query, respond } from "../lib/errors.ts";
 import {
     databaseEnabledMiddleware,
     rateLimitMiddleware,
     requireAuth,
     sessionMiddleware,
     validateParams,
-} from "../../auth/middleware.ts";
-import type { AuthEnv } from "../../auth/middleware.ts";
-import { getTimeUntilNextUsernameChange, sanitizeSlug } from "../../auth/users.ts";
-import { db } from "../../db/index.ts";
-import { itemColumns, items, matchData, users } from "../../db/schema.ts";
-import { errorResponse, query, respond } from "../../errors.ts";
-import { PassRouter } from "./PassRouter.ts";
+} from "../lib/middleware.ts";
+import type { AuthEnv } from "../lib/middleware.ts";
+import { PassRouter } from "../pass/routes.ts";
+import { getTimeUntilNextUsernameChange, sanitizeSlug } from "./users.ts";
 
 export const UserRouter = new Hono<AuthEnv>()
     .use(databaseEnabledMiddleware)

@@ -1,6 +1,6 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { defaultLogger } from "@survev/config/utils/logger.ts";
-import { fetchJson } from "../errors.ts";
+import { fetchJson } from "./errors.ts";
 
 type IpInfo = {
     network: {

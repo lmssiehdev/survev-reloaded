@@ -6,13 +6,13 @@ import { util } from "@survev/shared/utils/util.ts";
 import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import z from "zod";
-import { validateParams } from "../../auth/middleware.ts";
-import type { AuthEnv } from "../../auth/middleware.ts";
-import { db } from "../../db/index.ts";
-import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../../db/schema.ts";
-import { errorResponse, query, respond } from "../../errors.ts";
-import { settings } from "../../settings.ts";
-import { questHelpers } from "../../utils/questHelpers.ts";
+import { settings } from "../admin/settings.ts";
+import { db } from "../db/index.ts";
+import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../db/schema.ts";
+import { errorResponse, query, respond } from "../lib/errors.ts";
+import { validateParams } from "../lib/middleware.ts";
+import type { AuthEnv } from "../lib/middleware.ts";
+import { questHelpers } from "./quests.ts";
 
 // hardcoded for now
 export const questSlotIndexes = [0, 1];

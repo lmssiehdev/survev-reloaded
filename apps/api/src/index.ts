@@ -4,12 +4,12 @@ import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts"
 import { lt } from "drizzle-orm";
 import { websocket } from "hono/bun";
 import pkgJson from "../../../package.json" with { type: "json" };
+import { settings } from "./admin/settings.ts";
 import { app } from "./app.ts";
-import { cleanupOldPlayerIps } from "./bans.ts";
 import { db } from "./db/index.ts";
 import { sessions } from "./db/schema.ts";
-import { settings } from "./settings.ts";
-import { teamMenu } from "./teamMenu.ts";
+import { teamMenu } from "./game/teamMenu.ts";
+import { cleanupOldPlayerIps } from "./moderation/bans.ts";
 
 const logger = new ServerLogger("Server");
 

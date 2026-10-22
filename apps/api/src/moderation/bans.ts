@@ -4,9 +4,9 @@ import { util } from "@survev/shared/utils/util.ts";
 import { Result } from "better-result";
 import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { db } from "./db/index.ts";
-import { type Ban, bans, matchData, playerIps, users } from "./db/schema.ts";
-import { query } from "./errors.ts";
+import { db } from "../db/index.ts";
+import { type Ban, bans, matchData, playerIps, users } from "../db/schema.ts";
+import { query } from "../lib/errors.ts";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

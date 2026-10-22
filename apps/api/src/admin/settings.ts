@@ -2,9 +2,9 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import { Result } from "better-result";
-import { db } from "./db/index.ts";
-import { serverSettings } from "./db/schema.ts";
-import { type DatabaseError, InvalidParams, query } from "./errors.ts";
+import { db } from "../db/index.ts";
+import { serverSettings } from "../db/schema.ts";
+import { type DatabaseError, InvalidParams, query } from "../lib/errors.ts";
 
 const logger = new ServerLogger("Settings");
 

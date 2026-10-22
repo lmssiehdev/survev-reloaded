@@ -5,8 +5,8 @@ import { betterAuth } from "better-auth";
 import { db } from "../db/index.ts";
 import { relations } from "../db/relations.ts";
 import { accounts, sessions, users, verifications } from "../db/schema.ts";
+import { generateUsername, giveNewAccountItems } from "../user/users.ts";
 import { mockLogin } from "./mockLogin.ts";
-import { generateUsername, giveNewAccountItems } from "./users.ts";
 
 const DAY = 60 * 60 * 24;
 

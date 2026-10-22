@@ -4,7 +4,7 @@ import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { LeaderboardRequest, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { Result } from "better-result";
 import { RedisClient } from "bun";
-import type { MatchDataTable } from "./db/schema.ts";
+import type { MatchDataTable } from "../db/schema.ts";
 
 /** every key we own lives under this prefix, so clearing never touches other apps on the same redis */
 const PREFIX = "survev:";

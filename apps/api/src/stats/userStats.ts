@@ -6,10 +6,10 @@ import {
 } from "@survev/shared/types/stats.ts";
 import { and, eq, gte, max, type SQL, sql, sum } from "drizzle-orm";
 import { Hono } from "hono";
-import { validateParams } from "../../auth/middleware.ts";
-import { db } from "../../db/index.ts";
-import { matchData, users } from "../../db/schema.ts";
-import { query, respond } from "../../errors.ts";
+import { db } from "../db/index.ts";
+import { matchData, users } from "../db/schema.ts";
+import { query, respond } from "../lib/errors.ts";
+import { validateParams } from "../lib/middleware.ts";
 
 export const UserStatsRouter = new Hono();
 

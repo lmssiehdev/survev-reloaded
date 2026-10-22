@@ -2,7 +2,7 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import type { FindGamePrivateBody, FindGamePrivateRes } from "@survev/contracts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
-import { fetchJson } from "./errors.ts";
+import { fetchJson } from "../lib/errors.ts";
 
 const logger = new ServerLogger("Regions");
 

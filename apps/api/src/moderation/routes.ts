@@ -23,15 +23,15 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import { z } from "zod";
-import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
-import { sanitizeSlug } from "../../auth/users.ts";
-import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "../../bans.ts";
-import { db } from "../../db/index.ts";
-import { items, matchData, userPasses, users } from "../../db/schema.ts";
-import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../../errors.ts";
-import { regionFetch } from "../../regions.ts";
-import { teamMenu } from "../../teamMenu.ts";
-import { incrementPassXp } from "./passXp.ts";
+import { db } from "../db/index.ts";
+import { items, matchData, userPasses, users } from "../db/schema.ts";
+import { regionFetch } from "../game/regions.ts";
+import { teamMenu } from "../game/teamMenu.ts";
+import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../lib/errors.ts";
+import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
+import { incrementPassXp } from "../pass/xp.ts";
+import { sanitizeSlug } from "../user/users.ts";
+import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "./bans.ts";
 
 const NO_USER = "No user found with that slug.";
 

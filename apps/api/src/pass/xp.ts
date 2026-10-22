@@ -5,8 +5,8 @@ import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
-import type { db } from "../../db/index.ts";
-import { items, userPasses } from "../../db/schema.ts";
+import type { db } from "../db/index.ts";
+import { items, userPasses } from "../db/schema.ts";
 
 const logger = new ServerLogger("Pass");
 

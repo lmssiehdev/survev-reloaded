@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { databaseEnabledMiddleware, rateLimitMiddleware } from "../../auth/middleware.ts";
+import { databaseEnabledMiddleware, rateLimitMiddleware } from "../lib/middleware.ts";
 import { leaderboardRouter } from "./leaderboard.ts";
-import { matchDataRouter } from "./match_data.ts";
-import { matchHistoryRouter } from "./match_history.ts";
-import { UserStatsRouter } from "./user_stats.ts";
+import { matchDataRouter } from "./matchData.ts";
+import { matchHistoryRouter } from "./matchHistory.ts";
+import { UserStatsRouter } from "./userStats.ts";
 
 // one budget for all stats routes. use() is path scoped:
 // StatsRouter is mounted on /api/, a bare use() would cover every /api route

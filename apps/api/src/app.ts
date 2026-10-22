@@ -2,14 +2,14 @@ import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { PrivateRouter } from "./admin/routes.ts";
 import { auth } from "./auth/auth.ts";
-import { databaseEnabledMiddleware, rateLimitMiddleware } from "./auth/middleware.ts";
-import { type ErrorBody, errorResponse, NotFound } from "./errors.ts";
-import { GameRouter } from "./routes/GameRouter.ts";
-import { PrivateRouter } from "./routes/private/private.ts";
-import { StatsRouter } from "./routes/stats/StatsRouter.ts";
-import { UserRouter } from "./routes/user/UserRouter.ts";
-import { teamMenu } from "./teamMenu.ts";
+import { GameRouter } from "./game/routes.ts";
+import { teamMenu } from "./game/teamMenu.ts";
+import { type ErrorBody, errorResponse, NotFound } from "./lib/errors.ts";
+import { databaseEnabledMiddleware, rateLimitMiddleware } from "./lib/middleware.ts";
+import { StatsRouter } from "./stats/routes.ts";
+import { UserRouter } from "./user/routes.ts";
 
 const logger = new ServerLogger("Server");
 
