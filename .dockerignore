@@ -1,0 +1,16 @@
+# keep the build context small and secrets out of it.
+# survev-config*.hjson stays in: the client build bind-mounts it (it is never copied into an image)
+**/node_modules
+**/dist
+.git
+.github
+.idea
+.vscode
+.env
+data
+**/*.db
+**/*.db-*
+**/lost_game_data
+apps/client/atlas-builder/pngs
+docker-compose*.yml
+Caddyfile

@@ -8,6 +8,7 @@ survev-config.json
 
 # new one
 survev-config.hjson
+survev-config.*.hjson
 
 # env file
 .env

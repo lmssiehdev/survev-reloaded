@@ -1,0 +1,90 @@
+# Dev mode with hot reload: docker compose -f docker-compose.dev.yml up (see HOSTING.md)
+# The source is mounted, every service shares one network namespace so the defaults of
+# survev-config.hjson (127.0.0.1 for the API, game server, Postgres and Redis) work unchanged.
+name: survev-dev
+
+x-dev: &dev
+  image: survev-dev
+  build: { context: ., target: base }
+  working_dir: /app
+  network_mode: service:net
+  volumes:
+    - .:/app
+    - node_modules:/app/node_modules
+    - api_node_modules:/app/apps/api/node_modules
+    - bot_node_modules:/app/apps/bot/node_modules
+    - client_node_modules:/app/apps/client/node_modules
+    - server_node_modules:/app/apps/server/node_modules
+    - config_node_modules:/app/packages/config/node_modules
+    - contracts_node_modules:/app/packages/contracts/node_modules
+    - shared_node_modules:/app/packages/shared/node_modules
+
+services:
+  # owns the shared network namespace and the published ports. The game server's
+  # main port and game ports must be published unchanged, the client connects to them directly.
+  net:
+    image: survev-dev
+    build: { context: ., target: base }
+    command: ["sleep", "infinity"]
+    init: true
+    ports:
+      - "127.0.0.1:${SURVEV_DEV_VITE_PORT:-3000}:3000"
+      - "127.0.0.1:8001:8001"
+      - "127.0.0.1:9000-9063:9000-9063"
+
+  # installs node_modules into the volumes (linux binaries, separate from the host's)
+  deps:
+    <<: *dev
+    command: ["bun", "install", "--frozen-lockfile"]
+
+  postgres:
+    image: postgres:18
+    network_mode: service:net
+    environment:
+      POSTGRES_USER: survev
+      POSTGRES_PASSWORD: survev
+      POSTGRES_DB: survev
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U survev -d survev"]
+      interval: 10s
+      start_period: 30s
+      start_interval: 2s
+
+  redis:
+    image: redis:8-alpine
+    network_mode: service:net
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+  api:
+    <<: *dev
+    depends_on:
+      deps: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+    command: ["sh", "-c", "bun run db:migrate && exec bun run dev:api"]
+
+  game:
+    <<: *dev
+    depends_on:
+      deps: { condition: service_completed_successfully }
+      api: { condition: service_started }
+    command: ["bun", "run", "dev:game"]
+
+  client:
+    <<: *dev
+    depends_on:
+      deps: { condition: service_completed_successfully }
+    working_dir: /app/apps/client
+    command: ["bun", "--bun", "vite", "dev", "--host", "0.0.0.0", "--port", "3000"]
+
+volumes:
+  postgres-data:
+  node_modules:
+  api_node_modules:
+  bot_node_modules:
+  client_node_modules:
+  server_node_modules:
+  config_node_modules:
+  contracts_node_modules:
+  shared_node_modules:

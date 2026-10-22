@@ -1,0 +1,112 @@
+# Production setup, see HOSTING.md. Settings come from .env (see .env.example) and survev-config.hjson.
+name: survev
+
+x-build: &build
+  context: .
+  args:
+    SURVEV_CONFIG: ${SURVEV_CONFIG:-survev-config.hjson}
+
+x-config: &config
+  type: bind
+  source: ./${SURVEV_CONFIG:-survev-config.hjson}
+  target: /app/survev-config.hjson
+  read_only: true
+
+services:
+  web:
+    build: { <<: *build, target: web }
+    restart: unless-stopped
+    depends_on: [api, game]
+    environment:
+      SURVEV_DOMAIN: ${SURVEV_DOMAIN:?set SURVEV_DOMAIN in .env}
+      SURVEV_GAME_DOMAIN: ${SURVEV_GAME_DOMAIN:?set SURVEV_GAME_DOMAIN in .env}
+      SURVEV_GAME_PORTS: ${SURVEV_GAME_PORTS:-9000-9063}
+      SURVEV_SCHEME: ${SURVEV_SCHEME:-https}
+      SURVEV_HTTP_PORT: ${SURVEV_HTTP_PORT:-80}
+    ports:
+      - "${SURVEV_HTTP_PORT:-80}:${SURVEV_HTTP_PORT:-80}"
+      - "443:443"
+      - "443:443/udp"
+      - "${SURVEV_GAME_PORTS:-9000-9063}:${SURVEV_GAME_PORTS:-9000-9063}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        # the API reaches the game server through its public region address, keep that inside the network
+        aliases: ["${SURVEV_GAME_DOMAIN}"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+
+  api:
+    build: { <<: *build, target: api }
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - *config
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8000/api/site_info'); process.exit(r.ok ? 0 : 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
+
+  game:
+    build: { <<: *build, target: game }
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    volumes:
+      - *config
+      - lost-games:/app/apps/server/lost_game_data
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8001/health'); process.exit(r.ok ? 0 : 1)"]
+      interval: 30s
+      timeout: 5s
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-survev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-survev}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
+
+  # leaderboard/stats cache (cachingEnabled), nothing to persist
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+
+  bot:
+    profiles: [bot]
+    build: { <<: *build, target: bot }
+    restart: unless-stopped
+    depends_on: [api]
+    volumes:
+      - *config
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  lost-games:
