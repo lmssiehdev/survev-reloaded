@@ -404,10 +404,10 @@ const app = Bun.serve({
                 return;
             }
             // uWS delivered text frames as ArrayBuffers too
-            game.clientBarn.handleMsg(
-                typeof message === "string" ? textEncoder.encode(message).buffer : message,
-                data.clientSocket,
-            );
+            const buff = typeof message === "string" ? textEncoder.encode(message).buffer : message;
+            // binaryType is "arraybuffer" (see open), bun's types just don't know it
+            if (!(buff instanceof ArrayBuffer)) return;
+            game.clientBarn.handleMsg(buff, data.clientSocket);
         },
 
         close(socket) {

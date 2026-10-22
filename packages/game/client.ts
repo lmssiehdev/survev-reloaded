@@ -169,9 +169,7 @@ export class ClientBarn {
         };
     }
 
-    handleMsg(buff: ArrayBuffer | Buffer, socket: ClientSocket<Client>) {
-        if (!(buff instanceof ArrayBuffer)) return;
-
+    handleMsg(buff: ArrayBuffer, socket: ClientSocket<Client>) {
         let client = socket.getUserData();
 
         let msg: net.AbstractMsg | undefined = undefined;
@@ -285,7 +283,7 @@ export class Client {
 
     userId: string | null = null;
     ip: string;
-    // see comment on server/src/api/schema.ts
+    // see comment on apps/api/src/db/schema.ts
     // about logging find_game IP's
     findGameIp: string;
 

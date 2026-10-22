@@ -2,7 +2,7 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
 import type { SpectateTokenData } from "@survev/game/game.ts";
-import type { ServerGameConfig } from "@survev/game/gameOptions.ts";
+import type { GameMode } from "@survev/game/gameOptions.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import { util } from "@survev/shared/utils/util.ts";
@@ -57,7 +57,7 @@ export class GameProcess {
     constructor(
         manager: GameProcessManager,
         id: string,
-        config: ServerGameConfig,
+        config: GameMode,
         port: number,
     ) {
         this.manager = manager;
@@ -115,7 +115,7 @@ export class GameProcess {
         this.process.send(msg);
     }
 
-    create(id: string, config: ServerGameConfig) {
+    create(id: string, config: GameMode) {
         this.send({
             type: ProcessMsgType.Create,
             id,
@@ -217,7 +217,7 @@ export class GameProcessManager {
         }, 0);
     }
 
-    newGame(config: ServerGameConfig): GameProcess | undefined {
+    newGame(config: GameMode): GameProcess | undefined {
         let gameProc: GameProcess | undefined;
 
         for (let i = 0; i < this.processes.length; i++) {

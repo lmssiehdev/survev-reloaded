@@ -1,6 +1,5 @@
-import type { DefaultItems, GameDebugOptions } from "@survev/game/gameOptions.ts";
+import type { DefaultItems, GameDebugOptions, GameMode } from "@survev/game/gameOptions.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
-import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { ProxyDef } from "@survev/shared/types/api.ts";
 import type { DeepPartial } from "@survev/shared/utils/util.ts";
 
@@ -123,20 +122,14 @@ export interface ConfigType {
      *
      * NOTE: The client side UI currently only supports a maximum of 3 modes!
      */
-    modes: Array<{
-        /**
-         * The ID of the map this mode will be running
-         */
-        mapName: MapDefKey;
-        /**
-         * The team mode, "Solo", "Duo" or "Squad" are the only supported values
-         */
-        teamMode: TeamMode;
-        /**
-         * Enables / disables the mode, will apply a "disabled" effect to the button client-side
-         */
-        enabled: boolean;
-    }>;
+    modes: Array<
+        GameMode & {
+            /**
+             * Enables / disables the mode, will apply a "disabled" effect to the button client-side
+             */
+            enabled: boolean;
+        }
+    >;
 
     /**
      * The client theme, changes the splash screen background and for some the menu music.

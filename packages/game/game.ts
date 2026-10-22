@@ -5,7 +5,7 @@ import type { Loadout } from "@survev/shared/utils/loadout.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { ClientBarn } from "./client.ts";
 import { GameModeManager } from "./gameModeManager.ts";
-import type { GameLogger, GameOptions, ServerGameConfig } from "./gameOptions.ts";
+import type { GameLogger, GameMode, GameOptions } from "./gameOptions.ts";
 import { Grid } from "./grid.ts";
 import { GameMap } from "./map.ts";
 import { AirdropBarn } from "./objects/airdrop.ts";
@@ -66,7 +66,7 @@ export class Game {
     teamMode: TeamMode;
     mapName: MapDefKey;
     isTeamMode: boolean;
-    config: ServerGameConfig;
+    config: GameMode;
     modeManager: GameModeManager;
 
     now!: number;
@@ -111,7 +111,7 @@ export class Game {
     preventStart = false;
     debugSpeedMulti = 1;
 
-    constructor(id: string, config: ServerGameConfig, options: GameOptions) {
+    constructor(id: string, config: GameMode, options: GameOptions) {
         const start = Date.now();
         this.id = id;
         this.options = options;

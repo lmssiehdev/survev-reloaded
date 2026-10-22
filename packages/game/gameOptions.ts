@@ -3,8 +3,14 @@ import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Vec2 } from "@survev/shared/utils/v2.ts";
 
 /** what to play, picked per game by matchmaking */
-export interface ServerGameConfig {
+export interface GameMode {
+    /**
+     * The ID of the map this mode will be running
+     */
     readonly mapName: MapDefKey;
+    /**
+     * The team mode, "Solo", "Duo" or "Squad" are the only supported values
+     */
     readonly teamMode: TeamMode;
 }
 
