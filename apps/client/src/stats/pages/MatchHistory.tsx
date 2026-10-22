@@ -1,15 +1,26 @@
 import { ToggleGroup } from "@kobalte/core/toggle-group";
 import type { JSX } from "@solidjs/web";
-import { createMemo, createSignal, Errored, For, Loading, onSettled, Repeat, Show } from "solid-js";
-import { GameConfig, type TeamMode } from "@survev/shared/gameConfig.ts";
-import type { MatchData, MatchHistory } from "@survev/shared/types/stats.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
+import type { MatchData, MatchHistory, MatchHistoryParams } from "@survev/shared/types/stats.ts";
 import { ALL_TEAM_MODES, TEAM_MODE_FILTERS, type TeamModeFilter } from "@survev/shared/types/statsFilters.ts";
+import { createMemo, createSignal, Errored, For, Loading, onSettled, Repeat, Show } from "solid-js";
 import { getMatchData, getMatchHistory } from "../api.ts";
 import { Spinner } from "../components/Spinner.tsx";
 import { formatTime, gameModes, teamModeFilterLabel, timeAgo } from "../format.ts";
 import { type StatsKey, t } from "../i18n.ts";
 
-export const PAGE_SIZE = 10;
+const PAGE_SIZE = 10;
+
+function pageParams(slug: string, teamModeFilter: TeamModeFilter, index: number): MatchHistoryParams {
+    return { slug, offset: index * PAGE_SIZE, count: PAGE_SIZE, teamModeFilter };
+}
+
+/** starts fetching the first page the list will show, so it can load alongside the player's stats */
+export function preloadMatchHistory(slug: string) {
+    getMatchHistory(pageParams(slug, ALL_TEAM_MODES, 0)).catch(() => {
+        // the list fetches it again and shows the error
+    });
+}
 
 interface MatchListProps {
     slug: string;
@@ -30,7 +41,8 @@ export function MatchHistorySection(props: MatchListProps) {
                 class="container mt-3"
                 value={String(filter())}
                 onChange={(value) => {
-                    if (value) setFilter(Number(value) as TeamModeFilter);
+                    const next = TEAM_MODE_FILTERS.find((f) => String(f) === value);
+                    if (next !== undefined) setFilter(next);
                 }}
             >
                 <div class="row m-0">
@@ -54,10 +66,7 @@ export function MatchHistorySection(props: MatchListProps) {
                         </div>
                     </div>
                     <div id="match-history" class="col-12 col-md-10">
-                        {/* a new filter starts over from the first page */}
-                        <Show when={filter()} keyed>
-                            {(teamModeFilter) => <MatchList {...props} teamModeFilter={teamModeFilter} />}
-                        </Show>
+                        <MatchList {...props} teamModeFilter={filter()} />
                     </div>
                 </div>
             </div>
@@ -73,12 +82,15 @@ function Message(props: { children: JSX.Element }) {
     );
 }
 
-/** pages of matches; each page fetches itself, "More" adds one */
+/** pages of matches; each page fetches itself, "More" adds one, a new filter starts over from one */
 function MatchList(props: MatchListProps & { teamModeFilter: TeamModeFilter }) {
-    const [pageCount, setPageCount] = createSignal(1);
+    const [pageCount, setPageCount] = createSignal((): number => {
+        void props.teamModeFilter;
+        return 1;
+    });
 
     return (
-        <Loading fallback={<Spinner kind="match-history" />}>
+        <Loading fallback={<Spinner kind="match-history" />} on={props.teamModeFilter}>
             <div class="header-extra">{t("stats-match-history")}</div>
             <Repeat count={pageCount()}>
                 {(index) => {
@@ -109,12 +121,7 @@ function MatchPage(
     },
 ) {
     const games = createMemo(async () =>
-        (await getMatchHistory({
-            slug: props.slug,
-            offset: props.index * PAGE_SIZE,
-            count: PAGE_SIZE,
-            teamModeFilter: props.teamModeFilter,
-        })) ?? []
+        (await getMatchHistory(pageParams(props.slug, props.teamModeFilter, props.index))) ?? []
     );
 
     return (
@@ -124,14 +131,15 @@ function MatchPage(
                 fallback={<Message>{t("stats-no-recent-games")}</Message>}
             >
                 <div class="col-lg-12">
-                    <For each={games()}>
+                    {/* a refetch returns new objects; the guid keeps the same match on the same row */}
+                    <For each={games()} keyed={(game) => game.guid}>
                         {(game) => (
                             <MatchRow
-                                game={game}
+                                game={game()}
                                 slug={props.slug}
-                                expanded={game.guid === props.expandedId}
-                                scrollIntoView={game.guid === props.scrollToId}
-                                onToggle={() => props.onToggle(game.guid)}
+                                expanded={game().guid === props.expandedId}
+                                scrollIntoView={game().guid === props.scrollToId}
+                                onToggle={() => props.onToggle(game().guid)}
                             />
                         )}
                     </For>
@@ -162,8 +170,8 @@ function MatchRow(props: {
     scrollIntoView: boolean;
     onToggle: () => void;
 }) {
-    const mode = () => GameConfig.TeamModeToString[props.game.team_mode as TeamMode];
-    const icon = () => gameModes.find((m) => m.mapId == props.game.map_id)?.desc.icon;
+    const mode = () => GameConfig.TeamModeToString[props.game.team_mode];
+    const icon = () => gameModes.find((m) => m.mapId === props.game.map_id)?.desc.icon;
 
     let el!: HTMLDivElement;
     onSettled(() => {
@@ -248,15 +256,15 @@ function MatchRow(props: {
 }
 
 function MatchDetails(props: { gameId: string; slug: string }) {
-    const players = createMemo(async () => {
-        const data = await getMatchData({ gameId: props.gameId });
-        if (!data?.length) throw new Error("no match data");
-        return data;
-    });
+    const players = createMemo(() => getMatchData({ gameId: props.gameId }));
+    const error = () => <Message>{t("stats-error-loading")}</Message>;
     return (
-        <Errored fallback={<Message>{t("stats-error-loading")}</Message>}>
+        <Errored fallback={error()}>
             <Loading fallback={<Spinner kind="match-data" />}>
-                <MatchTable players={players()} slug={props.slug} />
+                {/* a match without players is as unusable as a failed request */}
+                <Show when={players()?.length ? players() : undefined} fallback={error()}>
+                    {(players) => <MatchTable players={players()} slug={props.slug} />}
+                </Show>
             </Loading>
         </Errored>
     );
@@ -293,18 +301,18 @@ function MatchHeaders(props: { labels: boolean }) {
 
 function MatchTable(props: { players: MatchData[]; slug: string }) {
     /** this player's player_id in the match, 0 if they're not in it */
-    const localId = () => props.players.find((p) => p.slug == props.slug)?.player_id || 0;
+    const localId = () => props.players.find((p) => p.slug === props.slug)?.player_id || 0;
     /** rank is shown on the first row of each team; teams alternate row colors */
     const rows = createMemo(() => {
         let teamId = 0;
         let teamIdx = 0;
         return props.players.map((player) => {
-            const firstOfTeam = player.team_id != teamId;
+            const firstOfTeam = player.team_id !== teamId;
             if (firstOfTeam) {
                 teamId = player.team_id;
                 teamIdx++;
             }
-            return { player, firstOfTeam, dark: teamIdx % 2 == 0 };
+            return { player, firstOfTeam, dark: teamIdx % 2 === 0 };
         });
     });
 
@@ -325,7 +333,7 @@ function MatchTable(props: { players: MatchData[]; slug: string }) {
                                     class={[
                                         "main single-player",
                                         row.dark ? "match-row-dark" : "match-row-light",
-                                        { "match-row-local": row.player.player_id == localId() },
+                                        { "match-row-local": row.player.player_id === localId() },
                                     ]}
                                 >
                                     <td
@@ -335,10 +343,10 @@ function MatchTable(props: { players: MatchData[]; slug: string }) {
                                         {row.firstOfTeam ? `#${row.player.rank}` : ""}
                                     </td>
                                     <td class="data-player-status hide-xs">
-                                        <Show when={localId() != 0 && row.player.killer_id == localId()}>
+                                        <Show when={localId() !== 0 && row.player.killer_id === localId()}>
                                             <div class="player-icon player-kill"></div>
                                         </Show>
-                                        <Show when={localId() != 0 && row.player.killed_ids?.includes(localId())}>
+                                        <Show when={localId() !== 0 && row.player.killed_ids?.includes(localId())}>
                                             <div class="player-icon player-death"></div>
                                         </Show>
                                     </td>

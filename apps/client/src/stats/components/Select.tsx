@@ -15,7 +15,10 @@ export function Select<T extends string>(props: {
             id={props.id}
             class={`${props.class} custom-select`}
             value={props.value}
-            onChange={(e) => props.onChange(e.currentTarget.value as T)}
+            onChange={(e) => {
+                const value = props.values.find((v) => v === e.currentTarget.value);
+                if (value !== undefined) props.onChange(value);
+            }}
         >
             <For each={props.values}>
                 {(value) => <option value={value}>{t(props.labels[value])}</option>}

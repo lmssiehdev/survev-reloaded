@@ -1,6 +1,6 @@
-import { For, Show } from "solid-js";
 import type { UserStatsRequest } from "@survev/shared/types/stats.ts";
 import { ALL_MAPS, STATS_INTERVALS } from "@survev/shared/types/statsFilters.ts";
+import { For, Show } from "solid-js";
 import { Select } from "../components/Select.tsx";
 import { gameModes, intervalLabels, type ModeCard, type Profile } from "../format.ts";
 import { t } from "../i18n.ts";
