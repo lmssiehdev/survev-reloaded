@@ -12,6 +12,7 @@
   "dependencies": {
     "@survev/shared": "workspace:*",
     "@taufik-nurrohman/color-picker": "1.4.2",
+    "better-auth": "^1.7.8",
     "bootstrap": "^4.6.2",
     "ejs": "^4.0.1",
     "hono": "^4.13.8",

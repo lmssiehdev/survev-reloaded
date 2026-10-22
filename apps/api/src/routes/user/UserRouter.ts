@@ -153,10 +153,6 @@ export const UserRouter = new Hono<AuthEnv>()
 
         return respond(c, saved);
     })
-    .post("/logout", async (c) => {
-        await logout(c);
-        return c.json({}, 200);
-    })
     .post("/delete", async (c) => {
         const user = c.get("user");
 
@@ -170,7 +166,8 @@ export const UserRouter = new Hono<AuthEnv>()
             })
         );
 
-        return respond(c, deleted.map(() => ({})));
+        if (deleted.isErr()) return errorResponse(c, deleted.error);
+        return c.json({}, 200);
     })
     .post(
         "/set_item_status",
@@ -189,7 +186,8 @@ export const UserRouter = new Hono<AuthEnv>()
                     .where(and(eq(items.userId, user.id), inArray(items.type, itemTypes)))
             );
 
-            return respond(c, updated.map(() => ({})));
+            if (updated.isErr()) return errorResponse(c, updated.error);
+            return c.json({}, 200);
         },
     )
     .post("/reset_stats", async (c) => {
@@ -199,7 +197,8 @@ export const UserRouter = new Hono<AuthEnv>()
             db.update(matchData).set({ userId: null }).where(eq(matchData.userId, user.id))
         );
 
-        return respond(c, reset.map(() => ({})));
+        if (reset.isErr()) return errorResponse(c, reset.error);
+        return c.json({}, 200);
     });
 
 export type UserRouterApp = typeof UserRouter;

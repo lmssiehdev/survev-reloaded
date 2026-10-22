@@ -3,6 +3,7 @@ import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { api } from "./api.ts";
+import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
 import { errorLogManager } from "./errorLogs.ts";
 import { proxy } from "./proxy.ts";
@@ -124,7 +125,7 @@ export class Account {
     logout() {
         this.config.set("profile", null);
         this.config.set("loadout", loadouts.defaultLoadout());
-        this.fetchApi("logout", {}, () => {
+        authClient.signOut().finally(() => {
             window.location.reload();
         });
     }

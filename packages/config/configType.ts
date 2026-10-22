@@ -275,17 +275,6 @@ export interface ConfigType {
         DISCORD_SECRET_ID?: string;
 
         /**
-         * Google client ID.
-         * If this and the secret ID are present the google login button will be enabled client-side.
-         */
-        GOOGLE_CLIENT_ID?: string;
-        /**
-         * Google secret ID.
-         * If this and the client ID are present the google login button will be enabled client-side.
-         */
-        GOOGLE_SECRET_ID?: string;
-
-        /**
          * Discord bot token.
          */
         DISCORD_BOT_TOKEN?: string;
@@ -380,7 +369,7 @@ export interface ConfigType {
          */
         allowEditMsg: boolean;
         /**
-         * If the "mock" test account is enabled, used for testing account features without requiring discord or google oauth2 keys
+         * If the "mock" test account is enabled, used for testing account features without requiring discord oauth2 keys
          */
         allowMockAccount: boolean;
     };

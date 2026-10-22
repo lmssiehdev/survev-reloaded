@@ -2,6 +2,7 @@ import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
 import $ from "jquery";
 import type { Account } from "../account.ts";
 import { api } from "../api.ts";
+import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { proxy } from "../proxy.ts";
@@ -61,14 +62,9 @@ function createLoginOptions(
     };
 
     // Define the available login methods
-    if (proxy.loginSupported("google")) {
-        addLoginOption("google", () => {
-            window.location.href = api.resolveUrl("/api/auth/google");
-        });
-    }
     if (proxy.loginSupported("discord")) {
         addLoginOption("discord", () => {
-            window.location.href = api.resolveUrl("/api/auth/discord");
+            signInWithDiscord();
         });
     }
 
@@ -333,7 +329,6 @@ export class ProfileUi {
         const typeText = {
             server_error: "Operation failed, please try again later.",
             facebook_account_in_use: "Failed linking Facebook account.<br/>Account already in use!",
-            google_account_in_use: "Failed linking Google account.<br/>Account already in use!",
             twitch_account_in_use: "Failed linking Twitch account.<br/>Account already in use!",
             discord_account_in_use: "Failed linking Discord account.<br/>Account already in use!",
             account_banned: `Account banned: ${data}`,

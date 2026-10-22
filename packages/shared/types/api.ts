@@ -113,7 +113,6 @@ export interface SiteInfoRes {
 
 export interface ProxyDef {
     apiUrl?: string;
-    google?: boolean;
     discord?: boolean;
     mock?: boolean;
     all?: boolean;

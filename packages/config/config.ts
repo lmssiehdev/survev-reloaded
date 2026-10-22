@@ -118,15 +118,11 @@ export function getConfig(isProduction: boolean, dir: string) {
         config.gameServer.apiServerUrl = `http://${config.apiServer.host}:${config.apiServer.port}`;
     }
 
-    const googleLogin = !!(
-        config.secrets.GOOGLE_CLIENT_ID && config.secrets.GOOGLE_SECRET_ID
-    );
     const discordLogin = !!(
         config.secrets.DISCORD_CLIENT_ID && config.secrets.DISCORD_SECRET_ID
     );
 
     config.proxies[baseUrl.hostname] = {
-        google: googleLogin,
         discord: discordLogin,
         mock: config.debug.allowMockAccount,
         ...config.proxies[baseUrl.hostname],

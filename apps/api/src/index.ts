@@ -1,11 +1,13 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
+import { lt } from "drizzle-orm";
 import { websocket } from "hono/bun";
 import pkgJson from "../../../package.json" with { type: "json" };
 import { app } from "./app.ts";
-import { deleteExpiredSessions } from "./auth/auth.ts";
 import { cleanupOldPlayerIps } from "./bans.ts";
+import { db } from "./db/index.ts";
+import { sessions } from "./db/schema.ts";
 import { watchRegions } from "./regions.ts";
 import { teamMenu } from "./teamMenu.ts";
 
@@ -42,7 +44,8 @@ Bun.serve({
 Bun.cron("0 0 * * *", async () => {
     try {
         await cleanupOldPlayerIps();
-        await deleteExpiredSessions();
+        // better-auth only drops an expired session when it is looked up again
+        await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
         logger.info("Deleted old player IPs and expired sessions");
     } catch (err) {
         logger.error("Failed to run cleanup script", err);

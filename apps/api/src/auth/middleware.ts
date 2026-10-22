@@ -30,17 +30,21 @@ export type AuthEnv = {
  * returnHeaders: getSession extends active sessions, the refreshed cookie has to reach the browser too.
  */
 export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) => {
-    const res = Config.database.enabled
-        ? await auth.api
-            .getSession({ headers: c.req.raw.headers, returnHeaders: true })
-            .catch((err) => void logger.error("Failed to load session", err))
-        : undefined;
+    c.set("user", null);
+    c.set("session", null);
+    if (!Config.database.enabled) return next();
+
+    const res = await auth.api
+        .getSession({ headers: c.req.raw.headers, returnHeaders: true })
+        .catch((err) => void logger.error("Failed to load session", err));
 
     for (const cookie of res?.headers.getSetCookie() ?? []) {
         c.header("set-cookie", cookie, { append: true });
     }
-    c.set("user", res?.response?.user ?? null);
-    c.set("session", res?.response?.session ?? null);
+    if (res?.response) {
+        c.set("user", res.response.user);
+        c.set("session", res.response.session);
+    }
     await next();
 });
 

@@ -37,7 +37,6 @@
       "devDependencies": {
         "@types/bun": "^1.4.3",
         "drizzle-kit": "1.0.0-rc.4",
-        "unique-username-generator": "^1.5.1",
       },
     },
     "apps/bot": {
@@ -59,6 +58,7 @@
       "dependencies": {
         "@survev/shared": "workspace:*",
         "@taufik-nurrohman/color-picker": "1.4.2",
+        "better-auth": "^1.7.8",
         "bootstrap": "^4.6.2",
         "ejs": "^4.0.1",
         "hono": "^4.13.8",
@@ -813,8 +813,6 @@
     "undici": ["undici@6.28.1", "", {}, "sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA=="],
 
     "undici-types": ["undici-types@6.20.0", "", {}, "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg=="],
-
-    "unique-username-generator": ["unique-username-generator@1.5.1", "", { "bin": { "usernamegen": "dist/cli.js", "usergen": "dist/cli.js", "unique-username": "dist/cli.js", "uuname": "dist/cli.js" } }, "sha512-Q0pSKPyij4L7Tm6Bo3XsWeFG9qbyWTtwb3jTN+XgGhCFdlvQn6Fj0DCfYElw0kp/Xp7Jv1Q+CL+aA8S07RMChA=="],
 
     "url": ["url@0.11.4", "", { "dependencies": { "punycode": "1.4.1", "qs": "6.15.3" } }, "sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg=="],
 

@@ -116,34 +116,7 @@ async function setupAccounts(config: PartialConfig) {
 
     config.oauthRedirectURI = redirectURI.value;
 
-    const addGoogle = await prompt<{ value: boolean }>({
-        message: "Would you like to add google login support",
-        name: "value",
-        type: "confirm",
-        initial: false,
-    });
-
     config.secrets ??= {};
-
-    if (addGoogle.value) {
-        const clientId = await prompt<{ value: string }>({
-            message: "Enter google client ID",
-            name: "value",
-            type: "text",
-            required: true,
-        });
-
-        config.secrets.GOOGLE_SECRET_ID = clientId.value;
-
-        const clientSecret = await prompt<{ value: string }>({
-            message: "Enter google secret ID",
-            name: "value",
-            type: "text",
-            required: true,
-        });
-
-        config.secrets.GOOGLE_SECRET_ID = clientSecret.value;
-    }
 
     const addDiscord = await prompt<{ value: boolean }>({
         message: "Would you like to add discord login support",
