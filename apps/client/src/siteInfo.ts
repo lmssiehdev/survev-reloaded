@@ -1,5 +1,5 @@
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
-import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import $ from "jquery";
 import { api } from "./api.ts";
@@ -94,7 +94,7 @@ export class SiteInfo {
 
                 btn.toggle(style.enabled);
             }
-            const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode > 1);
+            const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode != TeamMode.Solo);
             $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
 
             // Region pops

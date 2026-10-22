@@ -304,18 +304,6 @@ export interface ConfigType {
          * Turnstile captcha site key.
          */
         TURNSTILE_SITE_KEY?: string;
-        /**
-         * CrazyGames and GameMonetize ad IDs.
-         */
-        AD_PREFIX?: string;
-        GAMEMONETIZE_ID?: string;
-
-        /**
-         * SpellSync project ID and public token.
-         * Used for the SpellSync integration.
-         */
-        SPELLSYNC_PROJECT_ID?: string;
-        SPELLSYNC_PUBLIC_TOKEN?: string;
     };
 
     /**

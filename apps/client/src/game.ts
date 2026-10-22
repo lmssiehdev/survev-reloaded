@@ -45,7 +45,6 @@ import { ShotBarn } from "./objects/shot.ts";
 import { SmokeBarn } from "./objects/smoke.ts";
 import { Renderer } from "./renderer.ts";
 import type { ResourceManager } from "./resources.ts";
-import { SDK } from "./sdk/sdk.ts";
 import type { Localization } from "./ui/localization.ts";
 import { Touch } from "./ui/touch.ts";
 import { UiManager } from "./ui/ui.ts";
@@ -1243,7 +1242,6 @@ export class Game {
                 if (!msg.started) {
                     this.m_uiManager.setWaitingForPlayers(true);
                 }
-                this.m_uiManager.removeAds();
                 if (this.victoryMusic) {
                     this.victoryMusic.stop();
                     this.victoryMusic = null;
@@ -1259,8 +1257,6 @@ export class Game {
                         this.editor.sendMsg = true;
                     }
                 }
-
-                SDK.gamePlayStart();
                 break;
             }
             case net.MsgType.Map: {

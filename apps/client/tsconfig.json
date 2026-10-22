@@ -3,12 +3,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
-    "paths": {
-      "@/sdk.ts": ["./src/sdk/sdk-manager.ts"]
-    }
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web"
   },
   "include": [
     "./src/**/*.ts",
+    "./src/**/*.tsx",
     "./src/**/*.js",
     "./atlas-builder/**/*.ts",
     "./building-editor/**/*.ts",

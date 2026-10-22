@@ -10,21 +10,24 @@
     "lint": "cd ../.. && bun run lint"
   },
   "dependencies": {
+    "@kobalte/core": "2.0.0-alpha.3",
     "@survev/shared": "workspace:*",
+    "@solidjs/router": "2.0.0-next.39",
+    "@solidjs/web": "2.0.0-rc.15",
     "@taufik-nurrohman/color-picker": "1.4.2",
     "bootstrap": "^4.6.2",
-    "ejs": "^4.0.1",
     "hono": "^4.13.8",
     "jquery": "^3.7.1",
     "pixi.js-legacy": "^7.4.3",
-    "slugify": "^1.6.9"
+    "slugify": "^1.6.9",
+    "solid-js": "2.0.0-rc.15"
   },
   "devDependencies": {
     "@survev/api": "workspace:*",
     "@survev/config": "workspace:*",
+    "@solidjs/vite-plugin": "3.0.0-next.50",
     "@tweakpane/core": "^2.0.5",
     "@types/bun": "^1.4.3",
-    "@types/ejs": "^3.1.5",
     "@types/jquery": "^3.5.34",
     "@types/svg-parser": "^2.0.6",
     "canvas": "^3.2.3",

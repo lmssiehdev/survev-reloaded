@@ -5,7 +5,6 @@ import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
-import { SDK } from "../sdk/sdk.ts";
 
 class Range {
     constructor(
@@ -118,11 +117,7 @@ export class Particle {
         this.valueAdjust = def.ignoreValueAdjust ? 1 : valueAdjust;
         this.setColor(getColorValue(def.color!));
 
-        if (SDK.disableBloodParticles() && type == "bloodSplat") {
-            this.sprite.renderable = false;
-        } else {
-            this.sprite.renderable = true;
-        }
+        this.sprite.renderable = true;
     }
 
     free() {

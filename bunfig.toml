@@ -1,6 +1,6 @@
 [install]
-# Only install package versions published at least 7 days ago (was pnpm minimumReleaseAge: 10080 minutes)
-minimumReleaseAge = 604800
+# Only install package versions published at least 3 days ago
+minimumReleaseAge = 259200
 
 [test]
 # vitest-style shims (expect.soft, test.for, ...) and the game matchers

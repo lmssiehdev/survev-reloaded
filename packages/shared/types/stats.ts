@@ -1,24 +1,25 @@
 import { z } from "zod";
-import { MapId, TeamMode } from "../gameConfig.ts";
+import { MapId, type TeamMode } from "../gameConfig.ts";
+import {
+    ALL_MAPS,
+    LEADERBOARD_TYPES,
+    STATS_INTERVALS,
+    TEAM_MODE_BY_NAME,
+    TEAM_MODE_FILTERS,
+    TEAM_MODE_NAMES,
+} from "./statsFilters.ts";
+
+export * from "./statsFilters.ts";
 
 //
 // Match History
 //
 
-/**
- * sent by the client when to teammode filter is selected
- */
-export const ALL_TEAM_MODES = 7;
 export const zMatchHistoryRequest = z.object({
     slug: z.string(),
     offset: z.number(),
     count: z.number(),
-    teamModeFilter: z.union([
-        z.literal(TeamMode.Solo),
-        z.literal(TeamMode.Duo),
-        z.literal(TeamMode.Squad),
-        z.literal(ALL_TEAM_MODES),
-    ]),
+    teamModeFilter: z.literal(TEAM_MODE_FILTERS),
 });
 
 export type MatchHistoryParams = z.infer<typeof zMatchHistoryRequest>;
@@ -27,7 +28,7 @@ export type MatchHistory = {
     guid: string;
     region: string;
     map_id: number;
-    team_mode: number;
+    team_mode: TeamMode;
     team_count: number;
     team_total: number;
     end_time: string | Date;
@@ -69,13 +70,12 @@ export type MatchData = {
 //
 // User Stats
 //
-export const ALL_MAPS = "-1";
 const VALID_MAP_IDS = Object.values(MapId)
     .filter((id) => typeof id === "number")
     .map((id) => id.toString()) as [string, ...string[]];
 
 export const zUserStatsRequest = z.object({
-    interval: z.enum(["daily", "weekly", "alltime"]),
+    interval: z.enum(STATS_INTERVALS),
     slug: z.string().min(1),
     mapIdFilter: z.enum([ALL_MAPS, ...VALID_MAP_IDS]),
 });
@@ -110,17 +110,11 @@ export interface Mode {
 //
 // Leaderboard
 //
-const teamModeMap = {
-    solo: TeamMode.Solo,
-    duo: TeamMode.Duo,
-    squad: TeamMode.Squad,
-};
-
 export const zLeaderboardsRequest = z.object({
-    interval: z.enum(["daily", "weekly", "alltime"]),
+    interval: z.enum(STATS_INTERVALS),
     mapId: z.enum(VALID_MAP_IDS).transform((v) => Number(v)),
-    type: z.enum(["most_kills", "most_damage_dealt", "kpg", "kills", "wins"]),
-    teamMode: z.enum(["solo", "duo", "squad"]).transform((mode) => teamModeMap[mode]),
+    type: z.enum(LEADERBOARD_TYPES),
+    teamMode: z.enum(TEAM_MODE_NAMES).transform((name) => TEAM_MODE_BY_NAME[name]),
 });
 
 export type LeaderboardResponse =
@@ -148,3 +142,5 @@ export type LeaderboardResponse =
     );
 
 export type LeaderboardRequest = z.infer<typeof zLeaderboardsRequest>;
+/** what the client sends; the server maps teamMode/mapId to numbers */
+export type LeaderboardParams = z.input<typeof zLeaderboardsRequest>;

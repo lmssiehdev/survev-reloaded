@@ -1,7 +1,12 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
-import type { LeaderboardRequest, LeaderboardResponse } from "@survev/shared/types/stats.ts";
+import {
+    type LeaderboardRequest,
+    type LeaderboardResponse,
+    type LeaderboardType,
+    STATS_INTERVALS,
+} from "@survev/shared/types/stats.ts";
 import { Result } from "better-result";
 import { RedisClient } from "bun";
 import type { MatchDataTable } from "./db/schema.ts";
@@ -15,8 +20,7 @@ const SIX_MINUTES = 6 * 60;
 const ONE_DAY = 24 * 60 * 60;
 
 /** only these leaderboards hold single-game records that a new match can beat */
-const RECORD_TYPES = ["most_kills", "most_damage_dealt"] as const;
-const INTERVALS = ["daily", "weekly", "alltime"] as const;
+const RECORD_TYPES = ["most_kills", "most_damage_dealt"] as const satisfies readonly LeaderboardType[];
 
 export function leaderboardKey({ teamMode, mapId, type, interval }: LeaderboardRequest) {
     const mapName = GameConfig.MapId[mapId].toLowerCase();
@@ -72,7 +76,7 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
         const { teamMode, mapId } = matchData[0];
 
         for (const type of RECORD_TYPES) {
-            for (const interval of INTERVALS) {
+            for (const interval of STATS_INTERVALS) {
                 const key = leaderboardKey({ type, teamMode, mapId, interval });
                 const raw = await run((r) => r.get(PREFIX + key));
                 if (!raw) continue;

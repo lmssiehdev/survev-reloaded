@@ -157,6 +157,17 @@ a.nav-link-bright:hover {
     color: white;
 }
 
+/* the "Play" link, styled as an outline button */
+a.btn-play {
+    color: rgba(255, 255, 255, 0.8);
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+
+a.btn-play:hover {
+    color: white;
+}
+
 .masthead {
     padding-top: 200px;
 }
@@ -729,12 +740,16 @@ table.player-stats-overview td {
 .extra-team-mode-filter {
     background-color: white;
     border: 1px solid black;
+    color: inherit;
     cursor: pointer;
+    display: block;
     font-weight: bold;
+    padding: 0;
     text-align: center;
+    width: 100%;
 }
 
-.extra-team-mode-filter-selected {
+.extra-team-mode-filter[aria-pressed="true"] {
     background-color: orange;
 }
 
@@ -898,6 +913,9 @@ table.player-stats-overview td {
 
 .match-link-expand {
     background-color: rgba(0, 0, 0, 0.5);
+    border: none;
+    display: block;
+    padding: 0;
     background-image: url("/img/ui/expand.svg");
     background-position: center;
     background-repeat: no-repeat;
@@ -928,7 +946,7 @@ table.player-stats-overview td {
     transform: rotate(180deg);
 }
 
-#match-data {
+.match-data {
     padding: 0px;
 }
 
@@ -1083,10 +1101,14 @@ td.data-player-status {
     background-color: rgba(0, 0, 0, 0.4);
 }
 
-.js-match-load-more {
+.match-load-more {
     background-color: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(0, 0, 0, 0.75);
+    color: inherit;
     cursor: pointer;
+    display: block;
+    padding-bottom: 0;
+    padding-top: 0;
     font-size: 30px;
     height: 48px;
     margin-top: 10px;
@@ -1095,6 +1117,8 @@ td.data-player-status {
 }
 
 #selected-language {
+    background-color: transparent;
+    border: none;
     background-size: 24px;
     background-repeat: no-repeat;
     background-position: 0px 8px;
@@ -1115,6 +1139,15 @@ td.data-player-status {
 }
 
 .dropdown-item:active {
+    color: black;
+}
+
+.dropdown-language {
+    color: grey;
+    cursor: pointer;
+}
+
+.dropdown-language[data-highlighted] {
     color: black;
 }
 
@@ -1206,70 +1239,29 @@ td.data-player-status {
     transition: all 0.25s ease;
 }
 
-#ad-block-top {
-    position: relative;
-}
-@media (max-width: 991px) {
-    .ad-block-top-med-rect {
-        display: none;
-    }
-}
-
-@media (max-width: 823px) {
-    #ad-block-top {
-        margin: initial;
-        margin-left: auto;
-        margin-right: auto;
-        padding: initial;
-    }
-}
-@media (max-width: 736px) {
-    #ad-block-top {
-        margin-left: initial;
-        margin-right: initial;
-        -webkit-transform: scale(0.95);
-        transform: scale(0.95);
-        -webkit-transform-origin: left;
-        transform-origin: left;
-    }
-}
-@media (max-width: 575px) {
-    #ad-block-top {
-        -webkit-transform: scale(0.6);
-        transform: scale(0.6);
-        -webkit-transform-origin: left;
-        transform-origin: left;
-    }
+/* labels read in capitals in every language */
+.leaderboard-title,
+.leaderboard-headers th,
+#leaderboard-table td.data-region,
+.mode-name,
+.mode-games,
+.card-mode-stat-name,
+.header-extra,
+.match-headers th {
+    text-transform: uppercase;
 }
 
-.ad-block-top-leaderboard {
-    height: 90px;
-    position: relative;
-    width: 728px;
-}
-@media (max-width: 1199px) and (min-width: 824px) {
-    .ad-block-top-leaderboard {
-        -webkit-transform: scale(0.85);
-        transform: scale(0.85);
-        -webkit-transform-origin: left top;
-        transform-origin: left top;
-    }
+/* the language menu is positioned by Kobalte, not Bootstrap */
+[data-popper-positioner] > .dropdown-menu {
+    display: block;
+    position: static;
 }
 
-.ad-block-top-med-rect {
-    height: 250px;
-    position: absolute;
-    right: 16px;
-    top: 0px;
-    width: 300px;
+.navbar-dark .navbar-nav .nav-link[data-expanded] {
+    color: #ffffff;
 }
 
-.ad-block-bot-med-rect {
-    height: 250px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 24px;
-    right: 16px;
-    top: 0px;
-    width: 300px;
+/* the open menu takes focus; the highlighted item shows where it is */
+[data-popper-positioner] > .dropdown-menu:focus {
+    outline: none;
 }
