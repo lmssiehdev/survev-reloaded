@@ -27,9 +27,7 @@
     "better-auth": "^1.7.8",
     "better-result": "^3.0.1",
     "drizzle-orm": "1.0.0-rc.4",
-    "hjson": "^3.2.2",
     "hono": "^4.13.8",
-    "obscenity": "^0.4.6",
     "postgres": "^3.4.9",
     "slugify": "^1.6.9",
     "zod": "^4.6.5"

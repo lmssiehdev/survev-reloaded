@@ -4,6 +4,6 @@
   "include": ["./"],
   "exclude": ["./test"],
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["bun"]
   }
 }

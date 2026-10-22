@@ -17,6 +17,7 @@ x-dev: &dev
     - server_node_modules:/app/apps/server/node_modules
     - config_node_modules:/app/packages/config/node_modules
     - contracts_node_modules:/app/packages/contracts/node_modules
+    - game_node_modules:/app/packages/game/node_modules
     - shared_node_modules:/app/packages/shared/node_modules
 
 services:
@@ -87,4 +88,5 @@ volumes:
   server_node_modules:
   config_node_modules:
   contracts_node_modules:
+  game_node_modules:
   shared_node_modules:

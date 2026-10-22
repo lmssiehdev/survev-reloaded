@@ -1,9 +1,4 @@
-import { getConfig } from "@survev/config/config.ts";
-
-const isProd = process.env["NODE_ENV"] === "production";
-// relative to packages/config, where getConfig lives
-export const serverConfigPath = isProd ? "../../../../" : "../../";
-export const Config = getConfig(isProd, serverConfigPath);
+import { Config } from "@survev/config/serverConfig.ts";
 
 // sanitiy check
 if (
@@ -24,4 +19,4 @@ const {
     secrets: { DISCORD_CLIENT_ID, DISCORD_BOT_TOKEN },
 } = Config;
 
-export { API_URL, DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, DISCORD_ROLE_ID };
+export { API_URL, Config, DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, DISCORD_ROLE_ID };

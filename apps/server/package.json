@@ -15,10 +15,7 @@
     "@survev/contracts": "workspace:*",
     "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
-    "hjson": "^3.2.2",
     "hono": "^4.13.8",
-    "obscenity": "^0.4.6",
-    "typescript": "^6.0.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {

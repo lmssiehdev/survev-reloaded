@@ -11,8 +11,8 @@
         "hjson": "^3.2.2",
       },
       "devDependencies": {
+        "@types/bun": "^1.4.3",
         "@types/hjson": "^2.4.6",
-        "@types/node": "~22.12.0",
         "dprint": "^0.55.2",
         "typescript": "^6.0.3",
       },
@@ -28,9 +28,7 @@
         "better-auth": "^1.7.8",
         "better-result": "^3.0.1",
         "drizzle-orm": "1.0.0-rc.4",
-        "hjson": "^3.2.2",
         "hono": "^4.13.8",
-        "obscenity": "^0.4.6",
         "postgres": "^3.4.9",
         "slugify": "^1.6.9",
         "zod": "^4.6.5",
@@ -52,6 +50,7 @@
       },
       "devDependencies": {
         "@survev/api": "workspace:*",
+        "@types/bun": "^1.4.3",
       },
     },
     "apps/client": {
@@ -93,10 +92,7 @@
         "@survev/contracts": "workspace:*",
         "@survev/game": "workspace:*",
         "@survev/shared": "workspace:*",
-        "hjson": "^3.2.2",
         "hono": "^4.13.8",
-        "obscenity": "^0.4.6",
-        "typescript": "^6.0.3",
         "zod": "^4.6.5",
       },
       "devDependencies": {

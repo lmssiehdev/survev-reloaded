@@ -1,22 +1,8 @@
 {
   "$schema": "https://www.schemastore.org/tsconfig.json",
-  "extends": [
-    "./apps/bot/tsconfig.json",
-    "./apps/client/tsconfig.json",
-    "./apps/api/tsconfig.json",
-    "./apps/server/tsconfig.json",
-    "./packages/shared/tsconfig.json"
-  ],
+  "extends": "./tsconfig.base.json",
+  "include": ["setup.ts", "scripts"],
   "compilerOptions": {
-    "types": []
-  },
-  "include": [
-    "./**/*.ts",
-    "./**/*.js"
-  ],
-  "exclude": [
-    "**/node_modules/**",
-    "**/reference/**",
-    "**/dist/**"
-  ]
+    "types": ["bun"]
+  }
 }

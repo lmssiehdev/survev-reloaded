@@ -24,7 +24,7 @@
     "start:game": "bun run --filter @survev/server start",
     "start:bot": "bun run --filter @survev/bot start",
     "stressTest": "bun run --filter @survev/server stressTest",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun check && bun run --filter '*' typecheck",
     "test": "bun test",
     "db:generate": "bun run --filter @survev/api db:generate",
     "db:migrate": "bun run --filter @survev/api db:migrate",
@@ -39,8 +39,8 @@
   "author": "Leia",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
+    "@types/bun": "^1.4.3",
     "@types/hjson": "^2.4.6",
-    "@types/node": "~22.12.0",
     "dprint": "^0.55.2",
     "typescript": "^6.0.3"
   },
@@ -56,7 +56,6 @@
     "canvas",
     "dprint",
     "esbuild",
-    "sharp",
-    "workerd"
+    "sharp"
   ]
 }
