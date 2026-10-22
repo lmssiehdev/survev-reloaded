@@ -6,12 +6,12 @@ import { util } from "@survev/shared/utils/util.ts";
 import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import z from "zod";
-import { server } from "../../apiServer.ts";
 import { validateParams } from "../../auth/middleware.ts";
 import type { AuthEnv } from "../../auth/middleware.ts";
 import { db } from "../../db/index.ts";
 import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../../db/schema.ts";
 import { errorResponse, query, respond } from "../../errors.ts";
+import { settings } from "../../settings.ts";
 import { questHelpers } from "../../utils/questHelpers.ts";
 
 // hardcoded for now
@@ -55,7 +55,7 @@ async function getPassAndQuests(
             if (!quest.rerolled || quest.complete) continue;
             // reset rerolled state if we have an incompatible map
             const questDef = QuestDefs[quest.questType];
-            const serverMaps = server.modes.filter(m => m.enabled).map(m => m.mapName);
+            const serverMaps = settings.modes.filter(m => m.enabled).map(m => m.mapName);
             const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
             if (badMap) {
                 quest.rerolled = false;
@@ -268,7 +268,7 @@ export const PassRouter = new Hono<AuthEnv>()
                 const expired = quest.nextRefreshAt - now < 0;
 
                 const questDef = QuestDefs[quest.questType];
-                const serverMaps = server.modes.filter(m => m.enabled).map(m => m.mapName);
+                const serverMaps = settings.modes.filter(m => m.enabled).map(m => m.mapName);
                 const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
 
                 const refreshEnabled = (!quest.rerolled && !quest.complete) || expired || badMap;
@@ -299,7 +299,7 @@ const questTypes = Object.keys(QuestDefs);
 const defaultQuestType = questTypes[0] || "quest_kills";
 
 function getRandomQuestType(currentQuests: Set<string>, rerollingId?: string) {
-    const available = questHelpers.getAvailableQuestsForModes(server.modes, currentQuests, rerollingId);
+    const available = questHelpers.getAvailableQuestsForModes(settings.modes, currentQuests, rerollingId);
 
     const source = available.length > 0 ? available : questTypes;
     return util.randomItem(source) ?? defaultQuestType;

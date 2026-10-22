@@ -16,13 +16,15 @@ import {
     zTeamClientMsg,
 } from "@survev/shared/types/team.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
-import type { Hono } from "hono";
-import type { UpgradeWebSocket, WSContext } from "hono/ws";
+import { Hono } from "hono";
+import { upgradeWebSocket } from "hono/bun";
+import type { WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "./apiHelpers.ts";
-import type { ApiServer } from "./apiServer.ts";
 import { sessionMiddleware } from "./auth/middleware.ts";
 import { findIpBan, hashIp } from "./bans.ts";
+import { findGame } from "./regions.ts";
+import { settings } from "./settings.ts";
 import { isBehindProxy } from "./utils/proxyCheck.ts";
 
 interface SocketData {
@@ -116,7 +118,7 @@ class Room {
     ) {
         this.data.roomUrl = `#${id}`;
         this.data.enabledGameModeIdxs = teamMenu.allowedGameModeIdxs();
-        this.data.captchaEnabled = teamMenu.server.captchaEnabled;
+        this.data.captchaEnabled = settings.captchaEnabled;
 
         this.setProps(initialData);
     }
@@ -178,7 +180,7 @@ class Room {
 
         let gameModeIdx = props.gameModeIdx;
 
-        const modes = this.teamMenu.server.modes;
+        const modes = settings.modes;
 
         if (!this.data.enabledGameModeIdxs.includes(gameModeIdx)) {
             // we don't allow creating teams if there's no valid team mode
@@ -254,7 +256,7 @@ class Room {
             }),
         );
 
-        const mode = this.teamMenu.server.modes[this.data.gameModeIdx];
+        const mode = settings.modes[this.data.gameModeIdx];
         if (!mode || !mode.enabled) {
             return;
         }
@@ -274,7 +276,7 @@ class Room {
             }
         }
 
-        const res = await this.teamMenu.server.findGame({
+        const res = await findGame({
             mapName: mode.mapName,
             teamMode: mode.teamMode,
             autoFill: this.data.autoFill,
@@ -324,7 +326,7 @@ class Room {
     sendState() {
         const players = this.players.map((p) => p.data);
         // all players must be logged in to disable it
-        this.data.captchaEnabled = this.teamMenu.server.captchaEnabled && !this.players.every((p) => !!p.userId);
+        this.data.captchaEnabled = settings.captchaEnabled && !this.players.every((p) => !!p.userId);
         for (const player of this.players) {
             player.send("state", {
                 localPlayerId: player.playerId,
@@ -353,7 +355,8 @@ export class TeamMenu {
 
     playersByIp = new Map<string, Set<Player>>();
 
-    constructor(public server: ApiServer) {
+    /** sweeps empty rooms, finished find_game cooldowns and silent players */
+    start() {
         setInterval(() => {
             for (const room of this.rooms.values()) {
                 // just making sure ig
@@ -379,21 +382,23 @@ export class TeamMenu {
     }
 
     allowedGameModeIdxs() {
-        return this.server.modes
+        return settings.modes
             .map((_, i) => i)
             .filter((i) => {
-                const mode = this.server.modes[i];
+                const mode = settings.modes[i];
                 return mode.enabled && mode.teamMode > 1;
             });
     }
 
-    init(app: Hono, upgradeWebSocket: UpgradeWebSocket) {
+    readonly router = this.createRouter();
+
+    private createRouter() {
         const teamMenu = this;
 
         const httpRateLimit = new HTTPRateLimit(5, 2000);
         const wsRateLimit = new WebSocketRateLimit(50, 1000, 5);
 
-        app.get(
+        return new Hono().get(
             "/team_v2",
             sessionMiddleware,
             upgradeWebSocket(async (c) => {
@@ -609,3 +614,5 @@ export class TeamMenu {
         this.playersByIp.delete(encodedIp);
     }
 }
+
+export const teamMenu = new TeamMenu();

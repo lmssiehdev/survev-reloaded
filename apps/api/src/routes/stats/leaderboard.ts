@@ -1,13 +1,15 @@
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { type LeaderboardRequest, type LeaderboardResponse, zLeaderboardsRequest } from "@survev/shared/types/stats.ts";
 import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { server } from "../../apiServer.ts";
 import { validateParams } from "../../auth/middleware.ts";
 import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { matchData, users } from "../../db/schema.ts";
 import { query, respond } from "../../errors.ts";
+
+const logger = new ServerLogger("Leaderboard");
 
 export const leaderboardRouter = new Hono();
 
@@ -194,7 +196,7 @@ function logQueryPerformance(startTime: number, params: LeaderboardRequest) {
     const timeString = executionTime > 1000
         ? `${(executionTime / 1000).toFixed(2)}s`
         : `${executionTime.toFixed(2)}ms`;
-    server.logger[executionTime > 1000 ? "warn" : "debug"](
+    logger[executionTime > 1000 ? "warn" : "debug"](
         `leaderboard | Execution time: ${timeString} | ${leaderboardKey(params)}`,
     );
 }

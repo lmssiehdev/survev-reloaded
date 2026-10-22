@@ -1,5 +1,4 @@
-import { saveConfig } from "@survev/config/config.ts";
-import { serverConfigPath } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import {
     type SaveGameBody,
     zSaveGameMatchData,
@@ -16,7 +15,6 @@ import { Result } from "better-result";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import { server } from "../../apiServer.ts";
 import { MOCK_USER_ID } from "../../auth/auth.ts";
 import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../../auth/middleware.ts";
 import { banInfo, findIpBan, logPlayerIps } from "../../bans.ts";
@@ -24,9 +22,13 @@ import { cache } from "../../cache.ts";
 import { db } from "../../db/index.ts";
 import { items, matchData, type MatchDataTable, userQuests } from "../../db/schema.ts";
 import { Conflict, errorResponse, InvalidParams, query, queryOne, respond } from "../../errors.ts";
+import { updateRegion } from "../../regions.ts";
+import { settings } from "../../settings.ts";
 import { isBehindProxy } from "../../utils/proxyCheck.ts";
 import { ModerationRouter } from "./ModerationRouter.ts";
 import { incrementPassXp } from "./passXp.ts";
+
+const logger = new ServerLogger("Private");
 
 // @survev/contracts can't depend on the drizzle schema, so check here that the game's
 // save_game payload still fits the match_data insert type
@@ -42,7 +44,7 @@ export const PrivateRouter = new Hono()
     .post("/update_region", validateParams(zUpdateRegionBody), (c) => {
         const { regionId, data } = c.req.valid("json");
 
-        server.updateRegion(regionId, data);
+        updateRegion(regionId, data);
         return c.json({}, 200);
     })
     .post("/set_game_mode", validateParams(zSetGameModeBody), (c) => {
@@ -57,22 +59,12 @@ export const PrivateRouter = new Hono()
             return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
-        if (!server.modes[index]) {
+        if (!settings.setMode(index, { mapName: mapName as MapDefKey | undefined, teamMode, enabled })) {
             return errorResponse(c, new InvalidParams({ message: "Invalid mode index" }));
         }
 
-        server.modes[index] = {
-            mapName: (mapName ?? server.modes[index].mapName) as MapDefKey,
-            teamMode: teamMode ?? server.modes[index].teamMode,
-            enabled: enabled ?? server.modes[index].enabled,
-        };
-
-        saveConfig(serverConfigPath, {
-            modes: server.modes,
-        });
-
         return c.json(
-            { message: `Set mode ${index} to ${JSON.stringify(server.modes[index])}` },
+            { message: `Set mode ${index} to ${JSON.stringify(settings.modes[index])}` },
             200,
         );
     })
@@ -83,11 +75,7 @@ export const PrivateRouter = new Hono()
             return errorResponse(c, new InvalidParams({ message: "Invalid map name" }));
         }
 
-        server.clientTheme = theme as MapDefKey;
-
-        saveConfig(serverConfigPath, {
-            clientTheme: server.clientTheme,
-        });
+        settings.setClientTheme(theme as MapDefKey);
 
         return c.json({ message: `Set client theme to ${theme}` }, 200);
     })
@@ -101,11 +89,7 @@ export const PrivateRouter = new Hono()
         (c) => {
             const { enabled } = c.req.valid("json");
 
-            server.captchaEnabled = enabled;
-
-            saveConfig(serverConfigPath, {
-                captchaEnabled: enabled,
-            });
+            settings.setCaptchaEnabled(enabled);
 
             return c.json({ state: enabled, message: `Captcha ${enabled ? "enabled" : "disabled"}` }, 200);
         },
@@ -123,7 +107,7 @@ export const PrivateRouter = new Hono()
 
             await logPlayerIps(rows);
             await cache.invalidateLeaderboards(rows);
-            server.logger.info(`Saved game data for ${rows[0].gameId}`);
+            logger.info(`Saved game data for ${rows[0].gameId}`);
             return c.json({ message: `Saved ${rows.length} rows` }, 200);
         },
     )

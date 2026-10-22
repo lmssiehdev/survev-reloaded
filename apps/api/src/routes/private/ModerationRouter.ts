@@ -23,13 +23,14 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import { z } from "zod";
-import { server } from "../../apiServer.ts";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { sanitizeSlug } from "../../auth/users.ts";
 import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "../../bans.ts";
 import { db, rowCount } from "../../db/index.ts";
 import { items, matchData, userPasses, users } from "../../db/schema.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../../errors.ts";
+import { regions } from "../../regions.ts";
+import { teamMenu } from "../../teamMenu.ts";
 import { incrementPassXp } from "./passXp.ts";
 
 const NO_USER = "No user found with that slug.";
@@ -90,7 +91,7 @@ export const ModerationRouter = new Hono()
                 ));
 
                 for (const ipHash of ipHashes) {
-                    server.teamMenu.disconnectPlayers(ipHash);
+                    teamMenu.disconnectPlayers(ipHash);
                 }
 
                 const ips = ban_associated_ips
@@ -159,7 +160,7 @@ export const ModerationRouter = new Hono()
                 ));
 
                 for (const ipHash of ipHashes) {
-                    server.teamMenu.disconnectPlayers(ipHash);
+                    teamMenu.disconnectPlayers(ipHash);
                 }
 
                 const target = ipHashes.length === 1 ? `IP ${ipHashes[0]} has` : `IPs: [${ipHashes.join(", ")}] have`;
@@ -406,16 +407,16 @@ export const ModerationRouter = new Hono()
         }
 
         return streamText(c, async (stream) => {
-            const regions = Object.entries(server.regions);
+            const all = Object.values(regions);
             let requestsDone = 0;
 
-            await Promise.all(regions.map(async ([regionId, region]) => {
+            await Promise.all(all.map(async (region) => {
                 const res = await region.fetch<SpectateGamePrivateRes>("api/spectate_game", { filter });
                 requestsDone++;
                 await stream.writeln(JSON.stringify(
                     {
-                        region: regionId,
-                        done: requestsDone === regions.length,
+                        region: region.id,
+                        done: requestsDone === all.length,
                         ...res.unwrapOr({ players: [] }),
                     } satisfies ModRouterSpectateGameRes,
                 ));

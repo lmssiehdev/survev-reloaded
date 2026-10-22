@@ -32,7 +32,7 @@ const incompatibleQuestMap = new Map(
 
 export const questHelpers = {
     getAvailableQuestsForModes(
-        modes: ConfigType["modes"],
+        modes: Readonly<ConfigType["modes"]>,
         currentQuests: ReadonlySet<string>,
         rerollingId?: string,
     ): string[] {

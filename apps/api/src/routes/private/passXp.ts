@@ -1,12 +1,14 @@
 import { sql } from "drizzle-orm";
 
 import { Config } from "@survev/config/serverConfig.ts";
+import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
-import { server } from "../../apiServer.ts";
 import type { db } from "../../db/index.ts";
 import { items, userPasses } from "../../db/schema.ts";
+
+const logger = new ServerLogger("Pass");
 
 export async function incrementPassXp(
     transaction: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -22,7 +24,7 @@ export async function incrementPassXp(
     });
 
     if (!pass) {
-        server.logger.error(`Could not find pass for user ${userId}`);
+        logger.error(`Could not find pass for user ${userId}`);
         return;
     }
 
