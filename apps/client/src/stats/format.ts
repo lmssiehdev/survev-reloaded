@@ -85,7 +85,7 @@ export function getProfile(stats: UserStatsResponse): Profile {
 export function getModeCards(stats: UserStatsResponse): ModeCard[] {
     return TEAM_MODES.map((teamMode) => {
         const name = GameConfig.TeamModeToString[teamMode];
-        const mode = stats.modes.find((m) => m.teamMode == teamMode);
+        const mode = stats.modes.find((m) => m.teamMode === teamMode);
         if (!mode) return { name, games: 0, midStats: [], botStats: [] };
         return {
             name,
@@ -118,8 +118,8 @@ export function timeAgo(endTime: string | Date, now = Date.now()) {
     }
     if (secondsPast <= 86400) {
         const hours = Math.round(secondsPast / 3600);
-        return hours == 1 ? "an hour ago" : `${hours} hours ago`;
+        return hours === 1 ? "an hour ago" : `${hours} hours ago`;
     }
     const days = Math.floor(secondsPast / 86400);
-    return days == 1 ? "1 day ago" : `${days} days ago`;
+    return days === 1 ? "1 day ago" : `${days} days ago`;
 }

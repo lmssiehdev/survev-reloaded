@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MapId } from "../gameConfig.ts";
+import { MapId, type TeamMode } from "../gameConfig.ts";
 import {
     ALL_MAPS,
     LEADERBOARD_TYPES,
@@ -28,7 +28,7 @@ export type MatchHistory = {
     guid: string;
     region: string;
     map_id: number;
-    team_mode: number;
+    team_mode: TeamMode;
     team_count: number;
     team_total: number;
     end_time: string | Date;

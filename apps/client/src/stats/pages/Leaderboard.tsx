@@ -1,6 +1,6 @@
-import { createMemo, Errored, For, Loading, Show } from "solid-js";
 import type { LeaderboardParams, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { LEADERBOARD_TYPES, STATS_INTERVALS, TEAM_MODE_NAMES } from "@survev/shared/types/statsFilters.ts";
+import { createMemo, Errored, For, Loading, Show } from "solid-js";
 import { getLeaderboard } from "../api.ts";
 import { Select } from "../components/Select.tsx";
 import { Spinner } from "../components/Spinner.tsx";
@@ -17,11 +17,7 @@ export function Leaderboard() {
         mapId: text("mapId", "0"),
     });
 
-    const rows = createMemo(async () => {
-        const data = await getLeaderboard(params());
-        if (!data) throw new Error("no leaderboard data");
-        return data;
-    });
+    const rows = createMemo(() => getLeaderboard({ ...params }));
 
     return (
         <>
@@ -45,7 +41,7 @@ export function Leaderboard() {
                         <Select
                             id="leaderboard-team-mode"
                             class="leaderboard-opt"
-                            value={params().teamMode}
+                            value={params.teamMode}
                             values={TEAM_MODE_NAMES}
                             labels={teamModeLabels}
                             onChange={(teamMode) => update({ teamMode })}
@@ -55,7 +51,7 @@ export function Leaderboard() {
                         <Select
                             id="leaderboard-type"
                             class="leaderboard-opt"
-                            value={params().type}
+                            value={params.type}
                             values={LEADERBOARD_TYPES}
                             labels={leaderboardTypeLabels}
                             onChange={(type) => update({ type })}
@@ -65,7 +61,7 @@ export function Leaderboard() {
                         <Select
                             id="leaderboard-time"
                             class="leaderboard-opt"
-                            value={params().interval}
+                            value={params.interval}
                             values={STATS_INTERVALS}
                             labels={intervalLabels}
                             onChange={(interval) => update({ interval })}
@@ -75,7 +71,7 @@ export function Leaderboard() {
                         <select
                             id="leaderboard-map-id"
                             class="leaderboard-opt custom-select"
-                            value={params().mapId}
+                            value={params.mapId}
                             onChange={(e) => update({ mapId: e.currentTarget.value })}
                         >
                             <For each={gameModes}>
@@ -90,15 +86,12 @@ export function Leaderboard() {
                 <div class="row justify-content-center">
                     <div class="col-md-12">
                         <div class="content">
-                            <Errored
-                                fallback={
-                                    <div class="leaderboard-error">
-                                        <h2>{t("stats-leaderboard-error")}</h2>
-                                    </div>
-                                }
-                            >
-                                <Loading fallback={<Spinner kind="leaderboard" />} on={params()}>
-                                    <LeaderboardTable type={params().type} rows={rows()} />
+                            <Errored fallback={<LeaderboardError />}>
+                                <Loading fallback={<Spinner kind="leaderboard" />} on={{ ...params }}>
+                                    {/* the API answers null when it has no data */}
+                                    <Show when={rows()} fallback={<LeaderboardError />}>
+                                        {(rows) => <LeaderboardTable type={params.type} rows={rows()} />}
+                                    </Show>
                                 </Loading>
                             </Errored>
                         </div>
@@ -106,6 +99,14 @@ export function Leaderboard() {
                 </div>
             </div>
         </>
+    );
+}
+
+function LeaderboardError() {
+    return (
+        <div class="leaderboard-error">
+            <h2>{t("stats-leaderboard-error")}</h2>
+        </div>
     );
 }
 
