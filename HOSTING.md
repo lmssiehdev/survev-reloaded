@@ -15,43 +15,39 @@ certificates automatically, and proxies to the API, the game server, PostgreSQL 
 
 ```sh
 git clone https://github.com/leia-uwu/survev.git && cd survev
-cp .env.example .env    # set the domains and POSTGRES_PASSWORD
+bun survev-setup    # or: cp .env.example .env and fill in the secrets yourself
 ```
 
-Create `survev-config.hjson` next to it (all fields are documented in `packages/config/configType.ts`,
-`bun survev-setup` can generate the secrets). The Docker-specific parts:
+Everything is an environment variable in `.env`, documented in [`.env.example`](.env.example). For this setup set:
 
-```hjson
-{
-    // Caddy sets X-Forwarded-For to the client IP. Only the compose network can reach the servers directly.
-    apiServer: { proxyIPHeader: "X-Forwarded-For" }
-    gameServer: {
-        apiServerUrl: "http://api:8000"
-        thisRegion: "main"
-        proxyIPHeader: "X-Forwarded-For"
-        // firstGamePort / maxGames must match SURVEV_GAME_PORTS in .env (defaults: 9000 / 64)
-    }
-    regions: {
-        // address = SURVEV_GAME_DOMAIN, no port
-        main: { https: true, address: "game.survev.example.com", l10n: "index-north-america" }
-    }
-    oauthRedirectURI: "https://survev.example.com"
-    // leaderboards are cached in the redis container
-    cachingEnabled: true
-    database: { host: "postgres", password: "<POSTGRES_PASSWORD from .env>" }
-    secrets: {
-        SURVEV_API_KEY: "<random>"
-        SURVEV_IP_SECRET: "<random>"
-        BETTER_AUTH_SECRET: "<random>"
-    }
-}
-```
+- `SURVEV_DOMAIN`, `SURVEV_GAME_DOMAIN`, `POSTGRES_PASSWORD` and the three secrets (`bun survev-setup` fills these in).
+- `REGION` and `REGION_L10N` for the game server, eg `REGION=na` and `REGION_L10N=index-north-america`.
+  The game server registers its region with the API, the region list players see comes from those.
 
-The file is mounted read-only into the containers (it must be readable by uid 1000), and the client build bakes
-`regions`, `proxies` and some `secrets` in, so rebuild after changing it (`docker compose up -d --build`).
+`docker-compose.yml` derives the rest from the domains: the database URL, the public URLs, the API address and
+`GAME_PORTS` (= `SURVEV_GAME_PORTS`). The client only bakes in the public `VITE_*` variables, it gets regions,
+login methods and the captcha key from the API at runtime. Game modes, the client theme and the captcha toggle are
+stored in the database and changed through the API's `/private` routes, without a restart.
 For Discord login also set `DISCORD_CLIENT_ID` / `DISCORD_SECRET_ID` (redirect URL `https://<domain>/api/auth/callback/discord`).
 
 `/private/*` is only reachable inside the compose network (`api:8000`), Caddy answers 404 for it.
+
+### Coming from survev-config.hjson
+
+| survev-config.hjson | .env |
+| --- | --- |
+| `secrets.*` | same names (`SURVEV_API_KEY`, `DISCORD_CLIENT_ID`, ...) |
+| `secrets.AD_PREFIX`, `GAMEMONETIZE_ID`, `SPELLSYNC_*` | `VITE_AD_PREFIX`, `VITE_GAMEMONETIZE_ID`, `VITE_SPELLSYNC_*` |
+| `database` | `DATABASE_URL` (set by compose) |
+| `oauthRedirectURI` / `oauthBasePath` | `PUBLIC_URL` (set by compose) / `CLIENT_URL` |
+| `gameServer.thisRegion`, `regions.<id>` | `REGION`, `REGION_L10N`, `REGION_URL` on each game server |
+| `gameServer.firstGamePort` / `maxGames` | `GAME_PORTS` |
+| `apiServer` / `gameServer` `proxyIPHeader` | `PROXY_IP_HEADER` (set by compose) |
+| `proxies.<host>.apiUrl` | `VITE_API_URL`, logins come from the API |
+| `cachingEnabled` | `REDIS_URL` (set by compose) |
+| `rateLimitsEnabled`, `logging`, `errorLoggingWebhook` | `RATE_LIMITS`, `LOG_LEVEL` / `LOG_DATE`, `ERROR_WEBHOOK_URL` |
+| `discordGuildId` / `discordRoleId` | `DISCORD_GUILD_ID` / `DISCORD_ROLE_ID` |
+| `modes`, `clientTheme`, `captchaEnabled` | the database (`/private`), changes made there before are kept |
 
 ## First start, logs, updates
 
@@ -67,7 +63,7 @@ Update:
 git pull && docker compose up -d --build && docker image prune -f
 ```
 
-The Discord bot is optional: set its config fields, then `docker compose --profile bot up -d`.
+The Discord bot is optional: set its `DISCORD_*` variables, then `docker compose --profile bot up -d`.
 
 ## Backups
 
@@ -89,12 +85,12 @@ Nightly at 4:00 with cron (`crontab -e`), keeping 14 days:
 ## Local testing without certificates
 
 Set `SURVEV_SCHEME=http`, `SURVEV_HTTP_PORT=8080`, `SURVEV_DOMAIN=localhost` and a `SURVEV_GAME_DOMAIN` that
-resolves to the machine, then use `https: false` and `address: "<game domain>:8080"` in the region.
+resolves to the machine, then `REGION_URL=http://<game domain>:8080`.
 
 ## Dev mode
 
 Runs the Vite dev server (hot reload), the API and the game server in watch mode with the source mounted, plus
-Postgres and Redis, using `survev-config.hjson` with its local defaults:
+Postgres and Redis, with the local defaults (and the root `.env` if there is one):
 
 ```sh
 docker compose -f docker-compose.dev.yml up --build

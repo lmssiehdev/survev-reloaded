@@ -1,6 +1,6 @@
 # Dev mode with hot reload: docker compose -f docker-compose.dev.yml up (see HOSTING.md)
-# The source is mounted, every service shares one network namespace so the defaults of
-# survev-config.hjson (127.0.0.1 for the API, game server, Postgres and Redis) work unchanged.
+# The source is mounted, every service shares one network namespace so the local defaults
+# (127.0.0.1 for the API, game server, Postgres and Redis) work unchanged. A root .env is used if there is one.
 name: survev-dev
 
 x-dev: &dev

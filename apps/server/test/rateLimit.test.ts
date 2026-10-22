@@ -1,14 +1,14 @@
-import { Config } from "@survev/config/serverConfig.ts";
+import { sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 
-const enabled = Config.rateLimitsEnabled;
+const enabled = sharedEnv.RATE_LIMITS;
 beforeAll(() => {
-    Config.rateLimitsEnabled = true;
+    sharedEnv.RATE_LIMITS = true;
     setSystemTime(new Date("2026-01-01T00:00:00Z"));
 });
 afterAll(() => {
-    Config.rateLimitsEnabled = enabled;
+    sharedEnv.RATE_LIMITS = enabled;
     setSystemTime();
 });
 

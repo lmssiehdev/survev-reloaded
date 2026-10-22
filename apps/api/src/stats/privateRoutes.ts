@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "../db/index.ts";
 import { matchData, type MatchDataTable } from "../db/schema.ts";
 import { query, respond } from "../lib/errors.ts";
-import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
+import { validateParams } from "../lib/middleware.ts";
 import { logPlayerIps } from "../moderation/bans.ts";
 import { cache } from "./cache.ts";
 
@@ -23,7 +23,6 @@ type _SaveGameMatchDataFitsTable = AssertAssignable<
 export const StatsPrivateRouter = new Hono()
     .post(
         "/save_game",
-        databaseEnabledMiddleware,
         validateParams(z.object({ matchData: zSaveGameMatchData.min(1) })),
         async (c) => {
             const rows = c.req.valid("json").matchData;

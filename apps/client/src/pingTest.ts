@@ -1,31 +1,33 @@
-declare const PING_TEST_URLS: Array<{
-    region: string;
-    zone: string;
-    url: string;
-    https: boolean;
-}>;
+import type { SiteInfoRes } from "@survev/shared/types/api.ts";
+
+function createTest(region: string, { address, https }: SiteInfoRes["regions"][string]) {
+    return {
+        region,
+        zone: region,
+        url: address,
+        https,
+        ping: 9999,
+        active: false,
+        complete: false,
+        ws: null as WebSocket | null,
+        sendDelay: 0,
+        sendTime: 0,
+        sendCount: 0,
+        recvCount: 0,
+        recvCountMax: 6,
+        retryCount: 0,
+        retryCountMax: 1,
+    };
+}
 
 export class PingTest {
     ptcDataBuf = new ArrayBuffer(1);
-    tests = PING_TEST_URLS.map((config) => {
-        return {
-            region: config.region,
-            zone: config.zone,
-            url: config.url,
-            https: config.https,
-            ping: 9999,
-            active: false,
-            complete: false,
-            ws: null as WebSocket | null,
-            sendDelay: 0,
-            sendTime: 0,
-            sendCount: 0,
-            recvCount: 0,
-            recvCountMax: 6,
-            retryCount: 0,
-            retryCountMax: 1,
-        };
-    });
+    tests: ReturnType<typeof createTest>[] = [];
+
+    /** one test per region from site_info */
+    setRegions(regions: SiteInfoRes["regions"]) {
+        this.tests = Object.entries(regions).map(([region, data]) => createTest(region, data));
+    }
 
     testsStarted = 0;
     testsCompleted = 0;
@@ -138,8 +140,8 @@ export class PingTest {
 
     getRegionList() {
         const regions: string[] = [];
-        for (let i = 0; i < PING_TEST_URLS.length; i++) {
-            const region = PING_TEST_URLS[i].region;
+        for (let i = 0; i < this.tests.length; i++) {
+            const region = this.tests[i].region;
             if (!regions.includes(region)) {
                 regions.push(region);
             }

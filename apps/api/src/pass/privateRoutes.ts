@@ -5,14 +5,13 @@ import { z } from "zod";
 import { db } from "../db/index.ts";
 import { userQuests } from "../db/schema.ts";
 import { query, respond } from "../lib/errors.ts";
-import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
+import { validateParams } from "../lib/middleware.ts";
 import { incrementPassXp } from "./xp.ts";
 
 /** /private/quest_progress: the game server reports quest progress of logged in players */
 export const PassPrivateRouter = new Hono()
     .post(
         "/quest_progress",
-        databaseEnabledMiddleware,
         validateParams(
             z.object({
                 userId: z.string(),

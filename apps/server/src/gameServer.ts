@@ -1,4 +1,4 @@
-import { Config } from "@survev/config/serverConfig.ts";
+import { sharedEnv } from "@survev/config/env.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
@@ -12,12 +12,13 @@ import {
     zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "@survev/contracts";
-import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z, type ZodObject } from "zod";
 import pkgJson from "../../../package.json" with { type: "json" };
+import { env } from "./env.ts";
 import { GameProcess, GameProcessManager, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
 import { getIp } from "./utils/ip.ts";
@@ -42,19 +43,15 @@ process.on("SIGINT", () => {
 class GameServer {
     readonly logger = new ServerLogger("GameServer");
 
-    readonly region = Config.regions[Config.gameServer.thisRegion];
-    readonly regionId = Config.gameServer.thisRegion;
+    readonly regionId = env.REGION;
 
     readonly manager = new GameProcessManager();
 
     getUrlsForGame(game: GameProcess) {
-        const protocol = this.region.https ? "wss" : "ws";
-        const mainPortUrl = new URL(`${protocol}://${this.region.address}/play`);
-
-        const gamePortUrl = new URL(mainPortUrl.toString());
-        gamePortUrl.port = game.port.toString();
-
-        return [gamePortUrl.toString()];
+        const url = new URL("/play", env.REGION_URL);
+        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+        url.port = game.port.toString();
+        return [url.toString()];
     }
 
     async findGame(body: FindGamePrivateBody): Promise<FindGamePrivateRes> {
@@ -109,8 +106,10 @@ class GameServer {
                 json: {
                     data: {
                         playerCount: this.manager.getPlayerCount(),
+                        url: env.REGION_URL,
+                        l10n: env.REGION_L10N,
                     },
-                    regionId: Config.gameServer.thisRegion,
+                    regionId: env.REGION,
                 },
             });
         } catch (err) {
@@ -178,7 +177,7 @@ class GameServer {
 const server = new GameServer();
 
 if (process.env.NODE_ENV !== "production") {
-    server.manager.newGame(Config.modes[0]);
+    server.manager.newGame({ mapName: "main", teamMode: TeamMode.Solo });
 }
 
 const pingHTTPRateLimit = new HTTPRateLimit(1, 3000);
@@ -194,7 +193,7 @@ async function handleJsonPost<T extends ZodObject>(
     validator: T,
     handler: (body: z.infer<T>) => Promise<Record<string, unknown>>,
 ): Promise<Response> {
-    if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (req.headers.get("survev-api-key") !== sharedEnv.SURVEV_API_KEY) {
         return new Response("403 Forbidden", { status: 403 });
     }
 
@@ -213,12 +212,9 @@ async function handleJsonPost<T extends ZodObject>(
 }
 
 const app = Bun.serve({
-    hostname: Config.gameServer.host,
-    port: Config.gameServer.port,
-    tls: Config.gameServer.ssl && {
-        key: Bun.file(Config.gameServer.ssl.keyFile),
-        cert: Bun.file(Config.gameServer.ssl.certFile),
-    },
+    hostname: env.GAME_HOST,
+    port: env.GAME_PORT,
+    tls: env.ssl,
     // Bun responds with 413 to bigger bodies
     maxRequestBodySize: 1024 * 1024, // 1 MB
 
@@ -229,7 +225,7 @@ const app = Bun.serve({
 
         "/private/status": {
             GET: (req) => {
-                if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+                if (req.headers.get("survev-api-key") !== sharedEnv.SURVEV_API_KEY) {
                     return new Response("403 Forbidden", { status: 403 });
                 }
 
@@ -258,7 +254,7 @@ const app = Bun.serve({
 
         // ping test
         "/ptc": (req, httpServer) => {
-            const ip = getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+            const ip = getIp(req, httpServer, env.PROXY_IP_HEADER);
 
             if (!ip) {
                 server.logger.warn("Invalid IP Found:", ip);
@@ -312,10 +308,11 @@ const app = Bun.serve({
     },
 });
 
+// often, the API only knows this region from these reports (and forgets it after a restart)
 server.sendData();
 setInterval(() => {
     server.sendData();
-}, 20 * 1000);
+}, 5 * 1000);
 
 server.logger.info(`Survev Game Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
 server.logger.info(

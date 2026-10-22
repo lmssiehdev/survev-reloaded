@@ -1,6 +1,5 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { Logger } from "@survev/config/utils/consoleLogger.ts";
-import { logErrorToWebhook } from "@survev/config/utils/logger.ts";
+import { logErrorToWebhook, logOptions } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
@@ -9,9 +8,10 @@ import { ClientSocket } from "@survev/game/socket.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import type { ServerWebSocket } from "bun";
 import path from "node:path";
+import { env } from "../env.ts";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { getIp } from "../utils/ip.ts";
-import { serverGameOptions } from "../utils/serverGameOptions.ts";
+import { GAME_TPS, NET_SYNC_TPS, serverGameOptions } from "../utils/serverGameOptions.ts";
 import { LOST_GAME_DATA_DIR } from "../utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import { type IdleSocketData, IdleSocketMonitor } from "./idleSockets.ts";
@@ -24,7 +24,7 @@ function sendMsg(msg: ProcessMsg) {
 let game: ServerGame | undefined;
 let gameWeakRef: WeakRef<ServerGame> | undefined;
 
-const procLogger = new Logger(Config.logging, `GameProc-${process.pid}`);
+const procLogger = new Logger(`GameProc-${process.pid}`, logOptions);
 
 function broadcastDisconnect(reason: GameWsDisconnectReason) {
     if (game) {
@@ -81,7 +81,7 @@ async function saveGame(gameId: string, values: SaveGameBody["matchData"]) {
     }
 
     if (!res || !res.ok) {
-        const region = Config.gameServer.thisRegion.toUpperCase();
+        const region = env.REGION.toUpperCase();
         procLogger.error(
             `[${region}] Failed to save game data, saving locally instead`,
         );
@@ -165,7 +165,7 @@ class ServerGame extends Game {
             return {
                 // *NOTE: userId is optional; we save the game stats for non logged users too
                 userId: player.userId,
-                region: Config.gameServer.thisRegion,
+                region: env.REGION,
                 username: player.name,
                 playerId: player.matchDataId,
                 teamMode: this.teamMode,
@@ -238,11 +238,11 @@ setInterval(() => {
 
 setInterval(() => {
     game?.update();
-}, 1000 / Config.gameTps);
+}, 1000 / GAME_TPS);
 
 setInterval(() => {
     game?.netSync();
-}, 1000 / Config.netSyncTps);
+}, 1000 / NET_SYNC_TPS);
 
 interface GameSocketData extends IdleSocketData {
     ip: string;
@@ -298,12 +298,9 @@ const textEncoder = new TextEncoder();
 const port = parseInt(process.argv[2]);
 
 const app = Bun.serve({
-    hostname: Config.gameServer.host,
+    hostname: env.GAME_HOST,
     port,
-    tls: Config.gameServer.ssl && {
-        key: Bun.file(Config.gameServer.ssl.keyFile),
-        cert: Bun.file(Config.gameServer.ssl.certFile),
-    },
+    tls: env.ssl,
 
     routes: {
         "/play": async (req, httpServer) => {
@@ -312,7 +309,7 @@ const app = Bun.serve({
                 return new Response();
             }
 
-            const ip = getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+            const ip = getIp(req, httpServer, env.PROXY_IP_HEADER);
 
             if (!ip) {
                 game.logger.warn("Invalid IP Found");

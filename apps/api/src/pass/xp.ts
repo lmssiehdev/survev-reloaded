@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 
-import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import type { db } from "../db/index.ts";
@@ -17,10 +17,10 @@ export async function incrementPassXp(
 ) {
     if (xpGain <= 0) return;
 
-    const passDef = PassDefs[Config.passType];
+    const passDef = PassDefs[activePassType];
 
     const pass = await transaction.query.userPasses.findFirst({
-        where: { userId, passType: Config.passType },
+        where: { userId, passType: activePassType },
     });
 
     if (!pass) {
@@ -30,8 +30,8 @@ export async function incrementPassXp(
 
     const oldTotalXp = pass.totalXp;
     const newTotalXp = oldTotalXp + xpGain;
-    const oldLevel = passUtil.getPassLevelAndXp(Config.passType, oldTotalXp).level;
-    const newLevel = passUtil.getPassLevelAndXp(Config.passType, newTotalXp).level;
+    const oldLevel = passUtil.getPassLevelAndXp(activePassType, oldTotalXp).level;
+    const newLevel = passUtil.getPassLevelAndXp(activePassType, newTotalXp).level;
 
     const unlockedRewardItems = passDef.items
         .filter((reward) => reward.level > oldLevel && reward.level <= newLevel)
@@ -48,7 +48,7 @@ export async function incrementPassXp(
                 unlockedRewardItems.map((item) => ({
                     userId,
                     type: item,
-                    source: Config.passType,
+                    source: activePassType,
                     timeAcquired: now,
                 })),
             )
@@ -64,7 +64,7 @@ export async function incrementPassXp(
         .insert(userPasses)
         .values({
             userId,
-            passType: Config.passType,
+            passType: activePassType,
             totalXp: newTotalXp,
             newItems: unlockedNewItems,
         })

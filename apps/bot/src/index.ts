@@ -1,7 +1,7 @@
 import { Client, Events, GatewayIntentBits, type InteractionReplyOptions, MessageFlags } from "discord.js";
 import { sendNoPermissionMessage } from "./commands/helpers.ts";
 import { commandHandlers } from "./commands/index.ts";
-import { DISCORD_BOT_TOKEN } from "./config.ts";
+import { env } from "./env.ts";
 import { botLogger, type Command, hasBotPermission } from "./utils.ts";
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -43,7 +43,7 @@ try {
         botLogger.info(`Logged in as ${readyClient.user.tag}!`);
     });
     setupInteractionHandlers();
-    await client.login(DISCORD_BOT_TOKEN);
+    await client.login(env.DISCORD_BOT_TOKEN);
 } catch (error) {
     botLogger.error("Failed to start the bot:", error);
     process.exit(1);

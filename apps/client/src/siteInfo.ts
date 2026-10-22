@@ -5,6 +5,7 @@ import $ from "jquery";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { device } from "./device.ts";
+import { helpers } from "./helpers.ts";
 import type { Localization } from "./ui/localization.ts";
 
 export class SiteInfo {
@@ -17,26 +18,31 @@ export class SiteInfo {
     ) {
     }
 
-    load() {
+    /** resolves once site_info is in, or failed to load */
+    async load() {
         const locale = this.localization.getLocale();
+        const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
+        const data = await fetch(siteInfoUrl)
+            .then((res) => res.json() as Promise<SiteInfoRes>)
+            .catch((err) => void console.error("Failed to load site info", err));
+        if (!data) return;
+
+        this.info = data;
+        this.loaded = true;
+        api.logins = data.logins;
+        helpers.turnstileSiteKey = data.turnstileSiteKey;
+        if (data.captchaEnabled && data.turnstileSiteKey) helpers.loadTurnstile();
 
         const mainSelector = $("#server-opts");
         const teamSelector = $("#team-server-opts");
-
-        for (const region in GAME_REGIONS) {
-            const data = GAME_REGIONS[region];
-            const name = this.localization.translate(data.l10n);
-            const elm = `<option value='${region}' data-l10n='${data.l10n}' data-label='${name}'>${name}</option>`;
+        for (const [region, { l10n }] of Object.entries(data.regions)) {
+            const name = this.localization.translate(l10n);
+            const elm = `<option value='${region}' data-l10n='${l10n}' data-label='${name}'>${name}</option>`;
             mainSelector.append(elm);
             teamSelector.append(elm);
         }
 
-        const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
-        fetch(siteInfoUrl).then(res => res.json()).then((data: SiteInfoRes) => {
-            this.info = data || {};
-            this.loaded = true;
-            this.updatePageFromInfo();
-        });
+        this.updatePageFromInfo();
     }
 
     getGameModeStyles() {
@@ -98,7 +104,7 @@ export class SiteInfo {
             $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
 
             // Region pops
-            const pops = this.info.pops;
+            const pops = this.info.regions;
             if (pops) {
                 const regions = Object.keys(pops);
 

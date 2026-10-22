@@ -1,46 +1,50 @@
-import { Config } from "@survev/config/serverConfig.ts";
-import { ServerLogger } from "@survev/config/utils/logger.ts";
-import type { FindGamePrivateBody, FindGamePrivateRes } from "@survev/contracts";
+import { sharedEnv } from "@survev/config/env.ts";
+import type { FindGamePrivateBody, FindGamePrivateRes, UpdateRegionBody } from "@survev/contracts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import { db } from "../db/index.ts";
 import { fetchJson } from "../lib/fetchJson.ts";
 
-const logger = new ServerLogger("Regions");
+/**
+ * regions are whatever game servers report through /private/update_region (every 5s),
+ * one that hasn't reported in 30 seconds is likely down and is left out
+ */
+const reports = new Map<string, UpdateRegionBody["data"] & { at: number }>();
 
-/** what each game server last reported through /private/update_region */
-const reports = new Map<string, { playerCount: number; at: number }>();
+function liveReport(regionId: string) {
+    const report = reports.get(regionId);
+    return report && Date.now() - report.at < 30_000 ? report : undefined;
+}
 
 export function isRegion(regionId: string) {
-    return Object.hasOwn(Config.regions, regionId);
+    return !!liveReport(regionId);
 }
 
-export function updateRegion(regionId: string, playerCount: number) {
-    if (!isRegion(regionId)) {
-        logger.warn("updateRegion: Invalid region", regionId);
-        return;
-    }
-    reports.set(regionId, { playerCount, at: Date.now() });
+export function regionIds() {
+    return [...reports.keys()].filter(isRegion);
 }
 
-/** a region that hasn't reported in a minute is likely down, it shows 0 players */
-export function regionPops(): SiteInfoRes["pops"] {
+export function updateRegion(regionId: string, data: UpdateRegionBody["data"]) {
+    reports.set(regionId, { ...data, at: Date.now() });
+}
+
+export function siteRegions(): SiteInfoRes["regions"] {
     return Object.fromEntries(
-        Object.entries(Config.regions).map(([id, region]) => {
-            const report = reports.get(id);
-            const live = report && Date.now() - report.at < 60_000;
-            return [id, { playerCount: live ? report.playerCount : 0, l10n: region.l10n }];
+        regionIds().map((id) => {
+            const { playerCount, l10n, url } = reports.get(id)!;
+            const { protocol, host } = new URL(url);
+            return [id, { playerCount, l10n, address: host, https: protocol === "https:" }];
         }),
     );
 }
 
 /** POST to a region's game server */
 export function regionFetch<T>(regionId: string, endPoint: string, body: object, timeoutMs?: number) {
-    const { https, address } = Config.regions[regionId];
-    return fetchJson<T>(`Region ${regionId} ${endPoint}`, `http${https ? "s" : ""}://${address}/${endPoint}`, {
+    const url = new URL(endPoint, reports.get(regionId)!.url);
+    return fetchJson<T>(`Region ${regionId} ${endPoint}`, url, {
         method: "POST",
         headers: {
             "content-type": "application/json",
-            "survev-api-key": Config.secrets.SURVEV_API_KEY,
+            "survev-api-key": sharedEnv.SURVEV_API_KEY,
         },
         body: JSON.stringify(body),
         timeoutMs,

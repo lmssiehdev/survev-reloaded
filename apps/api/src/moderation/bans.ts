@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import type { SaveGameBody } from "@survev/contracts";
 import { util } from "@survev/shared/utils/util.ts";
 import { Result } from "better-result";
@@ -6,6 +5,7 @@ import { and, eq, inArray, isNull, lt } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db } from "../db/index.ts";
 import { type Ban, bans, matchData, playerIps, users } from "../db/schema.ts";
+import { env } from "../env.ts";
 import { query } from "../lib/errors.ts";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -17,7 +17,7 @@ export interface BanInput {
     expiresAt: Date | null;
 }
 
-const salt = Config.secrets.SURVEV_IP_SECRET;
+const salt = env.SURVEV_IP_SECRET;
 export function hashIp(ip: string) {
     return createHash("sha256")
         .update(salt + ip)
@@ -36,7 +36,6 @@ function activeBans(kind: Ban["kind"], targets: string[]) {
 
 /** the ban in effect on a raw IP; a failed lookup lets the player through */
 export async function findIpBan(ip: string): Promise<Ban | undefined> {
-    if (!Config.database.enabled) return undefined;
     const ban = await query(
         () => db.query.bans.findFirst({ where: activeBans("ip", [hashIp(ip)]) }),
         "Failed to check if IP is banned",

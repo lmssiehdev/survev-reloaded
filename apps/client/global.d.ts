@@ -66,25 +66,10 @@ declare global {
         mozRequestFullScreen: (options?: FullscreenOptions) => Promise<void>;
         webkitRequestFullscreen: (options?: FullscreenOptions) => Promise<void>;
     }
-    const GAME_REGIONS: Record<
-        string,
-        {
-            readonly https: boolean;
-            readonly address: string;
-            readonly l10n: string;
-        }
-    >;
-
-    const PASS_TYPE: string;
-
     const IS_DEV: boolean;
     const VITE_ENABLE_SURVEV_ADS: boolean;
 
     const GIT_VERSION: string | undefined;
-
-    const AD_PREFIX: string | undefined;
-    const GAMEMONETIZE_ID: string | undefined;
-    const TURNSTILE_SITE_KEY: string | undefined;
 
     window.fusetag = window.fusetag || (window.fusetag = { que: [] });
 }

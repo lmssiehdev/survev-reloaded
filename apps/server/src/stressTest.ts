@@ -1,12 +1,13 @@
-import { Config } from "@survev/config/serverConfig.ts";
+import { sharedEnv } from "@survev/config/env.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { WebsocketConnection } from "@survev/shared/net/connection.ts";
 import type { FindGameBody, FindGameResponse } from "@survev/shared/types/api.ts";
 import { Bot } from "@survev/shared/utils/bot.ts";
+import { env } from "./env.ts";
 
 const config = {
-    address: Config.gameServer.apiServerUrl,
-    region: Config.gameServer.thisRegion,
+    address: env.API_URL,
+    region: sharedEnv.REGION,
     gameModeIdx: 0,
     botCount: 79,
     joinDelay: 100,

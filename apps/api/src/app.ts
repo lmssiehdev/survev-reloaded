@@ -8,7 +8,7 @@ import { GamePrivateRouter } from "./game/privateRoutes.ts";
 import { GameRouter } from "./game/routes.ts";
 import { teamMenu } from "./game/teamMenu.ts";
 import { type ErrorBody, errorResponse, NotFound } from "./lib/errors.ts";
-import { databaseEnabledMiddleware, privateMiddleware, rateLimitMiddleware } from "./lib/middleware.ts";
+import { privateMiddleware, rateLimitMiddleware } from "./lib/middleware.ts";
 import { ModerationPrivateRouter } from "./moderation/privateRoutes.ts";
 import { PassPrivateRouter } from "./pass/privateRoutes.ts";
 import { StatsPrivateRouter } from "./stats/privateRoutes.ts";
@@ -42,7 +42,7 @@ app.onError((err: unknown, c) => {
 
 app.notFound((c) => errorResponse(c, new NotFound({ message: `${c.req.method} ${c.req.path} not found` })));
 
-if (logger.config.debugLogs) {
+if (logger.enabled("debug")) {
     app.use("*", async (ctx, next) => {
         const url = ctx.req.path;
         logger.debug(`start: ${url}`);
@@ -70,7 +70,7 @@ app.use(
 
 app.route("/api/user/", UserRouter);
 // better-auth's own endpoints: /sign-in/social, /callback/discord, /sign-out, /mock (dev)
-app.use("/api/auth/*", databaseEnabledMiddleware, rateLimitMiddleware(5, 60 * 1000));
+app.use("/api/auth/*", rateLimitMiddleware(5, 60 * 1000));
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/", StatsRouter);
 app.route("/api/", GameRouter);

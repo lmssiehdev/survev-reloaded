@@ -40,15 +40,11 @@
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@types/bun": "^1.4.3",
-    "@types/hjson": "^2.4.6",
     "dprint": "^0.55.2",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@survev/config": "workspace:*",
-    "@survev/shared": "workspace:*",
-    "enquirer": "^2.4.1",
-    "hjson": "^3.2.2"
+    "enquirer": "^2.4.1"
   },
   "packageManager": "bun@1.4.4-canary.1",
   "trustedDependencies": [

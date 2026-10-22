@@ -275,7 +275,7 @@ export class SDKManager implements BaseSDKManager {
         if (this.isCrazyGames) {
             const dimensions = ad.split("x").map(Number);
             await this.requestCrazyGamesBanner(
-                `${AD_PREFIX}_${ad}`,
+                `${import.meta.env.VITE_AD_PREFIX}_${ad}`,
                 dimensions[0],
                 dimensions[1],
             );
@@ -605,12 +605,12 @@ export class SDKManager implements BaseSDKManager {
             crazyGamesScript.addEventListener("load", async () => {
                 await window.CrazyGames.SDK.init();
 
-                this.requestCrazyGamesBanner(`${AD_PREFIX}_728x90`, 728, 90);
+                this.requestCrazyGamesBanner(`${import.meta.env.VITE_AD_PREFIX}_728x90`, 728, 90);
 
                 setInterval(() => {
                     const mainMenu = document.getElementById("start-menu-wrapper");
                     if (mainMenu && getComputedStyle(mainMenu!).display != "none") {
-                        this.requestCrazyGamesBanner(`${AD_PREFIX}_728x90`, 728, 90);
+                        this.requestCrazyGamesBanner(`${import.meta.env.VITE_AD_PREFIX}_728x90`, 728, 90);
                     }
                 }, 60000);
 

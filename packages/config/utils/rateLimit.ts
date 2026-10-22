@@ -1,4 +1,4 @@
-import { Config } from "../serverConfig.ts";
+import { sharedEnv } from "../env.ts";
 
 /**
  * fixed window counter: true once more than `limit` hits land in the same `interval` ms window.
@@ -33,7 +33,7 @@ export class WebSocketRateLimit {
      * Returns true if a websocket is being rate limited by sending too many messages
      */
     isRateLimited(wsData: Record<symbol, number>): boolean {
-        if (!Config.rateLimitsEnabled) return false;
+        if (!sharedEnv.RATE_LIMITS) return false;
         const window = { start: wsData[this._start] ?? -Infinity, count: wsData[this._count] ?? 0 };
         const limited = hit(window, this.limit, this.interval, Date.now());
         wsData[this._start] = window.start;
@@ -46,7 +46,7 @@ export class WebSocketRateLimit {
      * false otherwise
      */
     isIpRateLimited(ip: string): boolean {
-        if (!Config.rateLimitsEnabled) return false;
+        if (!sharedEnv.RATE_LIMITS) return false;
         return (this._connections.get(ip) ?? 0) + 1 > this.maxConnections;
     }
 
@@ -82,7 +82,7 @@ export class HTTPRateLimit {
      * Checks if an IP is rate limited
      */
     isRateLimited(ip: string): boolean {
-        if (!Config.rateLimitsEnabled) return false;
+        if (!sharedEnv.RATE_LIMITS) return false;
         let window = this._windows.get(ip);
         if (!window) {
             window = { start: -Infinity, count: 0 };

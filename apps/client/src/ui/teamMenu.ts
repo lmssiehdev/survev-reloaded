@@ -439,7 +439,7 @@ export class TeamMenu {
 
         if (this.joined) {
             // Regions
-            const regionPops = this.siteInfo.info.pops || {};
+            const regionPops = this.siteInfo.info.regions || {};
             const regions = Object.keys(regionPops);
             for (let i = 0; i < regions.length; i++) {
                 const region = regions[i];

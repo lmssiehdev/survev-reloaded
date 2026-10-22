@@ -4,10 +4,15 @@ import { type FindGameMatchData, type FindGamePrivateError, loadoutSchema } from
 import { zSpectateFilter } from "@survev/shared/types/moderation.ts";
 import { z } from "zod";
 
+/** each game server registers its region with the API by reporting it every few seconds */
 export const zUpdateRegionBody = z.object({
     regionId: z.string(),
     data: z.object({
         playerCount: z.number(),
+        /** public URL of the game server, players and the API connect to it */
+        url: z.url(),
+        /** translation key of the region name, eg index-north-america */
+        l10n: z.string(),
     }),
 });
 export type UpdateRegionBody = z.infer<typeof zUpdateRegionBody>;

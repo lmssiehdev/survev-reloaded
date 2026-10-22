@@ -5,9 +5,9 @@
   "scripts": {
     "build": "bun ../../scripts/buildApp.ts src/gameServer.ts src/game/gameProcess.ts",
     "typecheck": "bun check",
-    "start": "bun dist/gameServer.js",
-    "dev": "bun scripts/devWatch.ts src/gameServer.ts ../../packages ../../survev-config.hjson",
-    "stressTest": "bun src/stressTest.ts"
+    "start": "bun --env-file=../../.env dist/gameServer.js",
+    "dev": "bun scripts/devWatch.ts --env-file=../../.env src/gameServer.ts ../../packages",
+    "stressTest": "bun --env-file=../../.env src/stressTest.ts"
   },
   "dependencies": {
     "@survev/config": "workspace:*",

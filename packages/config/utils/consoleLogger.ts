@@ -1,46 +1,27 @@
 import { styleText } from "node:util";
 
-interface LoggerConfig {
-    /**
-     * If the logger class should include the date.
-     * Useful to disable it when using logging tools that add a date by default (like journalctl)
-     */
-    logDate: boolean;
+// no env access here, the client build (atlas builder) uses this too
+export const logLevels = ["debug", "info", "warn", "error"] as const;
+export type LogLevel = (typeof logLevels)[number];
 
-    // logging categories enabled
-
-    /**
-     * Information logs
-     */
-    infoLogs: boolean;
-
-    /**
-     * Debug logs, disabled by default on production
-     */
-    debugLogs: boolean;
-
-    /**
-     * Warning logs
-     */
-    warnLogs: boolean;
-
-    /**
-     * Error logs, will also log to a webhook if `errorLoggingWebhook` is set.
-     */
-    errorLogs: boolean;
+export interface LoggerOptions {
+    level: LogLevel;
+    /** off when the log collector adds its own timestamps */
+    date: boolean;
 }
 
 export class Logger {
-    config: LoggerConfig;
-    prefix: string;
+    constructor(
+        public prefix: string,
+        public options: LoggerOptions = { level: "info", date: true },
+    ) {}
 
-    constructor(config: LoggerConfig, prefix: string) {
-        this.config = config;
-        this.prefix = prefix;
+    enabled(level: LogLevel) {
+        return logLevels.indexOf(level) >= logLevels.indexOf(this.options.level);
     }
 
     private log(logFn = console.log, ...message: any[]): void {
-        if (this.config.logDate) {
+        if (this.options.date) {
             const date = new Date();
             const dateString = `[${date.toISOString().substring(0, 10)} ${date.toLocaleTimeString()}]`;
 
@@ -56,12 +37,12 @@ export class Logger {
     }
 
     info(...message: any[]): void {
-        if (!this.config.infoLogs) return;
+        if (!this.enabled("info")) return;
         this.log(console.info, styleText("blue", "[INFO]"), ...message);
     }
 
     debug(...message: any[]): void {
-        if (!this.config.debugLogs) return;
+        if (!this.enabled("debug")) return;
         this.log(
             console.debug,
             // not a typo, just want it to align with the others :D
@@ -71,12 +52,12 @@ export class Logger {
     }
 
     warn(...message: any[]): void {
-        if (!this.config.warnLogs) return;
+        if (!this.enabled("warn")) return;
         this.log(console.warn, styleText("yellow", "[WARN]"), ...message);
     }
 
     error(...message: any[]): void {
-        if (!this.config.errorLogs) return;
+        if (!this.enabled("error")) return;
         this.log(console.error, styleText("red", "[ERROR]"), ...message);
     }
 }

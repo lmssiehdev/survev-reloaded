@@ -19,16 +19,7 @@ export const cacheFolder = Path.resolve(
     "../node_modules/.atlas-cache/",
 );
 
-export const atlasLogger = new Logger(
-    {
-        logDate: false,
-        debugLogs: true,
-        infoLogs: true,
-        warnLogs: true,
-        errorLogs: true,
-    },
-    "Atlas Builder",
-);
+export const atlasLogger = new Logger("Atlas Builder", { level: "debug", date: false });
 
 export const imagesCacheFolder = Path.join(cacheFolder, "img");
 export const atlasesCacheFolder = Path.join(cacheFolder, "atlases");

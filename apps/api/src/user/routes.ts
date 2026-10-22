@@ -13,12 +13,11 @@ import { requireAuth, sessionMiddleware } from "../auth/session.ts";
 import { db } from "../db/index.ts";
 import { itemColumns, items, matchData, users } from "../db/schema.ts";
 import { errorResponse, query, respond } from "../lib/errors.ts";
-import { databaseEnabledMiddleware, rateLimitMiddleware, validateParams } from "../lib/middleware.ts";
+import { rateLimitMiddleware, validateParams } from "../lib/middleware.ts";
 import { PassRouter } from "../pass/routes.ts";
 import { getTimeUntilNextUsernameChange, sanitizeSlug } from "./users.ts";
 
 export const UserRouter = new Hono<AuthEnv>()
-    .use(databaseEnabledMiddleware)
     .use(rateLimitMiddleware(40, 60 * 1000))
     .use(sessionMiddleware)
     .use(requireAuth)

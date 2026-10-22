@@ -1,14 +1,14 @@
 import { REST, Routes } from "discord.js";
 import { commandsToRegister } from "./commands/index.ts";
-import { DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID } from "./config.ts";
+import { env } from "./env.ts";
 import { botLogger } from "./utils.ts";
 
 async function registerCommands() {
-    const rest = new REST({ version: "10" }).setToken(DISCORD_BOT_TOKEN);
+    const rest = new REST({ version: "10" }).setToken(env.DISCORD_BOT_TOKEN);
     try {
         botLogger.info("Started refreshing application (/) commands.");
         await rest.put(
-            Routes.applicationGuildCommands(DISCORD_CLIENT_ID, DISCORD_GUILD_ID!),
+            Routes.applicationGuildCommands(env.DISCORD_CLIENT_ID, env.DISCORD_GUILD_ID),
             {
                 body: commandsToRegister.map((command) => command.toJSON()),
             },

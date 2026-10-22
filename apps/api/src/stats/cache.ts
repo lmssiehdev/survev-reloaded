@@ -1,10 +1,10 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { LeaderboardRequest, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { Result } from "better-result";
 import { RedisClient } from "bun";
 import type { MatchDataTable } from "../db/schema.ts";
+import { env } from "../env.ts";
 
 /** every key we own lives under this prefix, so clearing never touches other apps on the same redis */
 const PREFIX = "survev:";
@@ -106,4 +106,4 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
 }
 
 // defaults to $REDIS_URL / $VALKEY_URL or redis://localhost:6379, connects on the first command
-export const cache = createCache(Config.cachingEnabled ? new RedisClient() : undefined);
+export const cache = createCache(env.REDIS_URL ? new RedisClient(env.REDIS_URL) : undefined);

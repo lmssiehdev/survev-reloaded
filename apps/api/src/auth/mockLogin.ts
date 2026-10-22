@@ -1,7 +1,7 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
+import { env } from "../env.ts";
 
 export const MOCK_USER_ID = "MOCK_USER_ID";
 
@@ -21,7 +21,7 @@ export const mockLogin = {
                 }, { method: "mock" }));
             const session = await adapter.createSession(user.id);
             await setSessionCookie(ctx, { session, user });
-            throw ctx.redirect(Config.oauthBasePath);
+            throw ctx.redirect(env.CLIENT_URL);
         }),
     },
 } satisfies BetterAuthPlugin;

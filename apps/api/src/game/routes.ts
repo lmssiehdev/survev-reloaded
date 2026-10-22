@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { logErrorToWebhook } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
@@ -7,10 +6,11 @@ import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
 import { settings } from "../admin/settings.ts";
 import { sessionMiddleware } from "../auth/session.ts";
+import { env } from "../env.ts";
 import { getHonoIp, isBehindProxy, verifyTurnstile } from "../lib/ip.ts";
 import { rateLimitMiddleware, validateParams } from "../lib/middleware.ts";
 import { banInfo, findIpBan } from "../moderation/bans.ts";
-import { findGame, getFindGamePlayerData, regionPops } from "./regions.ts";
+import { findGame, getFindGamePlayerData, siteRegions } from "./regions.ts";
 
 // not using the middleware here to not add extra indentation... smh
 const findGameRateLimit = new HTTPRateLimit(5, 3000);
@@ -20,7 +20,9 @@ export const GameRouter = new Hono()
     .get("/site_info", (c) => {
         return c.json<SiteInfoRes>({
             modes: [...settings.modes],
-            pops: regionPops(),
+            regions: siteRegions(),
+            turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+            logins: { discord: !!(env.DISCORD_CLIENT_ID && env.DISCORD_SECRET_ID), mock: env.ALLOW_MOCK_ACCOUNT },
             youtube: { name: "", link: "" },
             twitch: [],
             country: "US",
@@ -33,7 +35,7 @@ export const GameRouter = new Hono()
         return c.json({ error: "invalid_protocol" });
     })
     .post("/find_game_v2", validateParams(zFindGameBody), sessionMiddleware, async (c) => {
-        const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
+        const ip = getHonoIp(c, env.PROXY_IP_HEADER);
 
         if (!ip) {
             return c.json<FindGameResponse>({ type: "error", error: "invalid_ip" }, 500);

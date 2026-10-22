@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { createMiddleware } from "hono/factory";
 import { errorResponse, Unauthorized } from "../lib/errors.ts";
@@ -27,7 +26,6 @@ export type AuthEnv = {
 export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) => {
     c.set("user", null);
     c.set("session", null);
-    if (!Config.database.enabled) return next();
 
     const res = await auth.api
         .getSession({ headers: c.req.raw.headers, returnHeaders: true })

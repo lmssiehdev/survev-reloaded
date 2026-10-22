@@ -1,8 +1,9 @@
 import { zValidator } from "@hono/zod-validator";
-import { Config } from "@survev/config/serverConfig.ts";
+import { sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { Context, Next } from "hono";
 import type { z } from "zod";
+import { env } from "../env.ts";
 import { errorResponse, Forbidden, InvalidParams, RateLimited } from "./errors.ts";
 import { getHonoIp } from "./ip.ts";
 
@@ -24,15 +25,8 @@ export function validateParams<Schema extends z.ZodSchema>(
     });
 }
 
-export async function databaseEnabledMiddleware(c: Context, next: Next) {
-    if (!Config.database.enabled) {
-        return errorResponse(c, new Forbidden({ message: "Database is disabled" }));
-    }
-    await next();
-}
-
 export async function privateMiddleware(c: Context, next: Next) {
-    if (c.req.header("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (c.req.header("survev-api-key") !== sharedEnv.SURVEV_API_KEY) {
         return errorResponse(c, new Forbidden({ message: "Invalid API key" }));
     }
     await next();
@@ -42,7 +36,7 @@ export function rateLimitMiddleware(limit: number, interval: number) {
     const rateLimit = new HTTPRateLimit(limit, interval);
 
     return async function(c: Context, next: Next) {
-        const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
+        const ip = getHonoIp(c, env.PROXY_IP_HEADER);
 
         if (!ip) {
             return errorResponse(c, new InvalidParams({ message: "Invalid IP" }));

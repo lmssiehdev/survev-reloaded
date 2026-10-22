@@ -11,7 +11,7 @@ import { MOCK_USER_ID } from "../auth/mockLogin.ts";
 import { db } from "../db/index.ts";
 import { items, matchData, type MatchDataTable } from "../db/schema.ts";
 import { Conflict, errorResponse, InvalidParams, query, queryOne, respond } from "../lib/errors.ts";
-import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
+import { validateParams } from "../lib/middleware.ts";
 import { cache } from "../stats/cache.ts";
 import { settings } from "./settings.ts";
 
@@ -67,7 +67,6 @@ export const AdminPrivateRouter = new Hono()
     )
     .post(
         "/give_item",
-        databaseEnabledMiddleware,
         validateParams(zGiveItemParams),
         async (c) => {
             const { item, slug, source } = c.req.valid("json");
@@ -104,7 +103,6 @@ export const AdminPrivateRouter = new Hono()
     )
     .post(
         "/remove_item",
-        databaseEnabledMiddleware,
         validateParams(zRemoveItemParams),
         async (c) => {
             const { item, slug } = c.req.valid("json");
@@ -130,7 +128,6 @@ export const AdminPrivateRouter = new Hono()
     })
     .post(
         "/test/insert_game",
-        databaseEnabledMiddleware,
         validateParams(
             z.object({
                 kills: z.number().default(1),

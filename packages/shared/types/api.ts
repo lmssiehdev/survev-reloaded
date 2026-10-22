@@ -92,13 +92,21 @@ export interface SiteInfoRes {
         enabled: boolean;
     }>;
     clientTheme: MapDefKey;
-    pops: Record<
+    /** the game servers currently up */
+    regions: Record<
         string,
         {
             playerCount: number;
             l10n: string;
+            /** host[:port] of the game server */
+            address: string;
+            https: boolean;
         }
     >;
+    /** captcha site key, set when the API verifies captchas */
+    turnstileSiteKey?: string;
+    /** login methods the API has set up */
+    logins: { discord: boolean; mock: boolean };
     youtube: {
         name: string;
         link: string;

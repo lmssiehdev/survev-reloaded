@@ -1,8 +1,8 @@
-import { Config } from "../serverConfig.ts";
-import { Logger } from "./consoleLogger.ts";
+import { sharedEnv } from "../env.ts";
+import { Logger, type LoggerOptions } from "./consoleLogger.ts";
 
 export async function logErrorToWebhook(from: "server" | "client", ...messages: any[]) {
-    const url = from === "server" ? Config.errorLoggingWebhook : Config.clientErrorLoggingWebhook;
+    const url = from === "server" ? sharedEnv.ERROR_WEBHOOK_URL : sharedEnv.CLIENT_ERROR_WEBHOOK_URL;
     if (!url) return;
 
     try {
@@ -31,7 +31,7 @@ export async function logErrorToWebhook(from: "server" | "client", ...messages: 
                         timestamp: new Date().toISOString(),
                         description: msg,
                         footer: {
-                            text: `Region: ${Config.gameServer.thisRegion}`,
+                            text: `Region: ${sharedEnv.REGION}`,
                         },
                     },
                 ],
@@ -43,15 +43,15 @@ export async function logErrorToWebhook(from: "server" | "client", ...messages: 
     }
 }
 
-const logCfg = Config.logging;
+export const logOptions: LoggerOptions = { level: sharedEnv.LOG_LEVEL, date: sharedEnv.LOG_DATE };
+
 export class ServerLogger extends Logger {
     constructor(prefix: string) {
-        super(logCfg, prefix);
+        super(prefix, logOptions);
     }
 
     override error(...message: any[]): void {
         super.error(...message);
-        if (!this.config.errorLogs) return;
         logErrorToWebhook("server", ...message);
     }
 }

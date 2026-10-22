@@ -1,8 +1,8 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { defaultLogger } from "@survev/config/utils/logger.ts";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
+import { env } from "../env.ts";
 import { fetchJson } from "./fetchJson.ts";
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
@@ -23,7 +23,7 @@ export async function verifyTurnstile(token: string, ip: string) {
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ secret: Config.secrets.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
+            body: JSON.stringify({ secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
             timeoutMs: 5000,
         },
     );
@@ -104,7 +104,7 @@ const proxyCheckCache = new Map<
 
 async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
     const url = new URL(`https://proxycheck.io/v3/${ip}`);
-    url.searchParams.set("key", Config.secrets.PROXYCHECK_KEY!);
+    url.searchParams.set("key", env.PROXYCHECK_KEY!);
 
     const data = await fetchJson<ProxyCheckRes<string>>("ProxyCheck", url, { timeoutMs: 5000 });
     if (data.isErr()) return undefined;
@@ -130,7 +130,7 @@ async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
 
 /** fails open: a proxycheck outage lets players through */
 export async function isBehindProxy(ip: string, checkVpn: boolean): Promise<boolean> {
-    if (!Config.secrets.PROXYCHECK_KEY) return false;
+    if (!env.PROXYCHECK_KEY) return false;
 
     let info = proxyCheckCache.get(ip);
     if (!info || info.expiresAt <= Date.now()) {

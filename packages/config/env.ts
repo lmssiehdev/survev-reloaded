@@ -1,0 +1,50 @@
+import { z } from "zod";
+import { logLevels } from "./utils/consoleLogger.ts";
+
+/**
+ * Settings come from environment variables. In dev the app scripts load the repo root .env
+ * (see .env.example), docker compose passes them to the containers.
+ * Each app declares the variables it reads with `parseEnv`, this file has the shared ones.
+ */
+
+// dot access so the production build inlines it (scripts/buildApp.ts defines process.env.NODE_ENV)
+export const isProd = process.env.NODE_ENV === "production";
+
+/** "true" / "false", unset uses the default */
+export const bool = (fallback: boolean) =>
+    z.enum(["true", "false"]).optional().transform((v) => (v ? v === "true" : fallback));
+
+export const int = (fallback: number) => z.coerce.number().int().default(fallback);
+
+/** required in production; dev falls back to a fixed value so a fresh checkout runs without a .env */
+export const secret = (devValue: string) => isProd ? z.string().min(1) : z.string().min(1).default(devValue);
+
+/**
+ * parses the variables in `shape` from process.env, exits listing every missing or invalid one.
+ * an empty variable (`KEY=` in .env) counts as unset
+ */
+export function parseEnv<T extends z.ZodRawShape>(shape: T): z.infer<z.ZodObject<T>> {
+    const vars = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));
+    const res = z.object(shape).safeParse(vars);
+    if (!res.success) {
+        const issues = res.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
+        console.error(`Invalid environment variables (see .env.example):\n${issues}`);
+        process.exit(1);
+    }
+    return res.data;
+}
+
+/** read by every server app: logging, rate limits and the key the servers use to talk to each other */
+export const sharedEnv = parseEnv({
+    LOG_LEVEL: z.enum(logLevels).default(isProd ? "info" : "debug"),
+    /** off when the log collector adds its own timestamps (journalctl) */
+    LOG_DATE: bool(true),
+    /** discord webhooks errors are posted to */
+    ERROR_WEBHOOK_URL: z.string().optional(),
+    CLIENT_ERROR_WEBHOOK_URL: z.string().optional(),
+    RATE_LIMITS: bool(isProd),
+    /** shared by the API, game servers and bot to call each other's private routes */
+    SURVEV_API_KEY: secret("dev-api-key"),
+    /** this game server's region id, also shown on error webhooks */
+    REGION: z.string().min(1).default("local"),
+});

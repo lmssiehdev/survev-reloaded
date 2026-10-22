@@ -1,30 +1,30 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
-import { Config } from "@survev/config/serverConfig.ts";
 import { type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import { betterAuth } from "better-auth";
 import { db } from "../db/index.ts";
 import { relations } from "../db/relations.ts";
 import { accounts, sessions, users, verifications } from "../db/schema.ts";
+import { env } from "../env.ts";
 import { generateUsername, giveNewAccountItems } from "../user/users.ts";
 import { mockLogin } from "./mockLogin.ts";
 
 const DAY = 60 * 60 * 24;
 
 /** where the client lives; login flows always end there */
-const clientUrl = Config.oauthBasePath;
+const clientUrl = env.CLIENT_URL;
 
 /** set when the client is on another subdomain than the API, so cookies are shared */
 const cookieDomain = URL.canParse(clientUrl) ? new URL(clientUrl).hostname : undefined;
 
-const { DISCORD_CLIENT_ID, DISCORD_SECRET_ID } = Config.secrets;
+const { DISCORD_CLIENT_ID, DISCORD_SECRET_ID } = env;
 
 export const auth = betterAuth({
     appName: "survev",
-    baseURL: Config.oauthRedirectURI,
+    baseURL: env.PUBLIC_URL,
     basePath: "/api/auth",
-    secret: Config.secrets.BETTER_AUTH_SECRET,
+    secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [
-        ...new Set([new URL(Config.oauthRedirectURI).origin, ...(cookieDomain ? [new URL(clientUrl).origin] : [])]),
+        ...new Set([new URL(env.PUBLIC_URL).origin, ...(cookieDomain ? [new URL(clientUrl).origin] : [])]),
     ],
     telemetry: { enabled: false },
     // routes are already behind our own rateLimitMiddleware
@@ -102,14 +102,14 @@ export const auth = betterAuth({
         // session + user in one query (uses the drizzle relations)
         database: { joins: true },
         ...(cookieDomain && { crossSubDomainCookies: { enabled: true, domain: cookieDomain } }),
-        ...(Config.apiServer.proxyIPHeader && {
-            ipAddress: { ipAddressHeaders: [Config.apiServer.proxyIPHeader] },
+        ...(env.PROXY_IP_HEADER && {
+            ipAddress: { ipAddressHeaders: [env.PROXY_IP_HEADER] },
         }),
     },
 
     onAPIError: { errorURL: clientUrl },
 
-    plugins: Config.debug.allowMockAccount ? [mockLogin] : [],
+    plugins: env.ALLOW_MOCK_ACCOUNT ? [mockLogin] : [],
 });
 
 export type AuthUser = typeof auth.$Infer.Session.user;

@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
@@ -22,9 +21,10 @@ import type { WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { settings } from "../admin/settings.ts";
 import { sessionMiddleware } from "../auth/session.ts";
+import { env } from "../env.ts";
 import { getHonoIp, isBehindProxy, verifyTurnstile } from "../lib/ip.ts";
 import { findIpBan, hashIp } from "../moderation/bans.ts";
-import { findGame, getFindGamePlayerData, isRegion } from "./regions.ts";
+import { findGame, getFindGamePlayerData, isRegion, regionIds } from "./regions.ts";
 
 interface SocketData {
     rateLimit: Record<symbol, number>;
@@ -173,7 +173,7 @@ class Room {
     setProps(props: ClientRoomData) {
         let region = props.region;
         if (!isRegion(region)) {
-            region = Object.keys(Config.regions)[0];
+            region = regionIds()[0] ?? region;
         }
         this.data.region = region;
 
@@ -237,7 +237,7 @@ class Room {
 
         let region = data.region;
         if (!isRegion(region)) {
-            region = Object.keys(Config.regions)[0];
+            region = regionIds()[0] ?? region;
         }
         this.data.region = region;
 
@@ -401,7 +401,7 @@ export class TeamMenu {
             "/team_v2",
             sessionMiddleware,
             upgradeWebSocket(async (c) => {
-                const ip = getHonoIp(c, Config.apiServer.proxyIPHeader);
+                const ip = getHonoIp(c, env.PROXY_IP_HEADER);
 
                 const user = c.var.user;
                 const userId = user && !user.banned ? user.id : null;

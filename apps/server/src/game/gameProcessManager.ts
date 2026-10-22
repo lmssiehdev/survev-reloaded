@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
 import type { SpectateTokenData } from "@survev/game/game.ts";
@@ -8,6 +7,7 @@ import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { type ChildProcess, fork } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { env } from "../env.ts";
 import { type GameData, type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
 // run the source in dev, the bundled build in production
@@ -164,8 +164,8 @@ export class GameProcessManager {
     }
 
     constructor() {
-        for (let i = 0; i < Config.gameServer.maxGames; i++) {
-            this._freePorts.push(Config.gameServer.firstGamePort + i);
+        for (let i = 0; i < env.maxGames; i++) {
+            this._freePorts.push(env.firstGamePort + i);
         }
 
         // always keep some processes running even if theres no active games on them

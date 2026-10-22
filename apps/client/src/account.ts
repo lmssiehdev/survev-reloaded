@@ -6,7 +6,6 @@ import { api } from "./api.ts";
 import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
 import { errorLogManager } from "./errorLogs.ts";
-import { proxy } from "./proxy.ts";
 
 import type { UserRouterApp } from "@survev/api/types";
 import { hc, type InferResponseType } from "hono/client";
@@ -45,9 +44,8 @@ export class Account {
 
     constructor(public config: ConfigManager) {
         this.router = hc<UserRouterApp>(api.resolveUrl("/api/user"), {
-            init: {
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
-            },
+            fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+                fetch(input, { ...init, credentials: api.credentials() }),
         });
     }
 
@@ -111,9 +109,12 @@ export class Account {
         const storedLoadout = this.config.get("loadout")!;
         this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
         this.emit("loadout", this.loadout);
+    }
 
+    /** once site_info says which logins the API has */
+    initLogin() {
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
-        if (proxy.anyLoginSupported()) {
+        if (api.anyLoginSupported()) {
             this.loadProfile();
             return;
         }

@@ -5,7 +5,6 @@ import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { proxy } from "../proxy.ts";
 import { SDK } from "../sdk/sdk.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
@@ -62,13 +61,13 @@ function createLoginOptions(
     };
 
     // Define the available login methods
-    if (proxy.loginSupported("discord")) {
+    if (api.loginSupported("discord")) {
         addLoginOption("discord", () => {
             signInWithDiscord();
         });
     }
 
-    if (proxy.loginSupported("mock")) {
+    if (api.loginSupported("mock")) {
         addLoginOption("mock", () => {
             window.location.href = api.resolveUrl("/api/auth/mock");
         });
@@ -320,9 +319,12 @@ export class ProfileUi {
             return false;
         });
 
-        const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
+        this.updateLoginSupport();
+    }
 
-        $(".account-block").toggle(loginSupported);
+    /** again once site_info says which logins the API has */
+    updateLoginSupport() {
+        $(".account-block").toggle(!SDK.isAnySDK && api.anyLoginSupported());
     }
 
     onError(type: string, data?: string) {

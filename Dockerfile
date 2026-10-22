@@ -37,16 +37,14 @@ RUN bun run build:api
 RUN bun run build:game
 RUN bun run build:bot
 
-# The client bakes regions, proxies and some secrets from the config in at build time.
-# The config is bind-mounted (never stored in a layer), the build re-runs when it changes.
+# The client gets everything else from the API at runtime, only the public VITE_* values are baked in
 FROM deps AS client-build
-ARG SURVEV_CONFIG=survev-config.hjson
+ARG VITE_API_URL VITE_AD_PREFIX VITE_GAMEMONETIZE_ID VITE_SPELLSYNC_PROJECT_ID VITE_SPELLSYNC_PUBLIC_TOKEN
 COPY . .
-RUN --mount=type=bind,source=${SURVEV_CONFIG},target=/app/survev-config.hjson \
-    --mount=type=cache,target=/app/apps/client/node_modules/.atlas-cache \
+RUN --mount=type=cache,target=/app/apps/client/node_modules/.atlas-cache \
     bun run build:client
 
-# survev-config.hjson is mounted at /app/survev-config.hjson (the bundles look 3 levels up from apps/<app>/dist)
+# settings come from environment variables (env_file in docker-compose.yml)
 FROM base AS api
 ENV NODE_ENV=production
 COPY --from=build /app/apps/api/dist /app/apps/api/dist

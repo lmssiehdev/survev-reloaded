@@ -1,4 +1,3 @@
-import { getConfig } from "@survev/config/config.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
@@ -9,25 +8,20 @@ import { ejsPlugin } from "./vite-plugins/ejsPlugin.ts";
 import { stripBlockPlugin } from "./vite-plugins/stripBlockPlugin.ts";
 import { svgoPlugin } from "./vite-plugins/svgoPlugin.ts";
 
+// the repo root .env, VITE_* variables end up in the client (import.meta.env), the rest stays here
+const envDir = resolve(import.meta.dirname, "../..");
+
 export default defineConfig(({ mode }) => {
-    const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
+    const env = loadEnv(mode, envDir, "");
     const isDev = mode === "development";
 
-    const Config = getConfig(!isDev, "../../");
-
-    process.env.VITE_TURNSTILE_SCRIPT = "";
-    if (Config.secrets.TURNSTILE_SITE_KEY) {
-        process.env.VITE_TURNSTILE_SCRIPT =
-            `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>`;
-    }
+    const port = Number(env.CLIENT_PORT || 3000);
+    const apiUrl = env.API_URL || `http://127.0.0.1:${env.API_PORT || 8000}`;
 
     process.env.VITE_DEBUG_CSS_LINK = isDev
         ? `<link href='css/dev.css' rel="stylesheet" />`
         : "";
     process.env.VITE_GAME_VERSION = pkgJson.version;
-
-    process.env.VITE_SPELLSYNC_PROJECT_ID = Config.secrets.SPELLSYNC_PROJECT_ID;
-    process.env.VITE_SPELLSYNC_PUBLIC_TOKEN = Config.secrets.SPELLSYNC_PUBLIC_TOKEN;
 
     const plugins: PluginOption[] = [
         ejsPlugin(),
@@ -47,24 +41,24 @@ export default defineConfig(({ mode }) => {
     }
 
     const serverOptions: ServerOptions = {
-        port: Config.vite.port,
-        host: Config.vite.host,
+        port,
+        host: "127.0.0.1",
         proxy: {
             // this redirects /stats to /stats/
             // because vite is cringe and does not work without trailing slashes at the end of paths 😭
             "^/stats(?!/$).*": {
-                target: `http://${Config.vite.host}:${Config.vite.port}`,
+                target: `http://127.0.0.1:${port}`,
                 rewrite: (path) => path.replace(/^\/stats(?!\/$).*/, "/stats/"),
                 changeOrigin: true,
                 secure: false,
             },
             "/api": {
-                target: `http://${Config.apiServer.host}:${Config.apiServer.port}`,
+                target: apiUrl,
                 changeOrigin: true,
                 secure: false,
             },
             "/team_v2": {
-                target: `http://${Config.apiServer.host}:${Config.apiServer.port}`,
+                target: apiUrl,
                 changeOrigin: true,
                 secure: false,
                 ws: true,
@@ -103,33 +97,18 @@ export default defineConfig(({ mode }) => {
                 },
             },
         },
+        envDir,
         resolve: {
             extensions: [".ts", ".js"],
             alias: {
-                "@/sdk.ts": viteEnv?.VITE_ENABLE_SURVEV_ADS === "true"
+                "@/sdk.ts": env.VITE_ENABLE_SURVEV_ADS === "true"
                     ? "./sdk-manager.prod"
                     : "./sdk-manager",
             },
         },
         define: {
-            GAME_REGIONS: Config.regions,
             GIT_VERSION: JSON.stringify(GIT_VERSION),
-            PING_TEST_URLS: Object.entries(Config.regions).map(([key, data]) => {
-                return {
-                    region: key,
-                    zone: key,
-                    url: data.address,
-                    https: data.https,
-                };
-            }),
-            PASS_TYPE: JSON.stringify(Config.passType),
-            AD_PREFIX: JSON.stringify(Config.secrets.AD_PREFIX),
-            VITE_GAMEMONETIZE_ID: JSON.stringify(Config.secrets.GAMEMONETIZE_ID),
-            SPELLSYNC_PROJECT_ID: JSON.stringify(Config.secrets.SPELLSYNC_PROJECT_ID),
-            SPELLSYNC_PUBLIC_TOKEN: JSON.stringify(Config.secrets.SPELLSYNC_PUBLIC_TOKEN),
             IS_DEV: isDev,
-            PROXY_DEFS: JSON.stringify(Config.proxies),
-            TURNSTILE_SITE_KEY: JSON.stringify(Config.secrets.TURNSTILE_SITE_KEY),
         },
         plugins,
         json: {

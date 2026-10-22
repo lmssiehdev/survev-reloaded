@@ -7,6 +7,9 @@ export interface PassDef {
     }>;
 }
 
+/** the pass players earn xp and rewards in */
+export const activePassType = "pass_survivr2";
+
 export const PassDefs: Record<string, PassDef> = {
     pass_survivr1: {
         type: "pass",

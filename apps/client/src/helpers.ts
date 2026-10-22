@@ -246,18 +246,35 @@ ${r} 0 0 0 0 \
 
         return controller.signal;
     },
+    /** from site_info, set when the API verifies captchas */
+    turnstileSiteKey: undefined as string | undefined,
+    turnstileScript: undefined as Promise<void> | undefined,
+    /** the captcha script is only loaded once a captcha can be shown */
+    loadTurnstile() {
+        helpers.turnstileScript ??= new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+            script.onload = () => resolve();
+            script.onerror = reject;
+            document.head.append(script);
+        });
+        return helpers.turnstileScript;
+    },
     verifyTurnstile: function(enabled: boolean, cb: (token: string) => void) {
-        if (!enabled || !window.turnstile || !TURNSTILE_SITE_KEY) {
+        const sitekey = helpers.turnstileSiteKey;
+        if (!enabled || !sitekey) {
             cb("");
             return;
         }
-        window.turnstile.render("#start-turnstile-container", {
-            sitekey: TURNSTILE_SITE_KEY,
-            appearance: "interaction-only",
-            callback: (token: string) => {
-                cb(token);
-                window.turnstile.remove("#start-turnstile-container");
-            },
-        });
+        helpers.loadTurnstile().then(() => {
+            window.turnstile.render("#start-turnstile-container", {
+                sitekey,
+                appearance: "interaction-only",
+                callback: (token: string) => {
+                    cb(token);
+                    window.turnstile.remove("#start-turnstile-container");
+                },
+            });
+        }, () => cb(""));
     },
 };

@@ -1,4 +1,3 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
 import { lt } from "drizzle-orm";
@@ -8,6 +7,7 @@ import { settings } from "./admin/settings.ts";
 import { app } from "./app.ts";
 import { db } from "./db/index.ts";
 import { sessions } from "./db/schema.ts";
+import { env } from "./env.ts";
 import { teamMenu } from "./game/teamMenu.ts";
 import { cleanupOldPlayerIps } from "./moderation/bans.ts";
 
@@ -32,7 +32,7 @@ teamMenu.start();
 
 Bun.serve({
     fetch: app.fetch,
-    port: Config.apiServer.port,
+    port: env.API_PORT,
     websocket,
     // Bun's default of 10 seconds is too short for some slow database queries
     idleTimeout: 60,
@@ -53,5 +53,5 @@ Bun.cron("0 0 * * *", async () => {
 });
 
 logger.info(`Survev API Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
-logger.info(`Listening on ${Config.apiServer.host}:${Config.apiServer.port}`);
+logger.info(`Listening on ${env.API_HOST}:${env.API_PORT}`);
 logger.info("Press Ctrl+C to exit.");

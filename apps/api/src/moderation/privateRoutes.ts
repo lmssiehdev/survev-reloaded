@@ -1,5 +1,5 @@
-import { Config } from "@survev/config/serverConfig.ts";
 import type { ModRouterSpectateGameRes, SpectateGamePrivateRes } from "@survev/contracts";
+import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import {
     zBanAccountParams,
@@ -25,11 +25,11 @@ import { streamText } from "hono/streaming";
 import { z } from "zod";
 import { db } from "../db/index.ts";
 import { items, matchData, userPasses, users } from "../db/schema.ts";
-import { regionFetch } from "../game/regions.ts";
+import { regionFetch, regionIds } from "../game/regions.ts";
 import { teamMenu } from "../game/teamMenu.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../lib/errors.ts";
 import { isBehindProxy } from "../lib/ip.ts";
-import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
+import { validateParams } from "../lib/middleware.ts";
 import { incrementPassXp } from "../pass/xp.ts";
 import { sanitizeSlug } from "../user/users.ts";
 import { banAccount, banInfo, banIps, findIpBan, hashIp, revokeBans, unbanAccount } from "./bans.ts";
@@ -49,7 +49,6 @@ function ipBanLength(permanent: boolean, days: number) {
 }
 
 const moderationRoutes = new Hono()
-    .use(databaseEnabledMiddleware)
     .post("/ban_account", validateParams(zBanAccountParams), async (c) => {
         const {
             slug,
@@ -334,7 +333,7 @@ const moderationRoutes = new Hono()
     .post("reset_pass", validateParams(zResetPassParams), async (c) => {
         const { slug, pass } = c.req.valid("json");
         // default to the active pass
-        const passType = pass || Config.passType;
+        const passType = pass || activePassType;
 
         return respond(
             c,
@@ -420,16 +419,16 @@ const moderationRoutes = new Hono()
         }
 
         return streamText(c, async (stream) => {
-            const regionIds = Object.keys(Config.regions);
+            const ids = regionIds();
             let requestsDone = 0;
 
-            await Promise.all(regionIds.map(async (regionId) => {
+            await Promise.all(ids.map(async (regionId) => {
                 const res = await regionFetch<SpectateGamePrivateRes>(regionId, "api/spectate_game", { filter });
                 requestsDone++;
                 await stream.writeln(JSON.stringify(
                     {
                         region: regionId,
-                        done: requestsDone === regionIds.length,
+                        done: requestsDone === ids.length,
                         ...res.unwrapOr({ players: [] }),
                     } satisfies ModRouterSpectateGameRes,
                 ));

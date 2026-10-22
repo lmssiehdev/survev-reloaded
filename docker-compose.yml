@@ -1,16 +1,16 @@
-# Production setup, see HOSTING.md. Settings come from .env (see .env.example) and survev-config.hjson.
+# Production setup, see HOSTING.md. Settings come from .env (see .env.example), the values
+# below are the ones this setup fixes (service addresses) or derives from the domains.
 name: survev
 
 x-build: &build
   context: .
+  # the client bakes the public VITE_* variables in
   args:
-    SURVEV_CONFIG: ${SURVEV_CONFIG:-survev-config.hjson}
-
-x-config: &config
-  type: bind
-  source: ./${SURVEV_CONFIG:-survev-config.hjson}
-  target: /app/survev-config.hjson
-  read_only: true
+    VITE_API_URL: ${VITE_API_URL:-}
+    VITE_AD_PREFIX: ${VITE_AD_PREFIX:-}
+    VITE_GAMEMONETIZE_ID: ${VITE_GAMEMONETIZE_ID:-}
+    VITE_SPELLSYNC_PROJECT_ID: ${VITE_SPELLSYNC_PROJECT_ID:-}
+    VITE_SPELLSYNC_PUBLIC_TOKEN: ${VITE_SPELLSYNC_PUBLIC_TOKEN:-}
 
 services:
   web:
@@ -47,10 +47,13 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+    env_file: .env
     environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-survev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-survev}
       REDIS_URL: redis://redis:6379
-    volumes:
-      - *config
+      PUBLIC_URL: ${SURVEV_SCHEME:-https}://${SURVEV_DOMAIN}
+      # Caddy sets X-Forwarded-For to the client IP. Only the compose network can reach the servers directly.
+      PROXY_IP_HEADER: X-Forwarded-For
     healthcheck:
       test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8000/api/site_info'); process.exit(r.ok ? 0 : 1)"]
       interval: 30s
@@ -63,8 +66,14 @@ services:
     restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }
+    env_file: .env
+    environment:
+      API_URL: http://api:8000
+      # set REGION_URL in .env when the game server isn't on the default port (local testing: http://<game domain>:8080)
+      REGION_URL: ${REGION_URL:-${SURVEV_SCHEME:-https}://${SURVEV_GAME_DOMAIN}}
+      GAME_PORTS: ${SURVEV_GAME_PORTS:-9000-9063}
+      PROXY_IP_HEADER: X-Forwarded-For
     volumes:
-      - *config
       - lost-games:/app/apps/server/lost_game_data
     healthcheck:
       test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8001/health'); process.exit(r.ok ? 0 : 1)"]
@@ -87,7 +96,7 @@ services:
       start_period: 30s
       start_interval: 2s
 
-  # leaderboard/stats cache (cachingEnabled), nothing to persist
+  # leaderboard/stats cache (REDIS_URL), nothing to persist
   redis:
     image: redis:8-alpine
     restart: unless-stopped
@@ -102,8 +111,10 @@ services:
     build: { <<: *build, target: bot }
     restart: unless-stopped
     depends_on: [api]
-    volumes:
-      - *config
+    env_file: .env
+    environment:
+      API_URL: http://api:8000
+      PUBLIC_URL: ${SURVEV_SCHEME:-https}://${SURVEV_DOMAIN}
 
 volumes:
   caddy-data:

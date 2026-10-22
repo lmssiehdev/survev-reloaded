@@ -22,7 +22,6 @@ import { helpers } from "./helpers.ts";
 import { InputHandler } from "./input.ts";
 import { InputBinds, InputBindUi } from "./inputBinds.ts";
 import { PingTest } from "./pingTest.ts";
-import { proxy } from "./proxy.ts";
 import { ResourceManager } from "./resources.ts";
 import { SDK } from "./sdk/sdk.ts";
 import { SiteInfo } from "./siteInfo.ts";
@@ -157,8 +156,13 @@ export class Application {
                 this.updateLogoBasedOnLanguage(language);
             }
             this.localization.populateLanguageSelect();
-            this.startPingTest();
-            this.siteInfo.load();
+            this.siteInfo.load().then(() => {
+                this.pingTest.setRegions(this.siteInfo.info.regions ?? {});
+                this.startPingTest();
+                this.updateLoginSupport();
+                this.profileUi.updateLoginSupport();
+                this.account.initLogin();
+            });
             this.localization.localizeIndex();
             this.account.init();
 
@@ -266,18 +270,7 @@ export class Application {
                 this.teamMenu.leave();
             });
 
-            // hide pass and show news by default if login is unsupported
-            const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
-            if (loginSupported) {
-                $("#news-wrapper").hide();
-                $("#pass-wrapper").show();
-                this.newsDisplayed = false;
-            } else {
-                $(".right-column-toggle").hide();
-                $("#news-wrapper").show();
-                $("#pass-wrapper").hide();
-                this.newsDisplayed = true;
-            }
+            this.updateLoginSupport();
 
             const currentNews = $("#news-current").data("date");
             const currentNewsTime = new Date(currentNews).getTime();
@@ -431,6 +424,15 @@ export class Application {
             this.loadoutDisplay.resize();
         }
         this.refreshUi();
+    }
+
+    /** hide pass and show news if login is unsupported, again once site_info says which logins the API has */
+    updateLoginSupport() {
+        const loginSupported = !SDK.isAnySDK && api.anyLoginSupported();
+        $(".right-column-toggle").toggle(loginSupported);
+        $("#news-wrapper").toggle(!loginSupported);
+        $("#pass-wrapper").toggle(loginSupported);
+        this.newsDisplayed = !loginSupported;
     }
 
     startPingTest() {
@@ -763,7 +765,7 @@ export class Application {
                 headers: {
                     "Content-Type": "application/json; charset=utf-8",
                 },
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
+                credentials: api.credentials(),
                 signal: helpers.abortSignal(10 * 1000),
             }).then(res => res.json()).then((data: FindGameResponse) => {
                 if (data.type === "error") {

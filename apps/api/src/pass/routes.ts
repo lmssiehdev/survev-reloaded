@@ -1,4 +1,4 @@
-import { Config } from "@survev/config/serverConfig.ts";
+import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
 import { type GetPassResponse } from "@survev/shared/types/user.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
@@ -23,7 +23,7 @@ async function findPassWithQuests(
     userId: string,
 ): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined> {
     const row = await tx.query.userPasses.findFirst({
-        where: { userId, passType: Config.passType },
+        where: { userId, passType: activePassType },
         with: {
             quests: {
                 where: { idx: { in: questSlotIndexes } },
@@ -72,7 +72,7 @@ async function getPassAndQuests(
     return db.transaction(async (tx) => {
         await tx
             .insert(userPasses)
-            .values({ userId, passType: Config.passType })
+            .values({ userId, passType: activePassType })
             .onConflictDoNothing({
                 target: [userPasses.userId, userPasses.passType],
             });
