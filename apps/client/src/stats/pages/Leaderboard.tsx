@@ -1,60 +1,21 @@
-import { useSearchParams } from "@solidjs/router";
 import { createMemo, Errored, For, Loading, Show } from "solid-js";
 import type { LeaderboardParams, LeaderboardResponse } from "@survev/shared/types/stats.ts";
+import { LEADERBOARD_TYPES, STATS_INTERVALS, TEAM_MODE_NAMES } from "@survev/shared/types/statsFilters.ts";
 import { getLeaderboard } from "../api.ts";
+import { Select } from "../components/Select.tsx";
 import { Spinner } from "../components/Spinner.tsx";
-import { gameModes } from "../format.ts";
-import { type StatsKey, t } from "../i18n.ts";
-
-const types = {
-    most_kills: "stats-most-kills",
-    most_damage_dealt: "stats-most-damage",
-    kpg: "stats-kpg-full",
-    kills: "stats-total-kills",
-    wins: "stats-total-wins",
-} satisfies Record<LeaderboardParams["type"], StatsKey>;
-
-/** header of the stat column */
-const statNames = {
-    most_kills: "stats-most-kills",
-    most_damage_dealt: "stats-most-damage",
-    kpg: "stats-kpg",
-    kills: "stats-total-kills",
-    wins: "stats-total-wins",
-} satisfies Record<LeaderboardParams["type"], StatsKey>;
-
-const intervals = {
-    daily: "stats-today",
-    weekly: "stats-this-week",
-    alltime: "stats-all-time",
-} satisfies Record<LeaderboardParams["interval"], StatsKey>;
-
-const teamModes = {
-    solo: "stats-solo",
-    duo: "stats-duo",
-    squad: "stats-squad",
-} satisfies Record<LeaderboardParams["teamMode"], StatsKey>;
-
-function oneOf<T extends string>(value: string | undefined, allowed: Record<T, unknown>, fallback: T): T {
-    return value !== undefined && value in allowed ? (value as T) : fallback;
-}
-
-/** URL search params: ?type=&team=&t=&mapId= */
-type LeaderboardSearch = { type: string; team: string; t: string; mapId: string };
+import { gameModes, intervalLabels, leaderboardStatLabels, leaderboardTypeLabels, teamModeLabels } from "../format.ts";
+import { t } from "../i18n.ts";
+import { oneOf, text, useSearchState } from "../searchState.ts";
 
 export function Leaderboard() {
-    const [search, setSearch] = useSearchParams<LeaderboardSearch>();
-    const params = createMemo<LeaderboardParams>(() => ({
-        type: oneOf(search.type, types, "most_kills"),
-        interval: oneOf(search.t, intervals, "daily"),
-        teamMode: oneOf(search.team, teamModes, "solo"),
-        mapId: search.mapId || "0",
-    }));
-
-    function update(next: Partial<LeaderboardParams>) {
-        const p = { ...params(), ...next };
-        setSearch({ type: p.type, team: p.teamMode, t: p.interval, mapId: p.mapId });
-    }
+    // ?type=&team=&t=&mapId=
+    const [params, update] = useSearchState<LeaderboardParams>({
+        type: oneOf("type", LEADERBOARD_TYPES, "most_kills"),
+        teamMode: oneOf("team", TEAM_MODE_NAMES, "solo"),
+        interval: oneOf("t", STATS_INTERVALS, "daily"),
+        mapId: text("mapId", "0"),
+    });
 
     const rows = createMemo(async () => {
         const data = await getLeaderboard(params());
@@ -83,24 +44,30 @@ export function Leaderboard() {
                     <div class="col-lg-2 col-3 pr-lg-3 pr-1">
                         <Select
                             id="leaderboard-team-mode"
+                            class="leaderboard-opt"
                             value={params().teamMode}
-                            options={teamModes}
+                            values={TEAM_MODE_NAMES}
+                            labels={teamModeLabels}
                             onChange={(teamMode) => update({ teamMode })}
                         />
                     </div>
                     <div class="col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1">
                         <Select
                             id="leaderboard-type"
+                            class="leaderboard-opt"
                             value={params().type}
-                            options={types}
+                            values={LEADERBOARD_TYPES}
+                            labels={leaderboardTypeLabels}
                             onChange={(type) => update({ type })}
                         />
                     </div>
                     <div class="col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1">
                         <Select
                             id="leaderboard-time"
+                            class="leaderboard-opt"
                             value={params().interval}
-                            options={intervals}
+                            values={STATS_INTERVALS}
+                            labels={intervalLabels}
                             onChange={(interval) => update({ interval })}
                         />
                     </div>
@@ -142,26 +109,6 @@ export function Leaderboard() {
     );
 }
 
-function Select<T extends string>(props: {
-    id: string;
-    value: T;
-    options: Record<T, StatsKey>;
-    onChange: (value: T) => void;
-}) {
-    return (
-        <select
-            id={props.id}
-            class="leaderboard-opt custom-select"
-            value={props.value}
-            onChange={(e) => props.onChange(e.currentTarget.value as T)}
-        >
-            <For each={Object.entries(props.options) as [T, StatsKey][]}>
-                {([value, key]) => <option value={value}>{t(key)}</option>}
-            </For>
-        </select>
-    );
-}
-
 function PlayerName(props: { slug: string | null; username: string }) {
     return (
         <span class="player-name">
@@ -181,7 +128,7 @@ function LeaderboardTable(props: { type: LeaderboardParams["type"]; rows: Leader
                 <tr class="leaderboard-headers">
                     <th class="header-rank" scope="col">{t("stats-rank")}</th>
                     <th class="header-player" scope="col">{t("stats-player")}</th>
-                    <th class="header-stat" scope="col">{t(statNames[props.type])}</th>
+                    <th class="header-stat" scope="col">{t(leaderboardStatLabels[props.type])}</th>
                     <Show when={showGames()}>
                         <th class="header-games" scope="col">{t("stats-games")}</th>
                     </Show>

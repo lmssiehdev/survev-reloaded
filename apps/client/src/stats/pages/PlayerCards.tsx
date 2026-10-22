@@ -1,6 +1,8 @@
 import { For, Show } from "solid-js";
 import type { UserStatsRequest } from "@survev/shared/types/stats.ts";
-import { gameModes, type ModeCard, type Profile } from "../format.ts";
+import { ALL_MAPS, STATS_INTERVALS } from "@survev/shared/types/statsFilters.ts";
+import { Select } from "../components/Select.tsx";
+import { gameModes, intervalLabels, type ModeCard, type Profile } from "../format.ts";
 import { t } from "../i18n.ts";
 
 export type PlayerCardsFilters = Pick<UserStatsRequest, "interval" | "mapIdFilter">;
@@ -74,35 +76,29 @@ export function OverviewCard(props: { profile?: Profile; message?: string }) {
 /** time + map selectors */
 export function PlayerFilters(props: {
     filters: PlayerCardsFilters;
-    onChange: (filters: PlayerCardsFilters) => void;
+    onChange: (filters: Partial<PlayerCardsFilters>) => void;
 }) {
     return (
         <div class="container mt-3">
             <div class="row">
                 <div class="col-lg-2 col-6">
-                    <select
+                    <Select
                         id="player-time"
-                        class="player-opt custom-select"
+                        class="player-opt"
                         value={props.filters.interval}
-                        onChange={(e) =>
-                            props.onChange({
-                                ...props.filters,
-                                interval: e.currentTarget.value as PlayerCardsFilters["interval"],
-                            })}
-                    >
-                        <option value="daily">{t("stats-today")}</option>
-                        <option value="weekly">{t("stats-this-week")}</option>
-                        <option value="alltime">{t("stats-all-time")}</option>
-                    </select>
+                        values={STATS_INTERVALS}
+                        labels={intervalLabels}
+                        onChange={(interval) => props.onChange({ interval })}
+                    />
                 </div>
                 <div class="col-lg-2 col-6 pl-0">
                     <select
                         id="player-map-id"
                         class="player-opt custom-select"
                         value={props.filters.mapIdFilter}
-                        onChange={(e) => props.onChange({ ...props.filters, mapIdFilter: e.currentTarget.value })}
+                        onChange={(e) => props.onChange({ mapIdFilter: e.currentTarget.value })}
                     >
-                        <option value="-1">{t("all")}</option>
+                        <option value={ALL_MAPS}>{t("all")}</option>
                         <For each={gameModes}>
                             {(mode) => <option value={mode.mapId}>{mode.desc.name}</option>}
                         </For>

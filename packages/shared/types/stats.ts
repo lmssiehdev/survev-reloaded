@@ -1,8 +1,15 @@
 import { z } from "zod";
-import { MapId, TeamMode } from "../gameConfig.ts";
-import { ALL_MAPS, ALL_TEAM_MODES } from "./statsFilters.ts";
+import { MapId } from "../gameConfig.ts";
+import {
+    ALL_MAPS,
+    LEADERBOARD_TYPES,
+    STATS_INTERVALS,
+    TEAM_MODE_BY_NAME,
+    TEAM_MODE_FILTERS,
+    TEAM_MODE_NAMES,
+} from "./statsFilters.ts";
 
-export { ALL_MAPS, ALL_TEAM_MODES };
+export * from "./statsFilters.ts";
 
 //
 // Match History
@@ -12,12 +19,7 @@ export const zMatchHistoryRequest = z.object({
     slug: z.string(),
     offset: z.number(),
     count: z.number(),
-    teamModeFilter: z.union([
-        z.literal(TeamMode.Solo),
-        z.literal(TeamMode.Duo),
-        z.literal(TeamMode.Squad),
-        z.literal(ALL_TEAM_MODES),
-    ]),
+    teamModeFilter: z.literal(TEAM_MODE_FILTERS),
 });
 
 export type MatchHistoryParams = z.infer<typeof zMatchHistoryRequest>;
@@ -73,7 +75,7 @@ const VALID_MAP_IDS = Object.values(MapId)
     .map((id) => id.toString()) as [string, ...string[]];
 
 export const zUserStatsRequest = z.object({
-    interval: z.enum(["daily", "weekly", "alltime"]),
+    interval: z.enum(STATS_INTERVALS),
     slug: z.string().min(1),
     mapIdFilter: z.enum([ALL_MAPS, ...VALID_MAP_IDS]),
 });
@@ -108,17 +110,11 @@ export interface Mode {
 //
 // Leaderboard
 //
-const teamModeMap = {
-    solo: TeamMode.Solo,
-    duo: TeamMode.Duo,
-    squad: TeamMode.Squad,
-};
-
 export const zLeaderboardsRequest = z.object({
-    interval: z.enum(["daily", "weekly", "alltime"]),
+    interval: z.enum(STATS_INTERVALS),
     mapId: z.enum(VALID_MAP_IDS).transform((v) => Number(v)),
-    type: z.enum(["most_kills", "most_damage_dealt", "kpg", "kills", "wins"]),
-    teamMode: z.enum(["solo", "duo", "squad"]).transform((mode) => teamModeMap[mode]),
+    type: z.enum(LEADERBOARD_TYPES),
+    teamMode: z.enum(TEAM_MODE_NAMES).transform((name) => TEAM_MODE_BY_NAME[name]),
 });
 
 export type LeaderboardResponse =

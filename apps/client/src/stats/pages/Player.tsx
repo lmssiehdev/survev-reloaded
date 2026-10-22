@@ -1,26 +1,22 @@
 import { useSearchParams } from "@solidjs/router";
 import { createMemo, Errored, Loading, Show, untrack } from "solid-js";
-import { ALL_MAPS, ALL_TEAM_MODES } from "@survev/shared/types/statsFilters.ts";
+import { ALL_MAPS, ALL_TEAM_MODES, STATS_INTERVALS } from "@survev/shared/types/statsFilters.ts";
 import { getMatchHistory, getUserStats } from "../api.ts";
 import { Spinner } from "../components/Spinner.tsx";
 import { getModeCards, getProfile } from "../format.ts";
 import { t } from "../i18n.ts";
+import { oneOf, text, useSearchState } from "../searchState.ts";
 import { MatchHistorySection, PAGE_SIZE } from "./MatchHistory.tsx";
 import { ModeCards, OverviewCard, type PlayerCardsFilters, PlayerFilters } from "./PlayerCards.tsx";
 
-const intervals = ["daily", "weekly", "alltime"] as const;
-
-/** URL search params: ?slug=&time=&mapId=&gameId= */
-type PlayerSearch = { slug: string; time: string; mapId: string; gameId: string };
-
 /** the profile page; remounted when the slug changes */
 export function Player(props: { slug: string }) {
-    const [search, setSearch] = useSearchParams<PlayerSearch>();
-
-    const filters = createMemo<PlayerCardsFilters>(() => ({
-        interval: intervals.find((i) => i === search.time) ?? "alltime",
-        mapIdFilter: search.mapId || ALL_MAPS,
-    }));
+    // ?slug=&time=&mapId=&gameId=; the open match isn't a filter, so it's set on its own
+    const [search, setSearch] = useSearchParams<{ gameId: string }>();
+    const [filters, setFilters] = useSearchState<PlayerCardsFilters>({
+        interval: oneOf("time", STATS_INTERVALS, "alltime"),
+        mapIdFilter: text("mapId", ALL_MAPS),
+    });
     const stats = createMemo(() => getUserStats({ slug: props.slug, ...filters() }));
 
     // start the first page of matches alongside the stats; the list picks it up from the query cache
@@ -40,7 +36,7 @@ export function Player(props: { slug: string }) {
                                     <OverviewCard profile={getProfile(stats())} />
                                     <PlayerFilters
                                         filters={filters()}
-                                        onChange={(f) => setSearch({ time: f.interval, mapId: f.mapIdFilter })}
+                                        onChange={setFilters}
                                     />
                                     <ModeCards cards={getModeCards(stats())} />
                                     <MatchHistorySection

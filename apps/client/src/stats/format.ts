@@ -1,18 +1,50 @@
 import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
-import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { UserStatsResponse } from "@survev/shared/types/stats.ts";
+import {
+    ALL_TEAM_MODES,
+    type LeaderboardType,
+    type StatsInterval,
+    TEAM_MODES,
+    type TeamModeFilter,
+    type TeamModeName,
+} from "@survev/shared/types/statsFilters.ts";
 import { helpers } from "../helpers.ts";
 import type { StatsKey } from "./i18n.ts";
 
 export const gameModes = helpers.getGameModes();
 export const formatTime = helpers.formatTime;
 
-export const teamModeNames = {
-    [TeamMode.Solo]: "solo",
-    [TeamMode.Duo]: "duo",
-    [TeamMode.Squad]: "squad",
-} as const;
-export type TeamModeName = (typeof teamModeNames)[TeamMode];
+export const intervalLabels = {
+    daily: "stats-today",
+    weekly: "stats-this-week",
+    alltime: "stats-all-time",
+} satisfies Record<StatsInterval, StatsKey>;
+
+export const teamModeLabels = {
+    solo: "stats-solo",
+    duo: "stats-duo",
+    squad: "stats-squad",
+} satisfies Record<TeamModeName, StatsKey>;
+
+export function teamModeFilterLabel(filter: TeamModeFilter): StatsKey {
+    return filter === ALL_TEAM_MODES ? "stats-all" : teamModeLabels[GameConfig.TeamModeToString[filter]];
+}
+
+/** leaderboard type selector */
+export const leaderboardTypeLabels = {
+    most_kills: "stats-most-kills",
+    most_damage_dealt: "stats-most-damage",
+    kpg: "stats-kpg-full",
+    kills: "stats-total-kills",
+    wins: "stats-total-wins",
+} satisfies Record<LeaderboardType, StatsKey>;
+
+/** header of the leaderboard's stat column */
+export const leaderboardStatLabels = {
+    ...leaderboardTypeLabels,
+    kpg: "stats-kpg",
+} satisfies Record<LeaderboardType, StatsKey>;
 
 export interface Stat {
     key: StatsKey;
@@ -51,9 +83,8 @@ export function getProfile(stats: UserStatsResponse): Profile {
 
 /** one card per team mode, in TeamMode order; modes without games get an empty card */
 export function getModeCards(stats: UserStatsResponse): ModeCard[] {
-    const teamModes = [TeamMode.Solo, TeamMode.Duo, TeamMode.Squad];
-    return teamModes.map((teamMode) => {
-        const name = teamModeNames[teamMode];
+    return TEAM_MODES.map((teamMode) => {
+        const name = GameConfig.TeamModeToString[teamMode];
         const mode = stats.modes.find((m) => m.teamMode == teamMode);
         if (!mode) return { name, games: 0, midStats: [], botStats: [] };
         return {

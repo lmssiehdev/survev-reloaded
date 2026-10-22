@@ -3,6 +3,7 @@ import { validateUserName } from "@survev/config/utils/badWords.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
+import { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { FindGamePrivateError } from "@survev/shared/types/api.ts";
 import {
     type ClientRoomData,
@@ -183,7 +184,7 @@ class Room {
         if (!this.data.enabledGameModeIdxs.includes(gameModeIdx)) {
             // we don't allow creating teams if there's no valid team mode
             // so this will never be -1
-            gameModeIdx = modes.findIndex((mode) => mode.enabled && mode.teamMode > 1);
+            gameModeIdx = modes.findIndex((mode) => mode.enabled && mode.teamMode != TeamMode.Solo);
         }
 
         this.data.gameModeIdx = gameModeIdx;
@@ -383,7 +384,7 @@ export class TeamMenu {
             .map((_, i) => i)
             .filter((i) => {
                 const mode = this.server.modes[i];
-                return mode.enabled && mode.teamMode > 1;
+                return mode.enabled && mode.teamMode != TeamMode.Solo;
             });
     }
 
