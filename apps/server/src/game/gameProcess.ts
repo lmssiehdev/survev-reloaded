@@ -6,7 +6,6 @@ import type { SaveGameBody } from "@survev/contracts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { Logger } from "@survev/shared/utils/logger.ts";
 import type { ServerWebSocket } from "bun";
-import { platform } from "node:os";
 import path from "node:path";
 import { apiPrivateRouter, checkIp } from "../utils/apiRouter.ts";
 import { serverGameOptions } from "../utils/serverGameOptions.ts";
@@ -237,21 +236,11 @@ setInterval(() => {
     }
 }, 5000);
 
-let setGameInterval: (cb: () => void, time: number) => void = setInterval;
-if (platform() === "win32") {
-    const NanoTimer = (await import("nanotimer")).default;
-    // setInterval on windows sucks
-    // and doesn't give accurate timings
-    setGameInterval = (cb: () => void, time: number) => {
-        new NanoTimer().setInterval(cb, [], `${time}m`);
-    };
-}
-
-setGameInterval(() => {
+setInterval(() => {
     game?.update();
 }, 1000 / Config.gameTps);
 
-setGameInterval(() => {
+setInterval(() => {
     game?.netSync();
 }, 1000 / Config.netSyncTps);
 
