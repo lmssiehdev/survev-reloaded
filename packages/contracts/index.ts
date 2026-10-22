@@ -25,7 +25,7 @@ export const zSetClientThemeBody = z.object({
 
 /**
  * Runtime validator for SaveGameBody["matchData"], used to check lost game files before retrying them.
- * The API checks that this stays assignable to its match_data insert type (see apps/api/src/types.ts).
+ * The API checks that this stays assignable to its match_data insert type (see apps/api/src/stats/privateRoutes.ts).
  */
 export const zSaveGameMatchData = z.array(
     z.object({

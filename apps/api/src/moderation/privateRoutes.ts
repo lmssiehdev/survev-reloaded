@@ -28,10 +28,11 @@ import { items, matchData, userPasses, users } from "../db/schema.ts";
 import { regionFetch } from "../game/regions.ts";
 import { teamMenu } from "../game/teamMenu.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../lib/errors.ts";
+import { isBehindProxy } from "../lib/ip.ts";
 import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
 import { incrementPassXp } from "../pass/xp.ts";
 import { sanitizeSlug } from "../user/users.ts";
-import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "./bans.ts";
+import { banAccount, banInfo, banIps, findIpBan, hashIp, revokeBans, unbanAccount } from "./bans.ts";
 
 const NO_USER = "No user found with that slug.";
 
@@ -47,7 +48,7 @@ function ipBanLength(permanent: boolean, days: number) {
     return permanent ? "permanently" : `for ${days} days`;
 }
 
-export const ModerationRouter = new Hono()
+const moderationRoutes = new Hono()
     .use(databaseEnabledMiddleware)
     .post("/ban_account", validateParams(zBanAccountParams), async (c) => {
         const {
@@ -436,3 +437,26 @@ export const ModerationRouter = new Hono()
             await stream.close();
         });
     });
+
+/** /private/check_ip is called by the game server, /private/moderation/* by the discord bot */
+export const ModerationPrivateRouter = new Hono()
+    .post(
+        "/check_ip",
+        validateParams(
+            z.object({
+                ip: z.string(),
+            }),
+        ),
+        async (c) => {
+            const { ip } = c.req.valid("json");
+
+            const ban = await findIpBan(ip);
+            if (ban) {
+                return c.json({ banned: true, banData: banInfo(ban), behindProxy: false });
+            }
+
+            const behindProxy = await isBehindProxy(ip, false);
+            return c.json({ banned: false, banData: undefined, behindProxy });
+        },
+    )
+    .route("/moderation", moderationRoutes);

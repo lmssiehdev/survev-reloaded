@@ -2,16 +2,31 @@ import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { PrivateRouter } from "./admin/routes.ts";
+import { AdminPrivateRouter } from "./admin/privateRoutes.ts";
 import { auth } from "./auth/auth.ts";
+import { GamePrivateRouter } from "./game/privateRoutes.ts";
 import { GameRouter } from "./game/routes.ts";
 import { teamMenu } from "./game/teamMenu.ts";
 import { type ErrorBody, errorResponse, NotFound } from "./lib/errors.ts";
-import { databaseEnabledMiddleware, rateLimitMiddleware } from "./lib/middleware.ts";
+import { databaseEnabledMiddleware, privateMiddleware, rateLimitMiddleware } from "./lib/middleware.ts";
+import { ModerationPrivateRouter } from "./moderation/privateRoutes.ts";
+import { PassPrivateRouter } from "./pass/privateRoutes.ts";
+import { StatsPrivateRouter } from "./stats/privateRoutes.ts";
 import { StatsRouter } from "./stats/routes.ts";
 import { UserRouter } from "./user/routes.ts";
 
 const logger = new ServerLogger("Server");
+
+/** /private: only the game server and the discord bot call these, both send the api key */
+const privateRouter = new Hono()
+    .use(privateMiddleware)
+    .route("/", GamePrivateRouter)
+    .route("/", PassPrivateRouter)
+    .route("/", StatsPrivateRouter)
+    .route("/", ModerationPrivateRouter)
+    .route("/", AdminPrivateRouter);
+
+export type PrivateRouteApp = typeof privateRouter;
 
 /** every route; importing this starts nothing, index.ts serves it and starts the timers */
 export const app = new Hono();
@@ -59,5 +74,5 @@ app.use("/api/auth/*", databaseEnabledMiddleware, rateLimitMiddleware(5, 60 * 10
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/", StatsRouter);
 app.route("/api/", GameRouter);
-app.route("/private/", PrivateRouter);
+app.route("/private/", privateRouter);
 app.route("/", teamMenu.router);

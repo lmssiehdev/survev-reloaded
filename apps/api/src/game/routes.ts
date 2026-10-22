@@ -6,11 +6,11 @@ import { type FindGameResponse, type SiteInfoRes, zFindGameBody } from "@survev/
 import { Hono } from "hono";
 import { randomUUID } from "node:crypto";
 import { settings } from "../admin/settings.ts";
-import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "../apiHelpers.ts";
-import { isBehindProxy } from "../lib/ip.ts";
-import { rateLimitMiddleware, sessionMiddleware, validateParams } from "../lib/middleware.ts";
+import { sessionMiddleware } from "../auth/session.ts";
+import { getHonoIp, isBehindProxy, verifyTurnstile } from "../lib/ip.ts";
+import { rateLimitMiddleware, validateParams } from "../lib/middleware.ts";
 import { banInfo, findIpBan } from "../moderation/bans.ts";
-import { findGame, regionPops } from "./regions.ts";
+import { findGame, getFindGamePlayerData, regionPops } from "./regions.ts";
 
 // not using the middleware here to not add extra indentation... smh
 const findGameRateLimit = new HTTPRateLimit(5, 3000);

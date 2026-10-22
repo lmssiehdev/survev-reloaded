@@ -21,11 +21,10 @@ import { upgradeWebSocket } from "hono/bun";
 import type { WSContext } from "hono/ws";
 import { randomUUID } from "node:crypto";
 import { settings } from "../admin/settings.ts";
-import { getFindGamePlayerData, getHonoIp, verifyTurnstile } from "../apiHelpers.ts";
-import { isBehindProxy } from "../lib/ip.ts";
-import { sessionMiddleware } from "../lib/middleware.ts";
+import { sessionMiddleware } from "../auth/session.ts";
+import { getHonoIp, isBehindProxy, verifyTurnstile } from "../lib/ip.ts";
 import { findIpBan, hashIp } from "../moderation/bans.ts";
-import { findGame, isRegion } from "./regions.ts";
+import { findGame, getFindGamePlayerData, isRegion } from "./regions.ts";
 
 interface SocketData {
     rateLimit: Record<symbol, number>;

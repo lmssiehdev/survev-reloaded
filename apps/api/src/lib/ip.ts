@@ -1,6 +1,34 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { defaultLogger } from "@survev/config/utils/logger.ts";
-import { fetchJson } from "./errors.ts";
+import type { Context } from "hono";
+import { getConnInfo } from "hono/bun";
+import { isIP } from "node:net";
+import { fetchJson } from "./fetchJson.ts";
+
+export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
+    const ip = proxyHeader
+        ? c.req.header(proxyHeader)
+        : getConnInfo(c).remote.address;
+
+    if (!ip || isIP(ip) == 0) return undefined;
+    if (ip.includes("::ffff:")) return ip.split("::ffff:")[1];
+    return ip;
+}
+
+/** Ok(false): the token was rejected, Err: turnstile could not be reached */
+export async function verifyTurnstile(token: string, ip: string) {
+    const res = await fetchJson<{ success?: boolean }>(
+        "Turnstile",
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: Config.secrets.TURNSTILE_SECRET_KEY, response: token, remoteip: ip }),
+            timeoutMs: 5000,
+        },
+    );
+    return res.map((outcome) => outcome.success === true);
+}
 
 type IpInfo = {
     network: {

@@ -2,7 +2,8 @@ import { Config } from "@survev/config/serverConfig.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import type { FindGamePrivateBody, FindGamePrivateRes } from "@survev/contracts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
-import { fetchJson } from "../lib/errors.ts";
+import { db } from "../db/index.ts";
+import { fetchJson } from "../lib/fetchJson.ts";
 
 const logger = new ServerLogger("Regions");
 
@@ -51,4 +52,40 @@ export async function findGame(body: FindGamePrivateBody): Promise<FindGamePriva
     // can wait for a new game process to start
     const res = await regionFetch<FindGamePrivateRes>(body.region, "api/find_game", body, 20_000);
     return res.unwrapOr({ error: "find_game_failed" as const });
+}
+
+export async function getFindGamePlayerData(
+    players: Pick<FindGamePrivateBody["playerData"][number], "joinToken" | "userId" | "ip">[],
+): Promise<FindGamePrivateBody["playerData"]> {
+    const userIds = [
+        ...new Set(players.map((p) => p.userId).filter((id) => id !== null)),
+    ];
+
+    let accountData: Record<
+        string,
+        {
+            loadout: FindGamePrivateBody["playerData"][0]["loadout"];
+            quests: FindGamePrivateBody["playerData"][0]["quests"];
+        }
+    > = {};
+
+    if (userIds.length) {
+        const rows = await db.query.users.findMany({
+            where: { id: { in: userIds } },
+            columns: { id: true, loadout: true },
+            with: { quests: { columns: { questType: true } } },
+        });
+
+        accountData = Object.fromEntries(
+            rows.map((u) => [u.id, { loadout: u.loadout, quests: u.quests.map((q) => q.questType) }]),
+        );
+    }
+
+    return players.map(({ joinToken, userId, ip }) => ({
+        joinToken,
+        userId,
+        ip,
+        loadout: userId ? accountData[userId]?.loadout : undefined,
+        quests: userId ? (accountData[userId]?.quests ?? []) : [],
+    }));
 }

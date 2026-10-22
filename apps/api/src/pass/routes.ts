@@ -7,11 +7,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import z from "zod";
 import { settings } from "../admin/settings.ts";
+import type { AuthEnv } from "../auth/session.ts";
 import { db } from "../db/index.ts";
 import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../db/schema.ts";
 import { errorResponse, query, respond } from "../lib/errors.ts";
 import { validateParams } from "../lib/middleware.ts";
-import type { AuthEnv } from "../lib/middleware.ts";
 import { questHelpers } from "./quests.ts";
 
 // hardcoded for now

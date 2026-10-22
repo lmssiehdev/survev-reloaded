@@ -1,12 +1,4 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
-import {
-    type SaveGameBody,
-    zSaveGameMatchData,
-    zSetClientThemeBody,
-    zSetGameModeBody,
-    zUpdateRegionBody,
-} from "@survev/contracts";
-import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { zSetClientThemeBody, zSetGameModeBody } from "@survev/contracts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
@@ -17,36 +9,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { MOCK_USER_ID } from "../auth/mockLogin.ts";
 import { db } from "../db/index.ts";
-import { items, matchData, type MatchDataTable, userQuests } from "../db/schema.ts";
-import { updateRegion } from "../game/regions.ts";
+import { items, matchData, type MatchDataTable } from "../db/schema.ts";
 import { Conflict, errorResponse, InvalidParams, query, queryOne, respond } from "../lib/errors.ts";
-import { isBehindProxy } from "../lib/ip.ts";
-import { databaseEnabledMiddleware, privateMiddleware, validateParams } from "../lib/middleware.ts";
-import { banInfo, findIpBan, logPlayerIps } from "../moderation/bans.ts";
-import { ModerationRouter } from "../moderation/routes.ts";
-import { incrementPassXp } from "../pass/xp.ts";
+import { databaseEnabledMiddleware, validateParams } from "../lib/middleware.ts";
 import { cache } from "../stats/cache.ts";
 import { settings } from "./settings.ts";
 
-const logger = new ServerLogger("Private");
-
-// @survev/contracts can't depend on the drizzle schema, so check here that the game's
-// save_game payload still fits the match_data insert type
-type AssertAssignable<T extends U, U> = T;
-type _SaveGameMatchDataFitsTable = AssertAssignable<
-    SaveGameBody["matchData"],
-    (MatchDataTable & { ip: string; findGameIp: string })[]
->;
-
-export const PrivateRouter = new Hono()
-    .use(privateMiddleware)
-    .route("/moderation", ModerationRouter)
-    .post("/update_region", validateParams(zUpdateRegionBody), (c) => {
-        const { regionId, data } = c.req.valid("json");
-
-        updateRegion(regionId, data.playerCount);
-        return c.json({}, 200);
-    })
+/** /private routes the discord bot and admins call */
+export const AdminPrivateRouter = new Hono()
     .post("/set_game_mode", validateParams(zSetGameModeBody), async (c) => {
         const {
             index,
@@ -93,97 +63,6 @@ export const PrivateRouter = new Hono()
             if (set.isErr()) return errorResponse(c, set.error);
 
             return c.json({ state: enabled, message: `Captcha ${enabled ? "enabled" : "disabled"}` }, 200);
-        },
-    )
-    .post(
-        "/save_game",
-        databaseEnabledMiddleware,
-        validateParams(z.object({ matchData: zSaveGameMatchData.min(1) })),
-        async (c) => {
-            const rows = c.req.valid("json").matchData;
-
-            // safe to send again: rows that already exist are skipped, match data and player ips alike
-            const saved = await query(() => db.insert(matchData).values(rows).onConflictDoNothing());
-            if (saved.isErr()) return respond(c, saved);
-
-            await logPlayerIps(rows);
-            await cache.invalidateLeaderboards(rows);
-            logger.info(`Saved game data for ${rows[0].gameId}`);
-            return c.json({ message: `Saved ${rows.length} rows` }, 200);
-        },
-    )
-    .post(
-        "/quest_progress",
-        databaseEnabledMiddleware,
-        validateParams(
-            z.object({
-                userId: z.string(),
-                progress: z
-                    .array(
-                        z.object({
-                            id: z.string(),
-                            delta: z.number().positive(),
-                        }),
-                    )
-                    .refine(
-                        (entries) => new Set(entries.map((e) => e.id)).size === entries.length,
-                        { message: "duplicate quest ids" },
-                    ),
-            }),
-        ),
-        async (c) => {
-            const { userId, progress } = c.req.valid("json");
-
-            if (progress.length === 0) {
-                return c.json({ success: true }, 200);
-            }
-
-            const validEntries = progress
-                .map((e) => ({ id: e.id, delta: Math.round(e.delta) }))
-                .filter((e) => QuestDefs[e.id] && e.delta > 0);
-
-            if (validEntries.length === 0) {
-                return c.json({ success: true }, 200);
-            }
-
-            const deltaById = new Map(validEntries.map((e) => [e.id, e.delta]));
-
-            const saved = await query(() =>
-                db.transaction(async (tx) => {
-                    const quests = await tx.query.userQuests.findMany({
-                        where: { userId, questType: { in: validEntries.map((e) => e.id) } },
-                    });
-
-                    let xpGain = 0;
-                    for (const quest of quests) {
-                        const delta = deltaById.get(quest.questType) ?? 0;
-                        const def = QuestDefs[quest.questType];
-                        if (delta <= 0 || !def) continue;
-
-                        const nextProgress = Math.min(quest.target, quest.progress + delta);
-                        const nowComplete = nextProgress >= quest.target;
-
-                        if (!quest.complete && nowComplete) {
-                            xpGain += def.xp;
-                        }
-
-                        if (nextProgress === quest.progress && quest.complete === nowComplete) {
-                            continue;
-                        }
-
-                        await tx
-                            .update(userQuests)
-                            .set({ progress: nextProgress, complete: nowComplete })
-                            .where(eq(userQuests.id, quest.id));
-                    }
-
-                    if (xpGain > 0) {
-                        await incrementPassXp(tx, userId, xpGain);
-                    }
-                })
-            );
-
-            return respond(c, saved.map(() => ({ success: true })));
         },
     )
     .post(
@@ -250,25 +129,6 @@ export const PrivateRouter = new Hono()
         return c.json({ message: `Successfully cleared leaderboard cache (${removed} keys)` }, 200);
     })
     .post(
-        "/check_ip",
-        validateParams(
-            z.object({
-                ip: z.string(),
-            }),
-        ),
-        async (c) => {
-            const { ip } = c.req.valid("json");
-
-            const ban = await findIpBan(ip);
-            if (ban) {
-                return c.json({ banned: true, banData: banInfo(ban), behindProxy: false });
-            }
-
-            const behindProxy = await isBehindProxy(ip, false);
-            return c.json({ banned: false, banData: undefined, behindProxy });
-        },
-    )
-    .post(
         "/test/insert_game",
         databaseEnabledMiddleware,
         validateParams(
@@ -315,5 +175,3 @@ export const PrivateRouter = new Hono()
             return c.json({ success: true }, 200);
         },
     );
-
-export type PrivateRouteApp = typeof PrivateRouter;
