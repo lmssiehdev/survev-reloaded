@@ -107,9 +107,9 @@
     "packages/config": {
       "name": "@survev/config",
       "dependencies": {
+        "@survev/game": "workspace:*",
         "@survev/shared": "workspace:*",
         "hjson": "^3.2.2",
-        "obscenity": "^0.4.6",
       },
       "devDependencies": {
         "@types/bun": "^1.4.3",
@@ -126,7 +126,6 @@
     "packages/game": {
       "name": "@survev/game",
       "dependencies": {
-        "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
         "@survev/shared": "workspace:*",
       },
@@ -137,6 +136,7 @@
     "packages/shared": {
       "name": "@survev/shared",
       "dependencies": {
+        "obscenity": "^0.4.6",
         "zod": "^4.6.5",
       },
       "devDependencies": {

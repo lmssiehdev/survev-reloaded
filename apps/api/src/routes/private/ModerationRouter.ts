@@ -1,5 +1,4 @@
 import { Config } from "@survev/config/serverConfig.ts";
-import { validateUserName } from "@survev/config/utils/badWords.ts";
 import type { ModRouterSpectateGameRes, SpectateGamePrivateRes } from "@survev/contracts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import {
@@ -17,6 +16,7 @@ import {
     zUnbanAccountParams,
     zUnbanIpParams,
 } from "@survev/shared/types/moderation.ts";
+import { validateUserName } from "@survev/shared/utils/badWords.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { Result } from "better-result";
 import { and, eq } from "drizzle-orm";

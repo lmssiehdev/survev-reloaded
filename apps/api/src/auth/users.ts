@@ -1,5 +1,5 @@
-import { checkForBadWords } from "@survev/config/utils/badWords.ts";
 import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
+import { checkForBadWords } from "@survev/shared/utils/badWords.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { generateRandomString } from "better-auth/crypto";
 import slugify from "slugify";

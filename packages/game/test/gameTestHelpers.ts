@@ -21,7 +21,6 @@ const testOptions: GameOptions = {
         spawnMode: "default",
         allowBots: true,
         allowEditMsg: true,
-        allowMockAccount: true,
     },
 };
 

@@ -1,4 +1,3 @@
-import { validateUserName } from "@survev/config/utils/badWords.ts";
 import { type GameObjectDef, type LootDef, WeaponTypeToDefs } from "@survev/shared/defs/gameObjectDefs.ts";
 import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
 import {
@@ -28,6 +27,7 @@ import {
 } from "@survev/shared/gameConfig.ts";
 import * as net from "@survev/shared/net/net.ts";
 import { ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
+import { validateUserName } from "@survev/shared/utils/badWords.ts";
 import { type Circle, coldet } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";

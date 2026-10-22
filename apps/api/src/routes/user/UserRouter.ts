@@ -1,8 +1,8 @@
-import { validateUserName } from "@survev/config/utils/badWords.ts";
 import { UnlockDefs } from "@survev/shared/defs/gameObjects/unlockDefs.ts";
 import { Constants } from "@survev/shared/net/net.ts";
 import { loadoutSchema } from "@survev/shared/types/api.ts";
 import { type ProfileResponse, type UsernameResponse } from "@survev/shared/types/user.ts";
+import { validateUserName } from "@survev/shared/utils/badWords.ts";
 import loadout, { ItemStatus, type Loadout } from "@survev/shared/utils/loadout.ts";
 import { and, eq, inArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";

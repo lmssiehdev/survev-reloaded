@@ -9,9 +9,9 @@
     "typecheck": "bun check"
   },
   "dependencies": {
+    "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
-    "hjson": "^3.2.2",
-    "obscenity": "^0.4.6"
+    "hjson": "^3.2.2"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",

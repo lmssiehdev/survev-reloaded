@@ -1,5 +1,4 @@
 import { Config } from "@survev/config/serverConfig.ts";
-import { validateUserName } from "@survev/config/utils/badWords.ts";
 import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
@@ -15,6 +14,7 @@ import {
     type TeamPlayGameMsg,
     zTeamClientMsg,
 } from "@survev/shared/types/team.ts";
+import { validateUserName } from "@survev/shared/utils/badWords.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { Hono } from "hono";
 import { upgradeWebSocket } from "hono/bun";
