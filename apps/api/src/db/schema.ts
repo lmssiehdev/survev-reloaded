@@ -4,10 +4,10 @@ import { sql } from "drizzle-orm";
 import {
     bigint,
     boolean,
-    customType,
     index,
     integer,
     json,
+    jsonb,
     pgEnum,
     pgTable,
     primaryKey,
@@ -285,15 +285,6 @@ export type Ban = typeof bans.$inferSelect;
 //
 // SETTINGS
 //
-
-/**
- * jsonb stored as real json. drizzle's json/jsonb send a JSON string that Bun SQL encodes again,
- * so every value would land as a json string, and an upsert's `set` sends the raw value
- */
-const jsonb = customType<{ data: unknown; driverData: unknown }>({
-    dataType: () => "jsonb",
-    toDriver: (value) => sql`${JSON.stringify(value)}::text::jsonb`,
-});
 
 /** what admins changed at runtime through /private; overrides the config file defaults (see settings.ts) */
 export const serverSettings = pgTable("server_settings", {

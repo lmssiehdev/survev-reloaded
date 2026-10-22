@@ -13,7 +13,7 @@
     "start": "bun dist/index.js",
     "dev": "bun --watch --no-clear-screen src/index.ts",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
-    "db:migrate": "bun src/db/migrate.ts",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
     "db:wipe": "bun src/db/wipe.ts",
     "lint": "cd ../.. && bun run lint"
@@ -30,6 +30,7 @@
     "hjson": "^3.2.2",
     "hono": "^4.13.8",
     "obscenity": "^0.4.6",
+    "postgres": "^3.4.9",
     "slugify": "^1.6.9",
     "zod": "^4.6.5"
   },

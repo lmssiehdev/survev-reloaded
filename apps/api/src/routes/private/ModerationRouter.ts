@@ -26,7 +26,7 @@ import { z } from "zod";
 import { databaseEnabledMiddleware, validateParams } from "../../auth/middleware.ts";
 import { sanitizeSlug } from "../../auth/users.ts";
 import { banAccount, banIps, hashIp, revokeBans, unbanAccount } from "../../bans.ts";
-import { db, rowCount } from "../../db/index.ts";
+import { db } from "../../db/index.ts";
 import { items, matchData, userPasses, users } from "../../db/schema.ts";
 import { Conflict, InvalidParams, NotFound, query, queryOne, respond } from "../../errors.ts";
 import { regionFetch } from "../../regions.ts";
@@ -270,7 +270,7 @@ export const ModerationRouter = new Hono()
             const res = await query(() =>
                 db.update(matchData).set({ username: new_name }).where(eq(matchData.username, current_name))
             );
-            return respond(c, res.map((res) => ({ message: `Updated ${rowCount(res)} rows` })));
+            return respond(c, res.map((res) => ({ message: `Updated ${res.count} rows` })));
         },
     )
     .post("/set_account_name", validateParams(zSetAccountNameParams), async (c) => {
@@ -290,7 +290,7 @@ export const ModerationRouter = new Hono()
                         .set({ username: sanitized.validName, slug: sanitizeSlug(sanitized.validName) })
                         .where(eq(users.slug, current_slug))
                 ));
-                if (!rowCount(res)) {
+                if (!res.count) {
                     return Result.err(new NotFound({ message: "User not found" }));
                 }
 
@@ -309,7 +309,7 @@ export const ModerationRouter = new Hono()
             const { gameId } = c.req.valid("json");
 
             const res = await query(() => db.delete(matchData).where(eq(matchData.gameId, gameId)));
-            return respond(c, res.map((res) => ({ message: `Deleted ${rowCount(res)} rows` })));
+            return respond(c, res.map((res) => ({ message: `Deleted ${res.count} rows` })));
         },
     )
     .post(
@@ -382,7 +382,7 @@ export const ModerationRouter = new Hono()
                         .set({ userId: null })
                         .where(and(eq(matchData.userId, user.id), eq(matchData.gameId, game_id)))
                 ));
-                if (!rowCount(res)) {
+                if (!res.count) {
                     return Result.err(new NotFound({ message: `User ${slug} was not found on game ${game_id}` }));
                 }
 
@@ -403,7 +403,7 @@ export const ModerationRouter = new Hono()
                 );
 
                 return Result.ok({
-                    message: `Successfully reset stats for ${slug} (${rowCount(res)} games affected).`,
+                    message: `Successfully reset stats for ${slug} (${res.count} games affected).`,
                 });
             }),
         );

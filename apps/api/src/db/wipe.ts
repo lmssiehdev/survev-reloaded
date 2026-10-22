@@ -1,8 +1,8 @@
 import { Config } from "@survev/config/serverConfig.ts";
-import { SQL } from "bun";
+import postgres from "postgres";
 
-const sql = new SQL({
-    hostname: Config.database.host,
+const sql = postgres({
+    host: Config.database.host,
     port: Config.database.port,
     username: "postgres",
     password: "postgres",
@@ -19,5 +19,5 @@ try {
 } catch (error) {
     console.error("Error dropping database:", error);
 } finally {
-    await sql.close();
+    await sql.end();
 }
