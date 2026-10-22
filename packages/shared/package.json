@@ -13,7 +13,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.3",
-    "rolldown": "^1.2.9"
+    "@types/bun": "^1.4.3"
   }
 }

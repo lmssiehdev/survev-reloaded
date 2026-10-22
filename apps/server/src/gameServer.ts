@@ -1,6 +1,5 @@
 import { Config } from "@survev/config/serverConfig.ts";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { getIp } from "@survev/config/utils/ip.ts";
 import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import {
@@ -21,6 +20,7 @@ import { z, type ZodObject } from "zod";
 import pkgJson from "../../../package.json" with { type: "json" };
 import { GameProcess, GameProcessManager, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
+import { getIp } from "./utils/ip.ts";
 import { LOST_GAME_DATA_DIR } from "./utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "./utils/websocket.ts";
 

@@ -15,8 +15,7 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "bun src/db/migrate.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
-    "db:wipe": "bun src/db/wipe.ts",
-    "lint": "cd ../.. && bun run lint"
+    "db:wipe": "bun src/db/wipe.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.8",

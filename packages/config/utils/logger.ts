@@ -1,5 +1,5 @@
-import { Logger } from "@survev/shared/utils/logger.ts";
 import { Config } from "../serverConfig.ts";
+import { Logger } from "./consoleLogger.ts";
 
 export async function logErrorToWebhook(from: "server" | "client", ...messages: any[]) {
     const url = from === "server" ? Config.errorLoggingWebhook : Config.clientErrorLoggingWebhook;

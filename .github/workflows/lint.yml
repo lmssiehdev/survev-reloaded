@@ -9,6 +9,8 @@ on:
       - "**.ts"
       - "**.json"
       - "**.css"
+      - "**.mts"
+      - "**.yml"
       - "**.yaml"
       - ".bun-version"
       - ".github/workflows/lint.yml"

@@ -36,3 +36,7 @@ jobs:
       - name: Typecheck Bot
         run: bun run typecheck
         working-directory: ./apps/bot
+
+      - name: Build Bot
+        run: bun run build
+        working-directory: ./apps/bot

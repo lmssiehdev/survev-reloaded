@@ -77,9 +77,7 @@ export function getConfig(isProduction: boolean, dir: string) {
         defaultItems: {},
     };
 
-    const dirname = import.meta?.dirname || __dirname;
-
-    const configPath = path.join(dirname, dir, configFileName);
+    const configPath = path.join(import.meta.dirname, dir, configFileName);
 
     let localConfig: PartialConfig = {};
 

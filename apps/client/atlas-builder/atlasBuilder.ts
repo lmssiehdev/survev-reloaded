@@ -4,8 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import Path from "node:path";
 
+import { Logger } from "@survev/config/utils/consoleLogger.ts";
 import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
-import { Logger } from "@survev/shared/utils/logger.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { loadImage } from "canvas";
 import type { ISpritesheetData } from "pixi.js-legacy";

@@ -1,6 +1,3 @@
-// dont use this on client because nodejs module lol
-// but its used by server, bot and atlas builder so i put it on shared
-
 import { styleText } from "node:util";
 
 interface LoggerConfig {

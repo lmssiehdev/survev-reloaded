@@ -30,7 +30,7 @@
     "db:migrate": "bun run --filter @survev/api db:migrate",
     "db:studio": "bun run --filter @survev/api db:studio",
     "db:wipe": "bun run --filter @survev/api db:wipe",
-    "lint": "bun lint --fix && dprint fmt",
+    "lint": "bun lint --no-script --fix && dprint fmt",
     "lint:ci": "bun lint --no-script && dprint check"
   },
   "engines": {

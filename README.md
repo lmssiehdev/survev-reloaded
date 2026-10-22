@@ -3,7 +3,7 @@
 </div>
 <hr />
 <div align="center">
-    <img src="https://img.shields.io/badge/node.js%20-%235FA04E.svg?style=for-the-badge&logo=nodedotjs&logoColor=white">
+    <img src="https://img.shields.io/badge/bun-%23000000.svg?style=for-the-badge&logo=bun&logoColor=white">
     <img src="https://img.shields.io/badge/typescript-%233178C6?style=for-the-badge&logo=typescript&logoColor=white">
     <img src="https://img.shields.io/badge/hono-%23E36002.svg?style=for-the-badge&logo=hono&logoColor=white">
     <img src="https://img.shields.io/badge/jquery-%230769AD.svg?style=for-the-badge&logo=jquery&logoColor=white">
@@ -23,9 +23,10 @@ or run `bun dev` inside an app directory.
 
 The repo is a Bun workspace:
 - `apps/api`: API server (accounts, stats, matchmaking, team menu)
-- `apps/server`: game server
+- `apps/server`: game server, hosts games from `@survev/game` in forked processes
 - `apps/client`: Vite client
 - `apps/bot`: Discord bot
+- `packages/game`: the game simulation, free of server and runtime APIs (`@survev/game`)
 - `packages/shared`: game code shared by the client and servers (`@survev/shared`)
 - `packages/contracts`: zod schemas and types exchanged between apps (`@survev/contracts`)
 - `packages/config`: `survev-config.hjson` loader and shared server utils (`@survev/config`)
@@ -75,7 +76,7 @@ bun run db:wipe
 **NOTE:** Do not run this in production!
 
 ### Caching
-Caching is disabled by default. Set `cachingEnabled` to `true` in `config.ts` to use it.
+Caching is disabled by default. Set `cachingEnabled` to `true` in `survev-config.hjson` to use it.
 
 Install [Redis](https://redis.io):
 ```sh

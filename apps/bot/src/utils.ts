@@ -1,5 +1,5 @@
 import type { PrivateRouteApp } from "@survev/api/types";
-import { Logger } from "@survev/shared/utils/logger.ts";
+import { Logger } from "@survev/config/utils/consoleLogger.ts";
 import type {
     ButtonInteraction,
     ComponentType,
