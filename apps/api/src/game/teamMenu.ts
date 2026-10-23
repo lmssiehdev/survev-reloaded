@@ -1,6 +1,6 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { FindGamePrivateBody } from "@survev/contracts";
+import { getLogger } from "@survev/logger/node.ts";
 import type { FindGamePrivateError } from "@survev/shared/types/api.ts";
 import {
     type ClientRoomData,
@@ -309,7 +309,7 @@ class Room {
             const token = tokenMap.get(player);
 
             if (!token) {
-                this.teamMenu.logger.warn(`Missing token for player ${player.name}`);
+                this.teamMenu.logger.warning("team.missing_token", { playerName: player.name });
                 continue;
             }
 
@@ -350,7 +350,7 @@ function generateTeamCode(): string {
 export class TeamMenu {
     rooms = new Map<string, Room>();
 
-    logger = new ServerLogger("TeamMenu");
+    logger = getLogger(["api", "team-menu"]);
 
     playersByIp = new Map<string, Set<Player>>();
 
@@ -441,7 +441,7 @@ export class TeamMenu {
                                     } satisfies TeamErrorMsg,
                                 ),
                             );
-                            teamMenu.logger.warn(`closed socket for ${closeReason}`);
+                            teamMenu.logger.info("team.socket_rejected", { reason: closeReason });
                             ws.close();
                             return;
                         }
@@ -453,7 +453,7 @@ export class TeamMenu {
                         const data = ws.raw! as SocketData;
 
                         if (wsRateLimit.isRateLimited(data.rateLimit)) {
-                            teamMenu.logger.warn("Rate limited, closing socket.");
+                            teamMenu.logger.info("team.rate_limited");
                             ws.close();
                             return;
                         }
@@ -464,7 +464,7 @@ export class TeamMenu {
                                 event.data as string,
                             );
                         } catch (err) {
-                            teamMenu.logger.error("Error processing message:", err);
+                            teamMenu.logger.error("team.message_failed", { err });
                             ws.close();
                         }
                     },
@@ -499,7 +499,7 @@ export class TeamMenu {
             assert(data.length < 1024);
             msg = zTeamClientMsg.parse(JSON.parse(data));
         } catch (e) {
-            this.logger.warn("Failed to parse message, closing socket.", e);
+            this.logger.info("team.bad_message", { err: e });
             ws.close();
             return;
         }
@@ -507,7 +507,7 @@ export class TeamMenu {
         const player = ws.raw?.player;
         // i really don't think this is necessary but /shrug
         if (!player) {
-            this.logger.warn("Player not found, closing socket.");
+            this.logger.warning("team.player_not_found");
             ws.close();
             return;
         }
@@ -552,7 +552,7 @@ export class TeamMenu {
         // if we don't have a room at this point it meant both creation and joining failed
         // so close the socket
         if (!player.room) {
-            this.logger.debug("Player not in room, closing socket.");
+            this.logger.debug("team.player_not_in_room");
             ws.close();
             return;
         }
@@ -565,7 +565,7 @@ export class TeamMenu {
         const player = ws.raw?.player;
 
         if (!player) {
-            this.logger.debug("Player not found, closing socket.");
+            this.logger.debug("team.player_not_found_on_close");
             ws.close();
             return;
         }

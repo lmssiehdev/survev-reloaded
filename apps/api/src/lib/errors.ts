@@ -1,9 +1,9 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { Result, TaggedError } from "better-result";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-const logger = new ServerLogger("API");
+const logger = getLogger(["api", "errors"]);
 
 //
 // expected failures, every route and helper returns these through a Result
@@ -66,7 +66,7 @@ export function query<T>(fn: () => Promise<T>, message = "Database query failed"
     return Result.tryPromise({
         try: fn,
         catch: (cause) => {
-            logger.error(message, cause);
+            logger.error("db.query_failed", { message, err: cause });
             return new DatabaseError({ message, cause });
         },
     });

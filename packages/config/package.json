@@ -9,6 +9,7 @@
     "typecheck": "bun check"
   },
   "dependencies": {
+    "@survev/logger": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

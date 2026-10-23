@@ -1,5 +1,7 @@
+import type { AppName } from "@survev/logger/index.ts";
+import type { ServerLoggingOptions } from "@survev/logger/node.ts";
 import { z } from "zod";
-import { logLevels } from "./utils/consoleLogger.ts";
+import { GIT_VERSION } from "./utils/gitRevision.ts";
 
 /**
  * Settings come from environment variables. In dev the app scripts load the repo root .env
@@ -36,7 +38,13 @@ export function parseEnv<T extends z.ZodRawShape>(shape: T): z.infer<z.ZodObject
 
 /** read by every server app: logging, rate limits and the key the servers use to talk to each other */
 export const sharedEnv = parseEnv({
-    LOG_LEVEL: z.enum(logLevels).default(isProd ? "info" : "debug"),
+    LOG_LEVEL: z.enum(["debug", "info", "warning", "error"]).default(isProd ? "info" : "debug"),
+    /** json: one object per line on stdout */
+    LOG_FORMAT: z.enum(["pretty", "json"]).default(isProd ? "json" : "pretty"),
+    /** logs are shipped to Axiom only when both are set */
+    AXIOM_TOKEN: z.string().optional(),
+    AXIOM_DATASET: z.string().optional(),
+    SURVEV_ENV: z.enum(["production", "staging", "dev"]).default("dev"),
     /** off when the log collector adds its own timestamps (journalctl) */
     LOG_DATE: bool(true),
     /** discord webhooks errors are posted to */
@@ -48,3 +56,17 @@ export const sharedEnv = parseEnv({
     /** this game server's region id, also shown on error webhooks */
     REGION: z.string().min(1).default("local"),
 });
+
+/** the options every app passes to `setupServerLogging` */
+export function loggingOptions(app: AppName, region?: string): ServerLoggingOptions {
+    const { AXIOM_TOKEN, AXIOM_DATASET } = sharedEnv;
+    return {
+        app,
+        level: sharedEnv.LOG_LEVEL,
+        format: sharedEnv.LOG_FORMAT,
+        env: sharedEnv.SURVEV_ENV,
+        git: GIT_VERSION,
+        region,
+        axiom: AXIOM_TOKEN && AXIOM_DATASET ? { token: AXIOM_TOKEN, dataset: AXIOM_DATASET } : undefined,
+    };
+}

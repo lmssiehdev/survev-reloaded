@@ -1,9 +1,9 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { createMiddleware } from "hono/factory";
 import { errorResponse, Unauthorized } from "../lib/errors.ts";
 import { auth, type AuthSession, type AuthUser } from "./auth.ts";
 
-const logger = new ServerLogger("Auth");
+const logger = getLogger(["api", "auth"]);
 
 export type SessionEnv = {
     Variables: {
@@ -29,7 +29,7 @@ export const sessionMiddleware = createMiddleware<SessionEnv>(async (c, next) =>
 
     const res = await auth.api
         .getSession({ headers: c.req.raw.headers, returnHeaders: true })
-        .catch((err) => void logger.error("Failed to load session", err));
+        .catch((err) => void logger.error("auth.session_load_failed", { err }));
 
     for (const cookie of res?.headers.getSetCookie() ?? []) {
         c.header("set-cookie", cookie, { append: true });

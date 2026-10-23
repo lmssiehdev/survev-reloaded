@@ -1,9 +1,11 @@
-import { defaultLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 import { isIP } from "node:net";
 import { env } from "../env.ts";
 import { fetchJson } from "./fetchJson.ts";
+
+const logger = getLogger(["api", "ip"]);
 
 export function getHonoIp(c: Context, proxyHeader?: string): string | undefined {
     const ip = proxyHeader
@@ -114,16 +116,16 @@ async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
         case "ok":
         case "warning":
             if (res.status === "warning") {
-                defaultLogger.warn(`ProxyCheck warning, res:`, res);
+                logger.warning("proxycheck.warning", { ip });
             }
             if (!res[ip]?.detections) {
-                defaultLogger.error(`ProxyCheck sent no detections for ${ip}:`, res);
+                logger.warning("proxycheck.no_detections", { ip, status: res.status });
                 return undefined;
             }
             return res[ip];
         case "denied":
         case "error":
-            defaultLogger.error(`ProxyCheck failed for ${ip}:`, res);
+            logger.warning("proxycheck.failed", { ip, status: res.status });
             return undefined;
     }
 }

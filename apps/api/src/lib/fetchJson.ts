@@ -1,8 +1,8 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { Result } from "better-result";
 import { UpstreamError } from "./errors.ts";
 
-const logger = new ServerLogger("API");
+const logger = getLogger(["api", "fetch"]);
 
 /** POST/GET a JSON api with a timeout; a network error, timeout, non 2xx or bad json is an UpstreamError */
 export async function fetchJson<T>(
@@ -14,12 +14,12 @@ export async function fetchJson<T>(
     try {
         const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
         if (!res.ok) {
-            logger.warn(`${name} responded ${res.status}`);
+            logger.warn("upstream.bad_status", { name, status: res.status });
             return Result.err(new UpstreamError({ message: `${name} responded ${res.status}` }));
         }
         return Result.ok(await res.json() as T);
     } catch (cause) {
-        logger.warn(`${name} request failed`, cause);
+        logger.warn("upstream.request_failed", { name, err: cause });
         return Result.err(new UpstreamError({ message: `${name} request failed`, cause }));
     }
 }

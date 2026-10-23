@@ -20,6 +20,7 @@
         "@hono/zod-validator": "^0.8.0",
         "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
+        "@survev/logger": "workspace:*",
         "@survev/shared": "workspace:*",
         "better-auth": "^1.7.8",
         "better-result": "^3.0.1",
@@ -100,6 +101,7 @@
     "packages/config": {
       "name": "@survev/config",
       "dependencies": {
+        "@survev/logger": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {

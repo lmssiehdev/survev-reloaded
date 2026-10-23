@@ -1,5 +1,5 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type SaveGameBody, zSaveGameMatchData } from "@survev/contracts";
+import { getLogger } from "@survev/logger/node.ts";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../db/index.ts";
@@ -9,7 +9,7 @@ import { validateParams } from "../lib/middleware.ts";
 import { logPlayerIps } from "../moderation/bans.ts";
 import { cache } from "./cache.ts";
 
-const logger = new ServerLogger("Private");
+const logger = getLogger(["api", "stats"]);
 
 // @survev/contracts can't depend on the drizzle schema, so check here that the game's
 // save_game payload still fits the match_data insert type
@@ -33,7 +33,7 @@ export const StatsPrivateRouter = new Hono()
 
             await logPlayerIps(rows);
             await cache.invalidateLeaderboards(rows);
-            logger.info(`Saved game data for ${rows[0].gameId}`);
+            logger.info("game.saved", { gameId: rows[0].gameId });
             return c.json({ message: `Saved ${rows.length} rows` }, 200);
         },
     );

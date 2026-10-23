@@ -43,7 +43,10 @@ export async function logErrorToWebhook(from: "server" | "client", ...messages: 
     }
 }
 
-export const logOptions: LoggerOptions = { level: sharedEnv.LOG_LEVEL, date: sharedEnv.LOG_DATE };
+export const logOptions: LoggerOptions = {
+    level: sharedEnv.LOG_LEVEL === "warning" ? "warn" : sharedEnv.LOG_LEVEL,
+    date: sharedEnv.LOG_DATE,
+};
 
 export class ServerLogger extends Logger {
     constructor(prefix: string) {

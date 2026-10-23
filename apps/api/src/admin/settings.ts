@@ -1,4 +1,4 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import { Result } from "better-result";
@@ -6,7 +6,7 @@ import { db } from "../db/index.ts";
 import { serverSettings } from "../db/schema.ts";
 import { type DatabaseError, InvalidParams, query } from "../lib/errors.ts";
 
-const logger = new ServerLogger("Settings");
+const logger = getLogger(["api", "settings"]);
 
 export interface Mode {
     mapName: MapDefKey;
@@ -54,7 +54,7 @@ class Settings {
             if (Object.hasOwn(this.#values, key)) {
                 Object.assign(this.#values, { [key]: value });
             } else {
-                logger.warn(`Ignoring unknown setting ${key}`);
+                logger.warning("settings.unknown_key", { key });
             }
         }
     }

@@ -1,5 +1,5 @@
-import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
+import { loggingOptions } from "@survev/config/env.ts";
+import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging } from "@survev/logger/node.ts";
 import { lt } from "drizzle-orm";
 import { websocket } from "hono/bun";
 import pkgJson from "../../../package.json" with { type: "json" };
@@ -11,21 +11,12 @@ import { env } from "./env.ts";
 import { teamMenu } from "./game/teamMenu.ts";
 import { cleanupOldPlayerIps } from "./moderation/bans.ts";
 
-const logger = new ServerLogger("Server");
+// nothing imported above logs while it loads, so logging can be set up here
+await setupServerLogging(loggingOptions("api"));
+installCrashHandlers();
+logProcessStart({ version: pkgJson.version });
 
-process.on("uncaughtException", async (err) => {
-    console.error(err);
-
-    await logErrorToWebhook("server", "API server error:", err);
-
-    process.exit(1);
-});
-
-// Bun keeps an inherited "ignore SIGINT" disposition (e.g. when started as a background
-// job by a script), Node resets it to the default. Exit on SIGINT like Node does by default
-process.on("SIGINT", () => {
-    process.exit(130);
-});
+const logger = getLogger(["api"]);
 
 await settings.load();
 teamMenu.start();
@@ -46,12 +37,10 @@ Bun.cron("0 0 * * *", async () => {
         await cleanupOldPlayerIps();
         // better-auth only drops an expired session when it is looked up again
         await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
-        logger.info("Deleted old player IPs and expired sessions");
+        logger.info("cleanup.done");
     } catch (err) {
-        logger.error("Failed to run cleanup script", err);
+        logger.error("cleanup.failed", { err });
     }
 });
 
-logger.info(`Survev API Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
-logger.info(`Listening on ${env.API_HOST}:${env.API_PORT}`);
-logger.info("Press Ctrl+C to exit.");
+logger.info("api.listening", { host: env.API_HOST, port: env.API_PORT });

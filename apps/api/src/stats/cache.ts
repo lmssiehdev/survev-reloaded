@@ -1,4 +1,4 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { LeaderboardRequest, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { Result } from "better-result";
@@ -31,12 +31,12 @@ export function leaderboardTtl(type: LeaderboardRequest["type"]) {
  * `redis` is undefined when caching is disabled; every function then falls through to the loader.
  * A failing redis is logged and treated as a cache miss, never as a request error.
  */
-export function createCache(redis: RedisClient | undefined, logger = new ServerLogger("Cache")) {
+export function createCache(redis: RedisClient | undefined, logger = getLogger(["api", "cache"])) {
     async function run<T>(op: (redis: RedisClient) => Promise<T>): Promise<T | undefined> {
         if (!redis) return undefined;
         const res = await Result.tryPromise(() => op(redis));
         return res
-            .tapError((err) => logger.warn("Redis command failed:", err))
+            .tapError((err) => logger.warning("cache.redis_failed", { err }))
             .unwrapOr(undefined);
     }
 
@@ -49,7 +49,7 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
         const hit = await run((r) => r.get(PREFIX + key));
         const parsed = hit ? Result.try((): unknown => JSON.parse(hit)) : undefined;
         if (parsed?.isOk()) {
-            logger.debug(`[CACHE HIT] -> ${key}`);
+            logger.debug("cache.hit", { key });
             return parsed.value as T;
         }
         // a corrupt entry is just a miss; the set below overwrites it
@@ -82,7 +82,7 @@ export function createCache(redis: RedisClient | undefined, logger = new ServerL
                 const lowest = board.at(-1)?.val ?? 0;
                 if (board.length >= LEADERBOARD_SIZE && best[type] < lowest) continue;
 
-                logger.info(`[INVALIDATING CACHE] -> ${key}`);
+                logger.info("cache.invalidate", { key });
                 await run((r) => r.del(PREFIX + key));
             }
         }

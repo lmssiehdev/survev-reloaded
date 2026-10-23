@@ -1,7 +1,9 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger, withContext } from "@survev/logger/node.ts";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
+import { routePath } from "hono/route";
 import { AdminPrivateRouter } from "./admin/privateRoutes.ts";
 import { auth } from "./auth/auth.ts";
 import { GamePrivateRouter } from "./game/privateRoutes.ts";
@@ -15,7 +17,7 @@ import { StatsPrivateRouter } from "./stats/privateRoutes.ts";
 import { StatsRouter } from "./stats/routes.ts";
 import { UserRouter } from "./user/routes.ts";
 
-const logger = new ServerLogger("Server");
+const logger = getLogger(["api", "http"]);
 
 /** /private: only the game server and the discord bot call these, both send the api key */
 const privateRouter = new Hono()
@@ -33,26 +35,37 @@ export const app = new Hono();
 
 // a thrown error is a bug, expected failures are Results (see errors.ts)
 app.onError((err: unknown, c) => {
-    logger.error(`${c.req.path} Error:`, err);
-    if (err instanceof HTTPException) {
+    if (err instanceof HTTPException && err.status < 500) {
         return err.getResponse();
     }
+    logger.error("http.unhandled", { err, route: routePath(c) });
     return c.json<ErrorBody>({ error: "InternalError", message: "Internal Server Error" }, 500);
 });
 
 app.notFound((c) => errorResponse(c, new NotFound({ message: `${c.req.method} ${c.req.path} not found` })));
 
-if (logger.enabled("debug")) {
-    app.use("*", async (ctx, next) => {
-        const url = ctx.req.path;
-        logger.debug(`start: ${url}`);
-        const start = performance.now();
-        await next();
+/** the session middleware only runs on some routes, `user` is unset elsewhere */
+type MaybeUserEnv = { Variables: { user?: { id: string } | null } };
 
-        const time = Math.round(performance.now() - start);
-        logger.debug(`end  : ${url} time: ${time}ms`);
-    });
-}
+// outermost, so it also sees the response onError builds. Everything inside runs with the requestId in the log context
+app.use(
+    "*",
+    createMiddleware<MaybeUserEnv>(async (c, next) => {
+        if (c.req.header("upgrade")?.toLowerCase() === "websocket") return next();
+        await withContext({ requestId: crypto.randomUUID() }, async () => {
+            const start = performance.now();
+            await next();
+            const status = c.res.status;
+            logger[status >= 500 ? "error" : "info"]("http.request", {
+                method: c.req.method,
+                route: routePath(c),
+                status,
+                durationMs: Math.round(performance.now() - start),
+                userId: c.get("user")?.id,
+            });
+        });
+    }),
+);
 
 app.use(
     "/api/*",

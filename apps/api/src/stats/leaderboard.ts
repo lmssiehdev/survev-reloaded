@@ -1,4 +1,4 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { type LeaderboardRequest, type LeaderboardResponse, zLeaderboardsRequest } from "@survev/shared/types/stats.ts";
 import { and, count, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
@@ -9,7 +9,7 @@ import { query, respond } from "../lib/errors.ts";
 import { validateParams } from "../lib/middleware.ts";
 import { cache, LEADERBOARD_SIZE, leaderboardKey, leaderboardTtl } from "./cache.ts";
 
-const logger = new ServerLogger("Leaderboard");
+const logger = getLogger(["api", "leaderboard"]);
 
 export const leaderboardRouter = new Hono();
 
@@ -193,10 +193,8 @@ async function multiplePlayersQuery({
 function logQueryPerformance(startTime: number, params: LeaderboardRequest) {
     const endTime = performance.now();
     const executionTime = endTime - startTime;
-    const timeString = executionTime > 1000
-        ? `${(executionTime / 1000).toFixed(2)}s`
-        : `${executionTime.toFixed(2)}ms`;
-    logger[executionTime > 1000 ? "warn" : "debug"](
-        `leaderboard | Execution time: ${timeString} | ${leaderboardKey(params)}`,
-    );
+    logger[executionTime > 1000 ? "warning" : "debug"]("leaderboard.query", {
+        durationMs: Math.round(executionTime),
+        key: leaderboardKey(params),
+    });
 }
