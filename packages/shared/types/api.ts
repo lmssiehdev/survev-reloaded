@@ -118,10 +118,3 @@ export interface SiteInfoRes {
         img: string;
     }>;
 }
-
-export interface ProxyDef {
-    apiUrl?: string;
-    discord?: boolean;
-    mock?: boolean;
-    all?: boolean;
-}

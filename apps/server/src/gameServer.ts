@@ -100,6 +100,9 @@ class GameServer {
         };
     }
 
+    /** the API being down is logged once, not on every report */
+    reportFailing = false;
+
     async sendData() {
         try {
             await apiPrivateRouter.update_region.$post({
@@ -112,8 +115,11 @@ class GameServer {
                     regionId: env.REGION,
                 },
             });
+            if (this.reportFailing) this.logger.info("Region update reached the API again");
+            this.reportFailing = false;
         } catch (err) {
-            this.logger.error(`Failed to update region: `, err);
+            if (!this.reportFailing) this.logger.error(`Failed to update region: `, err);
+            this.reportFailing = true;
         }
     }
 

@@ -438,15 +438,11 @@ export class TeamMenu {
         }
 
         if (this.joined) {
-            // Regions
-            const regionPops = this.siteInfo.info.regions || {};
-            const regions = Object.keys(regionPops);
-            for (let i = 0; i < regions.length; i++) {
-                const region = regions[i];
-                const count = regionPops[region].playerCount;
-                const players = this.localization.translate("index-players");
+            // Regions, empty when site_info failed to load
+            const players = this.localization.translate("index-players");
+            for (const [region, { playerCount }] of Object.entries(this.siteInfo.info.regions ?? {})) {
                 const sel = $("#team-server-opts").children(`option[value="${region}"]`);
-                sel.html(`${sel.attr("data-label")} [${count} ${players}]`);
+                sel.text(`${sel.data("label")} [${playerCount} ${players}]`);
             }
 
             this.serverSelect.find("option").each((_idx, ele) => {

@@ -37,9 +37,9 @@ export class SiteInfo {
         const teamSelector = $("#team-server-opts");
         for (const [region, { l10n }] of Object.entries(data.regions)) {
             const name = this.localization.translate(l10n);
-            const elm = `<option value='${region}' data-l10n='${l10n}' data-label='${name}'>${name}</option>`;
-            mainSelector.append(elm);
-            teamSelector.append(elm);
+            for (const selector of [mainSelector, teamSelector]) {
+                $("<option>", { value: region, text: name, "data-l10n": l10n, "data-label": name }).appendTo(selector);
+            }
         }
 
         this.updatePageFromInfo();
@@ -103,18 +103,10 @@ export class SiteInfo {
             const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode > 1);
             $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
 
-            // Region pops
-            const pops = this.info.regions;
-            if (pops) {
-                const regions = Object.keys(pops);
-
-                for (let i = 0; i < regions.length; i++) {
-                    const region = regions[i];
-                    const data = pops[region];
-                    const sel = $("#server-opts").children(`option[value="${region}"]`);
-                    const players = this.localization.translate("index-players");
-                    sel.text(`${sel.data("label")} [${data.playerCount} ${players}]`);
-                }
+            const players = this.localization.translate("index-players");
+            for (const [region, { playerCount }] of Object.entries(this.info.regions)) {
+                const sel = $("#server-opts").children(`option[value="${region}"]`);
+                sel.text(`${sel.data("label")} [${playerCount} ${players}]`);
             }
             let hasTwitchStreamers = false;
             const featuredStreamersElem = $("#featured-streamers");
