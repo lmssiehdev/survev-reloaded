@@ -1,6 +1,18 @@
+@font-face {
+    font-family: "Phantom Guardians";
+    src: url("/fonts/phantom-guardians-bold.otf") format("opentype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+}
+
+* {
+    font-family: "Phantom Guardians", sans-serif;
+}
+
 html, body {
     background: #80af49;
-    font-family: "Roboto Condensed", arial, sans-serif;
+    font-family: "Phantom Guardians", sans-serif;
     height: 100%;
     margin: 0;
     padding: 0;
@@ -1204,72 +1216,4 @@ td.data-player-status {
     filter: brightness(80%);
     -webkit-transition: all 0.25s ease;
     transition: all 0.25s ease;
-}
-
-#ad-block-top {
-    position: relative;
-}
-@media (max-width: 991px) {
-    .ad-block-top-med-rect {
-        display: none;
-    }
-}
-
-@media (max-width: 823px) {
-    #ad-block-top {
-        margin: initial;
-        margin-left: auto;
-        margin-right: auto;
-        padding: initial;
-    }
-}
-@media (max-width: 736px) {
-    #ad-block-top {
-        margin-left: initial;
-        margin-right: initial;
-        -webkit-transform: scale(0.95);
-        transform: scale(0.95);
-        -webkit-transform-origin: left;
-        transform-origin: left;
-    }
-}
-@media (max-width: 575px) {
-    #ad-block-top {
-        -webkit-transform: scale(0.6);
-        transform: scale(0.6);
-        -webkit-transform-origin: left;
-        transform-origin: left;
-    }
-}
-
-.ad-block-top-leaderboard {
-    height: 90px;
-    position: relative;
-    width: 728px;
-}
-@media (max-width: 1199px) and (min-width: 824px) {
-    .ad-block-top-leaderboard {
-        -webkit-transform: scale(0.85);
-        transform: scale(0.85);
-        -webkit-transform-origin: left top;
-        transform-origin: left top;
-    }
-}
-
-.ad-block-top-med-rect {
-    height: 250px;
-    position: absolute;
-    right: 16px;
-    top: 0px;
-    width: 300px;
-}
-
-.ad-block-bot-med-rect {
-    height: 250px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 24px;
-    right: 16px;
-    top: 0px;
-    width: 300px;
 }

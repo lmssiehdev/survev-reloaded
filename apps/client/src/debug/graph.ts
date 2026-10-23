@@ -2,7 +2,7 @@ import { util } from "@survev/shared/utils/util.ts";
 import * as PIXI from "pixi.js-legacy";
 
 export const defaultLabelTextOptions: Partial<PIXI.ITextStyle> = {
-    fontFamily: "monospace",
+    fontFamily: "Phantom Guardians",
     fill: "white",
     fontSize: 13,
     dropShadow: true,

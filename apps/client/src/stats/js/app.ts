@@ -3,8 +3,6 @@ import $ from "jquery";
 import "bootstrap";
 import slugify from "slugify";
 import { ConfigManager } from "../../config.ts";
-import { device } from "../../device.ts";
-import { SDK } from "../../sdk/sdk.ts";
 import { MainView } from "./mainView.ts";
 import { PlayerView } from "./playerView.ts";
 import language from "./templates/langauge.ejs";
@@ -29,7 +27,6 @@ export class App {
     config: ConfigManager;
     localization: Localization;
     view!: MainView | PlayerView;
-    activeAdSlots: string[] = [];
 
     constructor() {
         this.mainView = new MainView(this);
@@ -68,72 +65,12 @@ export class App {
         this.localization.localizeIndex();
 
         window.addEventListener("load", () => {
-            SDK.ensureNitroReady()
-                .catch(() => {})
-                .finally(() => {
-                    if (helpers.getParameterByName("slug")) {
-                        this.setView("player");
-                    } else {
-                        this.setView("main");
-                    }
-                });
+            if (helpers.getParameterByName("slug")) {
+                this.setView("player");
+            } else {
+                this.setView("main");
+            }
         });
-    }
-
-    updateAds(name: Routes) {
-        const phoneDetected = device.mobile && !device.tablet;
-        const elAdsLeaderboardTop = $("#adsLeaderBoardTop");
-        const elAdsLeaderboardBottom = $("#adsLeaderBoardBottom");
-        const elAdsPlayerTop = $("#adsPlayerTop");
-        const elAdsPlayerBottom = $("#adsPlayerBottom");
-
-        const nextAdSlots: string[] = [];
-        if (name === "player") {
-            elAdsLeaderboardTop.hide();
-            elAdsLeaderboardBottom.hide();
-
-            if (phoneDetected) {
-                elAdsPlayerTop.hide();
-                elAdsPlayerBottom.show();
-            } else {
-                elAdsPlayerTop.show();
-                elAdsPlayerBottom.hide();
-            }
-        } else {
-            elAdsPlayerTop.hide();
-            elAdsPlayerBottom.hide();
-
-            if (phoneDetected) {
-                elAdsLeaderboardTop.hide();
-                elAdsLeaderboardBottom.show();
-            } else {
-                elAdsLeaderboardTop.show();
-                elAdsLeaderboardBottom.hide();
-            }
-        }
-
-        if (elAdsLeaderboardTop.css("display") !== "none") {
-            nextAdSlots.push(
-                "survevio_728x90_leaderboard_top",
-                "survevio_300x250_leaderboard_top",
-            );
-        }
-        if (elAdsLeaderboardBottom.css("display") !== "none") {
-            nextAdSlots.push("survevio_300x250_leaderboard_bottom");
-        }
-        if (elAdsPlayerTop.css("display") !== "none") {
-            nextAdSlots.push(
-                "survevio_728x90_playerprofile_top",
-                "survevio_300x250_playerprofile_top",
-            );
-        }
-        if (elAdsPlayerBottom.css("display") !== "none") {
-            nextAdSlots.push("survevio_300x250_playerprofile_bottom");
-        }
-
-        SDK.hideNitroPlacementsById(this.activeAdSlots);
-        SDK.showNitroPlacements(nextAdSlots);
-        this.activeAdSlots = nextAdSlots;
     }
 
     setView(name?: Routes) {
@@ -142,8 +79,6 @@ export class App {
         } else {
             this.view = this.mainView;
         }
-
-        this.updateAds(name || "main");
 
         this.view.load();
         // @ts-expect-error go away

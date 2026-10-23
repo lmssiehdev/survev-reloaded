@@ -18,9 +18,6 @@ export default defineConfig(({ mode }) => {
     const port = Number(env.CLIENT_PORT || 3000);
     const apiUrl = env.API_URL || `http://127.0.0.1:${env.API_PORT || 8000}`;
 
-    process.env.VITE_DEBUG_CSS_LINK = isDev
-        ? `<link href='css/dev.css' rel="stylesheet" />`
-        : "";
     process.env.VITE_GAME_VERSION = pkgJson.version;
 
     const plugins: PluginOption[] = [
@@ -100,11 +97,6 @@ export default defineConfig(({ mode }) => {
         envDir,
         resolve: {
             extensions: [".ts", ".js"],
-            alias: {
-                "@/sdk.ts": env.VITE_ENABLE_SURVEV_ADS === "true"
-                    ? "./sdk-manager.prod"
-                    : "./sdk-manager",
-            },
         },
         define: {
             GIT_VERSION: JSON.stringify(GIT_VERSION),

@@ -30,7 +30,7 @@ export class PieTimer {
         this.container.addChild(this.gfx);
         this.counterText.anchor.set(0.5, 0.5);
         this.counterText.style = {
-            fontFamily: "Roboto Condensed, Arial, sans-serif",
+            fontFamily: "Phantom Guardians, sans-serif",
             fontWeight: "bold",
             fontSize: fontWidth,
             align: "center",
@@ -41,7 +41,7 @@ export class PieTimer {
         this.container.addChild(this.counterText);
         this.labelText.anchor.set(0.5, 0.5);
         this.labelText.style = {
-            fontFamily: "Roboto Condensed, Arial, sans-serif",
+            fontFamily: "Phantom Guardians, sans-serif",
             fontWeight: "100",
             fontSize: fontWidth,
             align: "center",

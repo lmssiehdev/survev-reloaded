@@ -25,32 +25,6 @@ declare global {
         mobile?: boolean;
         webkitAudioContext?: AudioContext;
         CP: any;
-
-        fusetag?: {
-            que: Array<() => any>;
-            initialised?: boolean;
-            fuseUUID?: string;
-            activateZone: (id: string) => void;
-            pageInit: (options?: PageInitOptions) => void;
-            registerAll: () => void;
-            registerZone: (id: string) => void;
-            setTargeting: (key: string, value: TargetingValue) => void;
-            setAllowRefreshCallback: (callback: (slotDivId: string) => boolean) => void;
-            destroySticky: () => void;
-        };
-        nitroAds?: {
-            queue: Array<unknown>;
-            createAd: (id: string, options: Record<string, unknown>) => Promise<unknown>;
-        };
-
-        // SDK
-        CrazyGames: any;
-        PokiSDK: any;
-        SDK_OPTIONS: any;
-        sdk: any;
-        SpellSyncConfig: any;
-        spellSync: any;
-        showAdFlag: boolean;
     }
 
     interface Document {
@@ -67,11 +41,8 @@ declare global {
         webkitRequestFullscreen: (options?: FullscreenOptions) => Promise<void>;
     }
     const IS_DEV: boolean;
-    const VITE_ENABLE_SURVEV_ADS: boolean;
 
     const GIT_VERSION: string | undefined;
-
-    window.fusetag = window.fusetag || (window.fusetag = { que: [] });
 }
 
 declare module "pixi.js-legacy" {

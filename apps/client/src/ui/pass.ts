@@ -209,7 +209,7 @@ export class Pass {
             quest.elems.main.css("display", "block");
             quest.elems.desc.html(title);
             quest.elems.desc.css({
-                "font-size": helpers.measureText(title, "16px roboto condensed") > 155 ? "14px" : "16px",
+                "font-size": helpers.measureText(title, "16px Phantom Guardians") > 155 ? "14px" : "16px",
             });
             quest.elems.cur.html(Math.round(quest.current));
             quest.elems.xp.html(`${questDef.xp} XP`);

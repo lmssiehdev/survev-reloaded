@@ -13,7 +13,6 @@ import type { Account } from "../account.ts";
 import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { SDK } from "../sdk/sdk.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
 import type { LoadoutDisplay } from "./opponentDisplay.ts";
@@ -383,9 +382,6 @@ export class LoadoutMenu {
         this.tryBeginConfirmingItems();
         $("#start-bottom-right, #start-main").fadeOut(200);
         $("#background").hide();
-        if (!device.mobile) {
-            SDK.showLoadoutAd();
-        }
     }
 
     onHide() {
@@ -397,7 +393,6 @@ export class LoadoutMenu {
         this.modalCustomize.css({
             cursor: "initial",
         });
-        SDK.hideLoadoutAd();
         $("#start-bottom-right, #start-main").fadeIn(200);
         $("#background").show();
     }

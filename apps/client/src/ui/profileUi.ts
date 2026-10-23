@@ -5,7 +5,6 @@ import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { SDK } from "../sdk/sdk.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -324,7 +323,7 @@ export class ProfileUi {
 
     /** again once site_info says which logins the API has */
     updateLoginSupport() {
-        $(".account-block").toggle(!SDK.isAnySDK && api.anyLoginSupported());
+        $(".account-block").toggle(api.anyLoginSupported());
     }
 
     onError(type: string, data?: string) {
