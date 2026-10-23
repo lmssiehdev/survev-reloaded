@@ -66,7 +66,7 @@ export function query<T>(fn: () => Promise<T>, message = "Database query failed"
     return Result.tryPromise({
         try: fn,
         catch: (cause) => {
-            logger.error("db.query_failed", { message, err: cause });
+            logger.error("db.query_failed", { op: message, err: cause });
             return new DatabaseError({ message, cause });
         },
     });
