@@ -4,7 +4,7 @@ import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
 import type { QuestProgress } from "@survev/game/game.ts";
 import { GameRunner } from "@survev/game/gameRunner.ts";
-import type { ProcessMsg } from "@survev/game/ipcTypes.ts";
+import { type ProcessMsg, ProcessMsgType } from "@survev/game/ipcTypes.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
 import { flatStats } from "@survev/game/tickStats.ts";
 import {
@@ -80,8 +80,8 @@ async function sendQuestProgress(userId: string, progress: QuestProgress) {
 }
 
 const runner = new GameRunner({
-    send(msg) {
-        process.send!(msg);
+    updateData(game) {
+        process.send!({ type: ProcessMsgType.UpdateData, ...game.getData() });
     },
     gameOptions: serverGameOptions,
     saveGame(game) {
@@ -107,6 +107,12 @@ const runner = new GameRunner({
     },
 });
 runner.start();
+
+// also a keep alive, the manager kills processes it hasn't heard from in 10 seconds
+setInterval(() => {
+    if (runner.game) runner.game.updateData();
+    else process.send!({ type: ProcessMsgType.KeepAlive });
+}, 5000);
 
 process.on("disconnect", async () => {
     procLogger.info("game.proc.parent_disconnected", { gameId: runner.game?.id });
@@ -138,7 +144,17 @@ startProcessStats(() => {
 let lastMsgTime = Date.now();
 process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
-    runner.handleMsg(msg);
+    switch (msg.type) {
+        case ProcessMsgType.Create:
+            runner.create(msg.id, msg.config);
+            break;
+        case ProcessMsgType.AddJoinToken:
+            runner.game?.addJoinTokens(msg.tokens, msg.autoFill);
+            break;
+        case ProcessMsgType.AddSpectateToken:
+            runner.game?.addSpectateToken(msg.token, msg.data);
+            break;
+    }
 });
 
 setInterval(async () => {

@@ -2,22 +2,19 @@ import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import type { Client } from "./client.ts";
 import { Game, type GameHooks } from "./game.ts";
 import { GAME_TPS, type GameMode, type GameOptions, NET_SYNC_TPS } from "./gameOptions.ts";
-import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 import type { ClientSocket } from "./socket.ts";
 
-/** what a GameRunner needs from the process or worker it runs in */
-export interface GameRunnerHost extends Omit<GameHooks, "updateData"> {
-    /** sends a message to whoever creates the games and hands out join tokens */
-    send(msg: ProcessMsg): void;
+/** what a GameRunner needs from the process or page it runs in, the game's hooks are optional */
+export interface GameRunnerHost extends GameHooks {
     gameOptions(id: string, config: GameMode): GameOptions;
     /** the game stopped and the runner let go of it */
     onGameStopped?(game: Game): void;
 }
 
 /**
- * Runs one game at a time: creates it from the messages it receives,
- * ticks it, reports its data back and hands it the sockets of its players.
- * The host only adds the transport (IPC and Bun.serve for the game server)
+ * Runs one game at a time: creates it, ticks it and hands it the sockets of its players.
+ * The host adds the transport (IPC and Bun.serve for the game server)
+ * and adds join tokens to the game itself
  */
 export class GameRunner {
     game: Game | undefined;
@@ -28,7 +25,7 @@ export class GameRunner {
     constructor(private readonly host: GameRunnerHost) {
         this.hooks = {
             updateData: (game) => {
-                host.send({ type: ProcessMsgType.UpdateData, ...game.getData() });
+                host.updateData?.(game);
                 if (game.stopped && game === this.game) {
                     this.game = undefined;
                     host.onGameStopped?.(game);
@@ -43,8 +40,6 @@ export class GameRunner {
         this.timers.push(
             setInterval(() => this.game?.update(), 1000 / GAME_TPS),
             setInterval(() => this.game?.netSync(), 1000 / NET_SYNC_TPS),
-            // also a keep alive, the owner kills runners it hasn't heard from in 10 seconds
-            setInterval(() => this.sendData(), 5000),
         );
     }
 
@@ -53,29 +48,10 @@ export class GameRunner {
         this.timers.length = 0;
     }
 
-    handleMsg(msg: ProcessMsg) {
-        if (msg.type === ProcessMsgType.Create && !this.game) {
-            this.game = new Game(msg.id, msg.config, this.host.gameOptions(msg.id, msg.config), this.hooks);
-        }
-
-        if (!this.game) return;
-
-        switch (msg.type) {
-            case ProcessMsgType.AddJoinToken:
-                this.game.addJoinTokens(msg.tokens, msg.autoFill);
-                break;
-            case ProcessMsgType.AddSpectateToken:
-                this.game.addSpectateToken(msg.token, msg.data);
-                break;
-        }
-    }
-
-    sendData() {
-        if (this.game) {
-            this.game.updateData();
-        } else {
-            this.host.send({ type: ProcessMsgType.KeepAlive });
-        }
+    /** does nothing while a game is still running */
+    create(id: string, config: GameMode) {
+        if (this.game) return;
+        this.game = new Game(id, config, this.host.gameOptions(id, config), this.hooks);
     }
 
     socketMessage(socket: ClientSocket<Client>, data: ArrayBuffer) {

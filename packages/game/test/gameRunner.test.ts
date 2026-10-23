@@ -3,9 +3,8 @@ import * as net from "@survev/shared/net/net.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { expect, test } from "bun:test";
 import type { Client } from "../client.ts";
-import type { Game } from "../game.ts";
+import type { Game, GameData } from "../game.ts";
 import { GameRunner } from "../gameRunner.ts";
-import { type ProcessMsg, ProcessMsgType, type UpdateDataMsg } from "../ipcTypes.ts";
 import { ClientSocket } from "../socket.ts";
 import { testOptions } from "./gameTestHelpers.ts";
 
@@ -34,22 +33,18 @@ class TestSocket extends ClientSocket<Client> {
 }
 
 function createRunner() {
-    const sent: ProcessMsg[] = [];
+    const updates: GameData[] = [];
     const saved: Game[] = [];
     const stopped: Game[] = [];
     const runner = new GameRunner({
-        send: (msg) => sent.push(msg),
         gameOptions: () => testOptions,
+        updateData: (game) => updates.push(game.getData()),
         saveGame: (game) => saved.push(game),
         onGameStopped: (game) => stopped.push(game),
     });
-    runner.handleMsg({
-        type: ProcessMsgType.Create,
-        id: "test",
-        config: { mapName: "main", teamMode: TeamMode.Solo },
-    });
-    const lastData = () => sent.findLast((msg): msg is UpdateDataMsg => msg.type === ProcessMsgType.UpdateData);
-    return { runner, sent, saved, stopped, lastData };
+    runner.create("test", { mapName: "main", teamMode: TeamMode.Solo });
+    const lastData = () => updates.at(-1);
+    return { runner, saved, stopped, lastData };
 }
 
 function joinMsg(joinToken: string) {
@@ -63,17 +58,13 @@ function joinMsg(joinToken: string) {
 }
 
 function joinPlayer(runner: GameRunner, joinToken = "token") {
-    runner.handleMsg({
-        type: ProcessMsgType.AddJoinToken,
-        autoFill: true,
-        tokens: [{ joinToken, userId: null, ip: "127.0.0.1" }],
-    });
+    runner.game!.addJoinTokens([{ joinToken, userId: null, ip: "127.0.0.1" }], true);
     const socket = new TestSocket();
     runner.socketMessage(socket, joinMsg(joinToken));
     return socket;
 }
 
-test("Create reports a joinable game", () => {
+test("create reports a joinable game", () => {
     const { runner, lastData } = createRunner();
 
     expect(runner.game?.id).toBe("test");
@@ -125,12 +116,18 @@ test("A stopped game is saved, reported and dropped", () => {
     expect(runner.game).toBeUndefined();
 });
 
-test("Without a game the runner keeps alive and closes sockets", () => {
-    const { runner, sent } = createRunner();
-    runner.game!.stop();
+test("create is ignored while a game runs", () => {
+    const { runner } = createRunner();
+    const game = runner.game;
 
-    runner.sendData();
-    expect(sent.at(-1)).toEqual({ type: ProcessMsgType.KeepAlive });
+    runner.create("other", { mapName: "main", teamMode: TeamMode.Duo });
+
+    expect(runner.game).toBe(game);
+});
+
+test("Without a game the runner closes sockets", () => {
+    const { runner } = createRunner();
+    runner.game!.stop();
 
     const socket = new TestSocket();
     runner.socketMessage(socket, joinMsg("token"));
