@@ -44,6 +44,8 @@ export const sharedEnv = parseEnv({
     /** logs are shipped to Axiom only when both are set */
     AXIOM_TOKEN: z.string().optional(),
     AXIOM_DATASET: z.string().optional(),
+    /** Axiom ingest endpoint, override to point at a regional edge or a test server */
+    AXIOM_URL: z.string().url().default("https://api.axiom.co"),
     SURVEV_ENV: z.enum(["production", "staging", "dev"]).default("dev"),
     RATE_LIMITS: bool(isProd),
     /** shared by the API, game servers and bot to call each other's private routes */
@@ -56,7 +58,7 @@ export const sharedEnv = parseEnv({
 
 /** the options every app passes to `setupServerLogging` */
 export function loggingOptions(app: AppName, region?: string): ServerLoggingOptions {
-    const { AXIOM_TOKEN, AXIOM_DATASET } = sharedEnv;
+    const { AXIOM_TOKEN, AXIOM_DATASET, AXIOM_URL } = sharedEnv;
     return {
         app,
         level: sharedEnv.LOG_LEVEL,
@@ -64,6 +66,6 @@ export function loggingOptions(app: AppName, region?: string): ServerLoggingOpti
         env: sharedEnv.SURVEV_ENV,
         git: GIT_VERSION,
         region,
-        axiom: AXIOM_TOKEN && AXIOM_DATASET ? { token: AXIOM_TOKEN, dataset: AXIOM_DATASET } : undefined,
+        axiom: AXIOM_TOKEN && AXIOM_DATASET ? { token: AXIOM_TOKEN, dataset: AXIOM_DATASET, baseUrl: AXIOM_URL } : undefined,
     };
 }

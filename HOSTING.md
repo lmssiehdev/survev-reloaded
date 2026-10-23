@@ -65,6 +65,49 @@ git pull && docker compose up -d --build && docker image prune -f
 
 The Discord bot is optional: set its `DISCORD_*` variables, then `docker compose --profile bot up -d`.
 
+## Logging
+
+Every server app logs structured JSON (`LOG_FORMAT=json`, the default in production) to stdout, and ships the same records to [Axiom](https://axiom.co) when it is configured.
+
+| Variable | Meaning |
+| --- | --- |
+| `LOG_LEVEL` | `debug`, `info`, `warning` or `error` (default `info` in production) |
+| `LOG_FORMAT` | `json` (production default) or `pretty` |
+| `AXIOM_TOKEN`, `AXIOM_DATASET` | logs go to Axiom only when both are set |
+| `AXIOM_URL` | ingest endpoint, default `https://api.axiom.co` |
+| `SURVEV_ENV` | `production`, `staging` or `dev`, attached to every record |
+| `PROCESS_STATS_MS` | interval of the `process.stats` record and of its tick stats window, default 60000 |
+
+Setting up Axiom:
+
+1. Create a dataset (for example `survev`).
+2. Create an API token with **ingest-only** permission on that dataset, nothing else.
+3. Put `AXIOM_TOKEN` and `AXIOM_DATASET` in `.env`.
+4. Set `SURVEV_ENV` per deployment (`production` on the live server, `staging` on staging) and filter on `env` in Axiom.
+
+Create these monitors in Axiom **before deploying** this version, otherwise failures go unnoticed:
+
+- any `level:fatal` record or `process.crash`
+- any `game.proc.died`
+- `http.request` with `status >= 500`, more than 10 in 5 minutes
+- `game.slow_tick`, more than 20 in 5 minutes
+
+One 500 response logs both `http.request` (status 500) and `http.unhandled`, so key monitors on `http.request`.
+Axiom failures never affect the game, they are printed to stderr and the records are dropped.
+
+Event names:
+
+| Event | When |
+| --- | --- |
+| `process.start`, `process.exit` | process lifecycle |
+| `process.crash` | uncaught exception or unhandled rejection, level fatal |
+| `game.proc.died` | a game process exited unexpectedly |
+| `http.request` | every API request: method, route, status, durationMs |
+| `game.end` | a game ended, with its whole-game tick summary |
+| `player.leave` | a player left a game |
+| `process.stats` | periodic memory, uptime and per window tick and netSync mean, p50, p99, max |
+| `game.slow_tick`, `game.slow_netsync` | a tick or netSync over its threshold (throttled) |
+
 ## Backups
 
 The database lives in the `postgres-data` volume. Dump it with `pg_dump` (a plain copy of the volume while
