@@ -1,4 +1,4 @@
-import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { defaultPlayModes, GameConfig } from "@survev/shared/gameConfig.ts";
 import * as net from "@survev/shared/net/net.ts";
 import type {
     FindGameBody,
@@ -694,6 +694,11 @@ export class Application {
 
             const tryQuickStartGameImpl = () => {
                 this.waitOnAccount(() => {
+                    // `?local`, dev only: run the game in this page instead of on a game server
+                    if (IS_DEV && new URLSearchParams(window.location.search).has("local")) {
+                        this.joinLocalGame(gameModeIdx);
+                        return;
+                    }
                     this.findGame(matchArgs, {
                         error: (err) => {
                             this.onJoinGameError(err);
@@ -771,6 +776,19 @@ export class Application {
             (token) => {
                 findGameImpl(0, 2, token);
             },
+        );
+    }
+
+    async joinLocalGame(gameModeIdx: number) {
+        // loaded on demand, keeps the game code out of the main bundle
+        const { connectLocalGame } = await import("./localGame.ts");
+        const modes = this.siteInfo.loaded ? this.siteInfo.info.modes : defaultPlayModes;
+        const { mapName, teamMode } = modes[gameModeIdx];
+        const joinToken = crypto.randomUUID();
+        this.game!.joinWith(
+            () => connectLocalGame({ mapName, teamMode }, joinToken),
+            joinToken,
+            () => this.onJoinGameError("join_game_failed"),
         );
     }
 

@@ -54,6 +54,7 @@
     "apps/client": {
       "name": "@survev/client",
       "dependencies": {
+        "@survev/game": "workspace:*",
         "@survev/shared": "workspace:*",
         "@taufik-nurrohman/color-picker": "1.4.2",
         "better-auth": "^1.7.8",
