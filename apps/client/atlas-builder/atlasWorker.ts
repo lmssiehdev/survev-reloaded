@@ -3,7 +3,7 @@ import { createCanvas, type Image } from "canvas";
 import { type Bin, MaxRectsPacker, type Rectangle } from "maxrects-packer";
 import type { ISpritesheetData } from "pixi.js-legacy";
 import sharp from "sharp";
-import { atlasFormat, atlasLogger, ImageManager } from "./atlasBuilder.ts";
+import { atlasFormat, ImageManager } from "./atlasBuilder.ts";
 import { type AtlasDef, Atlases, type AtlasRes, AtlasResolutions } from "./atlasDefs.ts";
 import type { Edges } from "./detectEdges.ts";
 
@@ -60,14 +60,14 @@ export class AtlasBuilder {
     }
 
     async build() {
-        atlasLogger.info(`Building atlas ${this.name}`);
+        console.log(`Building atlas ${this.name}`);
 
         const start = Date.now();
         await this.pack();
         await this.generateAtlases();
 
         const timeTaken = Date.now() - start;
-        atlasLogger.info(`Finished building ${this.name} after ${timeTaken}ms`);
+        console.log(`Finished building ${this.name} after ${timeTaken}ms`);
     }
 
     static imageCache = new Map<

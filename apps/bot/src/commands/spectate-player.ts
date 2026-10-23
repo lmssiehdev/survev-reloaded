@@ -151,7 +151,7 @@ export const spectateCommandHandler = {
                     responses.push(jsonRes);
                     await editReply(jsonRes.done);
                 } catch (e) {
-                    botLogger.error("Failed to parse API response:", e);
+                    botLogger.error("bot.spectate_response_parse_failed", { err: e });
                 }
             }
         }

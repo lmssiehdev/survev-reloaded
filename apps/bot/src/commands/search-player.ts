@@ -74,7 +74,7 @@ export const searchPlayersHandler = {
 
             await createDiscordDropdownUI(interaction, matchingPlayers, searchName);
         } catch (error) {
-            botLogger.error("Error in banplayer command:", error);
+            botLogger.error("bot.search_player_failed", { err: error });
             await interaction.editReply({
                 content: "An error occurred while searching for players.",
             });

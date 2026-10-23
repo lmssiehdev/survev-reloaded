@@ -55,3 +55,21 @@ test("serializeError keeps own enumerable properties", () => {
     expect(s.detail).toBe("dup");
     expect(s.message).toBe("x");
 });
+
+test("recordToJson keeps colliding prop keys as prop_<key>", () => {
+    const record: LogRecord = {
+        category: ["survev", "api"],
+        level: "info",
+        message: ["hello"],
+        rawMessage: "hello",
+        timestamp: Date.now(),
+        properties: { message: "ctx", level: "x", category: "c", _time: "t" },
+    };
+    const json = recordToJson(record) as any;
+    expect(json.prop_message).toBe("ctx");
+    expect(json.prop_level).toBe("x");
+    expect(json.prop_category).toBe("c");
+    expect(json.prop__time).toBe("t");
+    expect(json.message).toBe("hello");
+    expect(json.level).toBe("info");
+});

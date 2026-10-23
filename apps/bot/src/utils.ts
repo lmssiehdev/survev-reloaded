@@ -1,7 +1,6 @@
 import type { PrivateRouteApp } from "@survev/api/types";
 import { sharedEnv } from "@survev/config/env.ts";
-import { Logger } from "@survev/config/utils/consoleLogger.ts";
-import { logOptions } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import type {
     ButtonInteraction,
     ComponentType,
@@ -120,7 +119,7 @@ export function createCollector<
     });
 }
 
-export const botLogger = new Logger("Bot", logOptions);
+export const botLogger = getLogger(["bot"]);
 
 /** every API reply, ok or error, carries a message; fall back for non json errors (proxies, crashes) */
 export async function apiMessage(res: Pick<Response, "json" | "status">): Promise<string> {

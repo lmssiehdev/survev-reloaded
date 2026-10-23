@@ -13,6 +13,7 @@
     "@survev/config": "workspace:*",
     "@survev/contracts": "workspace:*",
     "@survev/game": "workspace:*",
+    "@survev/logger": "workspace:*",
     "@survev/shared": "workspace:*",
     "hono": "^4.13.8",
     "zod": "^4.6.5"

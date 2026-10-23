@@ -4,7 +4,6 @@ import fs from "node:fs";
 import os from "node:os";
 import Path from "node:path";
 
-import { Logger } from "@survev/config/utils/consoleLogger.ts";
 import type { Atlas } from "@survev/shared/defs/mapDefs.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { loadImage } from "canvas";
@@ -18,8 +17,6 @@ export const cacheFolder = Path.resolve(
     import.meta.dirname,
     "../node_modules/.atlas-cache/",
 );
-
-export const atlasLogger = new Logger("Atlas Builder", { level: "debug", date: false });
 
 export const imagesCacheFolder = Path.join(cacheFolder, "img");
 export const atlasesCacheFolder = Path.join(cacheFolder, "atlases");
@@ -145,7 +142,7 @@ export class ImageManager {
             promises.push(promise);
         }
 
-        atlasLogger.info(`Rendering ${originalCount} images`, `with ${workers} workers`);
+        console.log(`Rendering ${originalCount} images`, `with ${workers} workers`);
 
         await Promise.all(promises);
         this.writeToDisk();
@@ -153,7 +150,7 @@ export class ImageManager {
         this.imagesToRender.clear();
 
         const end = Date.now();
-        atlasLogger.info(`Rendered all images after ${end - start}ms`);
+        console.log(`Rendered all images after ${end - start}ms`);
     }
 
     cleanOldFiles() {
@@ -179,7 +176,7 @@ export class ImageManager {
             }
         }
         if (filesRemoved > 0) {
-            atlasLogger.info(`Cleaned ${filesRemoved} old images from cache`);
+            console.log(`Cleaned ${filesRemoved} old images from cache`);
         }
     }
 }
@@ -227,7 +224,7 @@ export class AtlasManager {
         for (let i = 0; i < atlasDef.images.length; i++) {
             const image = atlasDef.images[i];
             if (images.has(image)) {
-                atlasLogger.warn(`Atlas ${atlas} has duplicated sprite ${image}`);
+                console.warn(`Atlas ${atlas} has duplicated sprite ${image}`);
             }
             images.set(image, true);
         }
@@ -236,7 +233,7 @@ export class AtlasManager {
         for (const file of atlasDef.images) {
             const imagePath = Path.join(imageFolder, file);
             if (!fs.existsSync(imagePath)) {
-                atlasLogger.error(`File ${imagePath} doesn't exist`);
+                console.error(`File ${imagePath} doesn't exist`);
                 continue;
             }
             const data = fs.readFileSync(imagePath);
@@ -346,11 +343,11 @@ export class AtlasManager {
             promises.push(promise);
         }
 
-        atlasLogger.info(`Rendering ${originalCount} atlases`, `with ${workers} workers`);
+        console.log(`Rendering ${originalCount} atlases`, `with ${workers} workers`);
 
         await Promise.all(promises);
         const end = Date.now();
-        atlasLogger.info(`Built all atlases after ${end - start}ms`);
+        console.log(`Built all atlases after ${end - start}ms`);
     }
 
     cleanOldFiles() {
@@ -382,7 +379,7 @@ export class AtlasManager {
             }
         }
         if (atlasesRemoved > 0) {
-            atlasLogger.info(`Cleaned ${atlasesRemoved} old atlases from cache`);
+            console.log(`Cleaned ${atlasesRemoved} old atlases from cache`);
         }
     }
 }

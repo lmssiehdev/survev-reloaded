@@ -1,10 +1,10 @@
-import { Logger } from "@survev/config/utils/consoleLogger.ts";
-import { logErrorToWebhook, logOptions } from "@survev/config/utils/logger.ts";
+import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
 import { Game } from "@survev/game/game.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
+import { flushLogs, getLogger, installCrashHandlers, setupServerLogging } from "@survev/logger/node.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import type { ServerWebSocket } from "bun";
 import path from "node:path";
@@ -17,6 +17,12 @@ import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import { type IdleSocketData, IdleSocketMonitor } from "./idleSockets.ts";
 import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
+const port = parseInt(process.argv[2]);
+
+// the child shares the parent's stdout, its records are told apart by app: "game-proc"
+await setupServerLogging(loggingOptions("game-proc", sharedEnv.REGION));
+installCrashHandlers();
+
 function sendMsg(msg: ProcessMsg) {
     process.send!(msg);
 }
@@ -24,7 +30,7 @@ function sendMsg(msg: ProcessMsg) {
 let game: ServerGame | undefined;
 let gameWeakRef: WeakRef<ServerGame> | undefined;
 
-const procLogger = new Logger(`GameProc-${process.pid}`, logOptions);
+const procLogger = getLogger(["game-proc"]).with({ port });
 
 function broadcastDisconnect(reason: GameWsDisconnectReason) {
     if (game) {
@@ -33,19 +39,17 @@ function broadcastDisconnect(reason: GameWsDisconnectReason) {
         }
     }
 }
-process.on("disconnect", () => {
+process.on("disconnect", async () => {
     broadcastDisconnect("server_restart");
+    procLogger.info("game.proc.parent_disconnected");
+    await flushLogs();
     process.exit();
 });
 
-process.on("uncaughtException", async (err) => {
-    console.error(err);
+// installCrashHandlers logs the crash and exits, this only tells the players
+process.on("uncaughtException", () => {
     broadcastDisconnect("server_crashed");
-
     game = undefined;
-    await logErrorToWebhook("server", "Game process error", err);
-
-    process.exit(1);
 });
 
 function stopGame() {
@@ -57,7 +61,7 @@ function stopGame() {
         setImmediate(() => {
             Bun.gc(true);
             if (gameWeakRef?.deref()) {
-                procLogger.warn("Possible memory leak found, something is keeping a reference to the game object!");
+                procLogger.warn("game.possible_leak");
             }
         });
     }
@@ -77,20 +81,17 @@ async function saveGame(gameId: string, values: SaveGameBody["matchData"]) {
             },
         });
     } catch (err) {
-        procLogger.error(`Failed to fetch API save game:`, err);
+        procLogger.error("game.save_failed", { gameId, err });
     }
 
     if (!res || !res.ok) {
-        const region = env.REGION.toUpperCase();
-        procLogger.error(
-            `[${region}] Failed to save game data, saving locally instead`,
-        );
+        procLogger.error("game.save_fallback_local", { gameId });
 
         try {
             // Bun.write creates the directory if needed
             await Bun.write(path.resolve(LOST_GAME_DATA_DIR, `${gameId}.json`), JSON.stringify(values));
         } catch (err) {
-            procLogger.error(`[${region}] Failed to save game data locally:`, err);
+            procLogger.error("game.save_local_failed", { gameId, err });
         }
     }
 }
@@ -105,10 +106,10 @@ async function sendQuestProgress(userId: string, progress: Array<{ id: string; d
         });
         const res = await req.json();
         if (!req.ok || !(res as { success: boolean }).success) {
-            procLogger.error(`Failed to save quest progress`, res);
+            procLogger.error("quest.progress_failed", { userId, status: req.status, res });
         }
     } catch (err) {
-        procLogger.error(`Failed to save quest progress:`, err);
+        procLogger.error("quest.progress_failed", { userId, err });
     }
 }
 
@@ -205,7 +206,7 @@ process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
 
     if (msg.type === ProcessMsgType.Create && !game) {
-        game = new ServerGame(msg.id, msg.config, serverGameOptions(msg.id));
+        game = new ServerGame(msg.id, msg.config, serverGameOptions(msg.id, msg.config));
         gameWeakRef = new WeakRef(game);
     }
 
@@ -221,9 +222,10 @@ process.on("message", (msg: ProcessMsg) => {
     }
 });
 
-setInterval(() => {
+setInterval(async () => {
     if (Date.now() - lastMsgTime > 10000) {
-        console.log("Game process has not received a message in 10 seconds, exiting");
+        procLogger.warn("game.proc.parent_silent", { gameId: game?.id });
+        await flushLogs();
         process.exit();
     }
 
@@ -295,8 +297,6 @@ const gameWsRateLimit = new WebSocketRateLimit(500, 1000, 5);
 
 const textEncoder = new TextEncoder();
 
-const port = parseInt(process.argv[2]);
-
 const app = Bun.serve({
     hostname: env.GAME_HOST,
     port,
@@ -305,19 +305,19 @@ const app = Bun.serve({
     routes: {
         "/play": async (req, httpServer) => {
             if (!game) {
-                procLogger.warn("Websocket upgrade closed: process not running a game");
+                procLogger.warn("ws.upgrade_rejected", { reason: "no_game" });
                 return new Response();
             }
 
             const ip = getIp(req, httpServer, env.PROXY_IP_HEADER);
 
             if (!ip) {
-                game.logger.warn("Invalid IP Found");
+                game.logger.warn("ws.invalid_ip");
                 return new Response();
             }
 
             if (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip)) {
-                game.logger.warn("Websocket upgrade closed: Rate limited");
+                game.logger.warn("ws.upgrade_rejected", { reason: "rate_limited" });
                 return new Response("429 Too Many Requests", { status: 429 });
             }
 
@@ -396,7 +396,7 @@ const app = Bun.serve({
                 return;
             }
             if (gameWsRateLimit.isRateLimited(data.rateLimit)) {
-                procLogger.warn("Game websocket rate limited, closing socket.");
+                game.logger.warn("ws.message_rate_limited");
                 socket.close(3000, "rate_limited");
                 return;
             }
@@ -419,6 +419,4 @@ const app = Bun.serve({
     },
 });
 
-procLogger.info(
-    `Listening on ${app.hostname}:${app.port}`,
-);
+procLogger.info("game.proc.listening", { host: app.hostname });

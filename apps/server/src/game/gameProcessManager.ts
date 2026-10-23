@@ -1,7 +1,7 @@
-import { ServerLogger } from "@survev/config/utils/logger.ts";
 import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
 import type { SpectateTokenData } from "@survev/game/game.ts";
 import type { GameMode } from "@survev/game/gameOptions.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
 import { util } from "@survev/shared/utils/util.ts";
@@ -50,6 +50,9 @@ export class GameProcess {
     /** set once the process exited, `process.killed` only means a signal was sent */
     exited = false;
 
+    /** set by killProcess, tells an intentional exit from a crash */
+    killed = false;
+
     avaliableSlots = 0;
 
     reusedCount = 0;
@@ -90,9 +93,12 @@ export class GameProcess {
                     }
                     this.onCreatedCbs.length = 0;
                     if (this.reusedCount === 1) {
-                        this.manager.logger.info(
-                            `Process ${this.process.pid} created in ${Date.now() - this.createdTime}ms`,
-                        );
+                        this.manager.logger.info("game.proc.ready", {
+                            childPid: this.process.pid,
+                            port: this.port,
+                            gameId: this.gameData.id,
+                            ms: Date.now() - this.createdTime,
+                        });
                     }
                 }
 
@@ -155,7 +161,7 @@ export class GameProcessManager {
     readonly processById = new Map<string, GameProcess>();
     readonly processes: GameProcess[] = [];
 
-    readonly logger = new ServerLogger("Game Process Manager");
+    readonly logger = getLogger(["game-server", "manager"]);
 
     private readonly _freePorts: number[] = [];
 
@@ -182,10 +188,11 @@ export class GameProcessManager {
                 // kill processes that didn't send a keep alive msg in 10 seconds
                 // because this usually means they are frozen in an infinite loop
                 if (Date.now() - proc.lastMsgTime > 10000) {
-                    const id = proc.gameData.id.substring(0, 4);
-                    this.logger.warn(
-                        `Process ${proc.process.pid} - #${id} did not send a message in more 10 seconds, killing`,
-                    );
+                    this.logger.warn("game.proc.unresponsive", {
+                        childPid: proc.process.pid,
+                        port: proc.port,
+                        gameId: proc.gameData.id || undefined,
+                    });
                     // sigquit can dump a core of the process
                     // useful for debugging infinite loops
                     this.killProcess(proc, "SIGQUIT");
@@ -204,7 +211,7 @@ export class GameProcessManager {
                 const procsToKill = Math.abs(minIdleProcs - idleProcs.length);
                 for (let i = 0; i < procsToKill; i++) {
                     const proc = idleProcs[i];
-                    this.logger.info(`Killing ${proc.process.pid} because we have too many stale processes`);
+                    this.logger.info("game.proc.stale_kill", { childPid: proc.process.pid, port: proc.port });
                     this.killProcess(proc);
                 }
             }
@@ -239,8 +246,17 @@ export class GameProcessManager {
             this.processes.push(gameProc);
 
             const proc = gameProc;
-            proc.process.on("exit", () => {
+            proc.process.on("exit", (code, signal) => {
                 proc.exited = true;
+                const props = {
+                    childPid: proc.process.pid,
+                    port: proc.port,
+                    code,
+                    signal,
+                    gameId: proc.gameData.id || undefined,
+                };
+                if (proc.killed) this.logger.info("game.proc.exit", props);
+                else this.logger.error("game.proc.died", props);
                 this.removeProcess(proc);
                 if (!this._freePorts.includes(proc.port)) {
                     this._freePorts.push(proc.port);
@@ -248,9 +264,12 @@ export class GameProcessManager {
             });
             // lost the IPC channel, the process can't be used anymore
             proc.process.on("disconnect", () => {
+                if (!proc.exited) {
+                    this.logger.warn("game.proc.disconnected", { childPid: proc.process.pid, port: proc.port });
+                }
                 this.killProcess(proc);
             });
-            this.logger.info("Created new process with PID", gameProc.process.pid);
+            this.logger.info("game.proc.spawn", { childPid: gameProc.process.pid, port: gameProc.port });
         } else {
             this.processById.delete(gameProc.gameData.id);
             gameProc.create(id, config);
@@ -264,6 +283,7 @@ export class GameProcessManager {
     killProcess(gameProc: GameProcess, signal: NodeJS.Signals = "SIGTERM"): void {
         this.removeProcess(gameProc);
         if (gameProc.exited) return;
+        gameProc.killed = true;
 
         // send SIGTERM, if still hasn't terminated after 5 seconds, send SIGKILL >:3
         gameProc.process.kill(signal);

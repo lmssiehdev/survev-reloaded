@@ -1,17 +1,17 @@
 import { sharedEnv } from "@survev/config/env.ts";
-import { ServerLogger } from "@survev/config/utils/logger.ts";
-import type { GameOptions } from "@survev/game/gameOptions.ts";
+import type { GameMode, GameOptions } from "@survev/game/gameOptions.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { env } from "../env.ts";
 
 export const GAME_TPS = 100;
 export const NET_SYNC_TPS = 33;
 
 /** game options for a game hosted by this server, read from the environment */
-export function serverGameOptions(gameId: string): GameOptions {
-    const logger = new ServerLogger(`Game #${gameId.substring(0, 4)}`);
+export function serverGameOptions(gameId: string, config: GameMode): GameOptions {
+    const logger = getLogger(["game"]).with({ gameId, mapName: config.mapName, teamMode: config.teamMode });
     return {
         logger,
-        debugLogs: logger.enabled("debug"),
+        debugLogs: sharedEnv.LOG_LEVEL === "debug",
         gameTps: GAME_TPS,
         netSyncTps: NET_SYNC_TPS,
         rateLimitsEnabled: sharedEnv.RATE_LIMITS,

@@ -1,8 +1,10 @@
 import type { PrivateRouteApp } from "@survev/api/types";
 import { sharedEnv } from "@survev/config/env.ts";
-import { defaultLogger } from "@survev/config/utils/logger.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import { hc } from "hono/client";
 import { env } from "../env.ts";
+
+const logger = getLogger(["api-client"]);
 
 export const apiPrivateRouter = hc<PrivateRouteApp>(
     `${env.API_URL}/private`,
@@ -30,7 +32,7 @@ export async function checkIp(ip: string) {
             return body;
         }
     } catch (err) {
-        defaultLogger.error(`Failed request API fetch_ip: `, err);
+        logger.error("api.check_ip_failed", { err });
     }
 
     return undefined;

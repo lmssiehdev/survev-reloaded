@@ -1,6 +1,4 @@
-import { sharedEnv } from "@survev/config/env.ts";
-import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
+import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import {
     type FindGamePrivateBody,
@@ -12,6 +10,7 @@ import {
     zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "@survev/contracts";
+import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging } from "@survev/logger/node.ts";
 import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -25,23 +24,15 @@ import { getIp } from "./utils/ip.ts";
 import { LOST_GAME_DATA_DIR } from "./utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "./utils/websocket.ts";
 
-process.on("uncaughtException", async (err) => {
-    console.error(err);
-
-    await logErrorToWebhook("server", "Game server error:", err);
-
-    process.exit(1);
-});
-
-// Bun keeps an inherited "ignore SIGINT" disposition (e.g. when started as a background
-// job by a script), Node resets it to the default. Exit on SIGINT like Node does by default,
-// game processes then get "disconnect" and close their sockets with "server_restart"
-process.on("SIGINT", () => {
-    process.exit(130);
-});
+// nothing imported above logs while it loads, so logging can be set up here.
+// logProcessStart exits on SIGINT/SIGTERM (also when SIGINT was inherited as ignored, e.g. from a
+// background job), game processes then get "disconnect" and close their sockets with "server_restart"
+await setupServerLogging(loggingOptions("game-server", sharedEnv.REGION));
+installCrashHandlers();
+logProcessStart({ version: pkgJson.version });
 
 class GameServer {
-    readonly logger = new ServerLogger("GameServer");
+    readonly logger = getLogger(["game-server"]);
 
     readonly regionId = env.REGION;
 
@@ -115,10 +106,10 @@ class GameServer {
                     regionId: env.REGION,
                 },
             });
-            if (this.reportFailing) this.logger.info("Region update reached the API again");
+            if (this.reportFailing) this.logger.info("region.update_recovered");
             this.reportFailing = false;
         } catch (err) {
-            if (!this.reportFailing) this.logger.error(`Failed to update region: `, err);
+            if (!this.reportFailing) this.logger.error("region.update_failed", { err });
             this.reportFailing = true;
         }
     }
@@ -140,13 +131,13 @@ class GameServer {
             try {
                 data = await Bun.file(filePath).json();
             } catch (err) {
-                this.logger.warn(`Skipping unreadable lost game file ${fileName}:`, err);
+                this.logger.warn("lost_games.skip_unreadable", { fileName, err });
                 continue;
             }
 
             const parsed = zSaveGameMatchData.safeParse(data);
             if (!parsed.success) {
-                this.logger.warn(`Skipping invalid lost game file ${fileName}:`, z.prettifyError(parsed.error));
+                this.logger.warn("lost_games.skip_invalid", { fileName, reason: z.prettifyError(parsed.error) });
                 continue;
             }
 
@@ -156,7 +147,7 @@ class GameServer {
 
         if (games.length < 2) return;
 
-        this.logger.info(`${games.length} lost games found, trying to save...`);
+        this.logger.info("lost_games.saving", { count: games.length });
 
         let res: Pick<Response, "ok"> | undefined = undefined;
         try {
@@ -166,11 +157,11 @@ class GameServer {
                 },
             });
         } catch (err) {
-            this.logger.error(`Failed to fetch API save game:`, err);
+            this.logger.error("lost_games.save_failed", { err });
         }
 
         if (res?.ok) {
-            this.logger.info(`successfully saved lost games!`);
+            this.logger.info("lost_games.saved", { count: games.length });
             // if we successfully saved the games we can remove them
             for (const fileName of files) {
                 const filePath = path.resolve(dir, fileName);
@@ -205,14 +196,14 @@ async function handleJsonPost<T extends ZodObject>(
 
     const parsed = validator.safeParse(await req.json().catch(() => undefined));
     if (!parsed.success) {
-        server.logger.warn(`${new URL(req.url).pathname} error: `, parsed.error);
+        server.logger.warn("http.bad_request", { path: new URL(req.url).pathname, err: parsed.error });
         return new Response("400 Bad Request", { status: 400 });
     }
 
     try {
         return Response.json(await handler(parsed.data));
     } catch (error) {
-        server.logger.warn(`${new URL(req.url).pathname} error: `, error);
+        server.logger.error("http.handler_failed", { path: new URL(req.url).pathname, err: error });
         return new Response("500 Internal Server Error", { status: 500 });
     }
 }
@@ -263,7 +254,7 @@ const app = Bun.serve({
             const ip = getIp(req, httpServer, env.PROXY_IP_HEADER);
 
             if (!ip) {
-                server.logger.warn("Invalid IP Found:", ip);
+                server.logger.warn("ping.invalid_ip");
                 return new Response();
             }
 
@@ -301,7 +292,7 @@ const app = Bun.serve({
 
         message(socket, message) {
             if (pingWsRateLimit.isRateLimited(socket.data.rateLimit)) {
-                server.logger.warn("Ping websocket rate limited, closing socket.");
+                server.logger.warn("ping.rate_limited");
                 socket.terminate();
                 return;
             }
@@ -320,11 +311,7 @@ setInterval(() => {
     server.sendData();
 }, 5 * 1000);
 
-server.logger.info(`Survev Game Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
-server.logger.info(
-    `Listening on ${app.hostname}:${app.port}`,
-);
-server.logger.info("Press Ctrl+C to exit.");
+server.logger.info("game_server.listening", { host: app.hostname, port: app.port });
 
 // try to save lost games every hour
 // Bun.cron runs in the system timezone. Keep the try/catch: a throw or rejection
@@ -333,6 +320,6 @@ Bun.cron("0 * * * *", async () => {
     try {
         await server.tryToSaveLostGames();
     } catch (err) {
-        server.logger.error("Failed to save lost games", err);
+        server.logger.error("lost_games.cron_failed", { err });
     }
 });

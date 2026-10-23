@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@survev/config": "workspace:*",
+    "@survev/logger": "workspace:*",
     "@survev/contracts": "workspace:*",
     "@survev/shared": "workspace:*",
     "discord.js": "^14.27.0",
