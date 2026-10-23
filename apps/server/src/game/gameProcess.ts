@@ -2,9 +2,9 @@ import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
-import { Game, type GameHooks, type QuestProgress } from "@survev/game/game.ts";
-import { GAME_TPS, NET_SYNC_TPS } from "@survev/game/gameOptions.ts";
-import { type ProcessMsg, ProcessMsgType } from "@survev/game/ipcTypes.ts";
+import type { QuestProgress } from "@survev/game/game.ts";
+import { GameRunner } from "@survev/game/gameRunner.ts";
+import type { ProcessMsg } from "@survev/game/ipcTypes.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
 import { flatStats } from "@survev/game/tickStats.ts";
 import {
@@ -31,63 +31,7 @@ const port = parseInt(process.argv[2]);
 await setupServerLogging(loggingOptions("game-proc", sharedEnv.REGION));
 installCrashHandlers();
 
-function sendMsg(msg: ProcessMsg) {
-    process.send!(msg);
-}
-
-let game: Game | undefined;
-let gameWeakRef: WeakRef<Game> | undefined;
-
 const procLogger = getLogger(["game-proc"]).with({ port });
-
-function broadcastDisconnect(reason: GameWsDisconnectReason) {
-    if (game) {
-        for (const client of game.clientBarn.clients) {
-            client.socket.close(reason);
-        }
-    }
-}
-process.on("disconnect", async () => {
-    broadcastDisconnect("server_restart");
-    procLogger.info("game.proc.parent_disconnected", { gameId: game?.id });
-    await flushLogs();
-    process.exit();
-});
-
-// installCrashHandlers logs the crash and exits, this only tells the players
-process.on("uncaughtException", () => {
-    broadcastDisconnect("server_crashed");
-    game = undefined;
-});
-
-// one game per process; the windows are reset on every read, the game-lifetime stats are not
-startProcessStats(() => {
-    if (!game) return { gameId: undefined, alivePlayers: 0 };
-    const stats = {
-        gameId: game.id,
-        alivePlayers: game.playerBarn.livingPlayers.length,
-        ...flatStats("tick", game.tickWindow),
-        ...flatStats("netSync", game.netSyncWindow),
-    };
-    game.tickWindow.reset();
-    game.netSyncWindow.reset();
-    return stats;
-}, sharedEnv.PROCESS_STATS_MS);
-
-function stopGame() {
-    game = undefined;
-
-    // make sure game is properly free'd (dev only, Bun.gc(true) is a blocking full collection)
-    if (process.env.NODE_ENV !== "production") {
-        // defer so the current stack no longer holds the game
-        setImmediate(() => {
-            Bun.gc(true);
-            if (gameWeakRef?.deref()) {
-                procLogger.warn("game.possible_leak");
-            }
-        });
-    }
-}
 
 //
 // Keep saveGame and sendQuestProgress separated from the game class
@@ -135,13 +79,11 @@ async function sendQuestProgress(userId: string, progress: QuestProgress) {
     }
 }
 
-const gameHooks: GameHooks = {
-    updateData(game) {
-        sendMsg({ type: ProcessMsgType.UpdateData, ...game.getData() });
-        if (game.stopped) {
-            stopGame();
-        }
+const runner = new GameRunner({
+    send(msg) {
+        process.send!(msg);
     },
+    gameOptions: serverGameOptions,
     saveGame(game) {
         // don't save games that never started
         if (!game.started) return;
@@ -151,52 +93,61 @@ const gameHooks: GameHooks = {
         saveGame(game.id, values);
     },
     sendQuestProgress,
-};
+    onGameStopped(game) {
+        // make sure game is properly free'd (dev only, Bun.gc(true) is a blocking full collection)
+        if (process.env.NODE_ENV === "production") return;
+        const gameRef = new WeakRef(game);
+        // defer so the current stack no longer holds the game
+        setImmediate(() => {
+            Bun.gc(true);
+            if (gameRef.deref()) {
+                procLogger.warn("game.possible_leak");
+            }
+        });
+    },
+});
+runner.start();
+
+process.on("disconnect", async () => {
+    procLogger.info("game.proc.parent_disconnected", { gameId: runner.game?.id });
+    runner.abort("server_restart");
+    await flushLogs();
+    process.exit();
+});
+
+// installCrashHandlers logs the crash and exits, this only tells the players
+process.on("uncaughtException", () => {
+    runner.abort("server_crashed");
+});
+
+// one game per process; the windows are reset on every read, the game-lifetime stats are not
+startProcessStats(() => {
+    const game = runner.game;
+    if (!game) return { gameId: undefined, alivePlayers: 0 };
+    const stats = {
+        gameId: game.id,
+        alivePlayers: game.playerBarn.livingPlayers.length,
+        ...flatStats("tick", game.tickWindow),
+        ...flatStats("netSync", game.netSyncWindow),
+    };
+    game.tickWindow.reset();
+    game.netSyncWindow.reset();
+    return stats;
+}, sharedEnv.PROCESS_STATS_MS);
 
 let lastMsgTime = Date.now();
 process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
-
-    if (msg.type === ProcessMsgType.Create && !game) {
-        game = new Game(msg.id, msg.config, serverGameOptions(msg.id, msg.config), gameHooks);
-        gameWeakRef = new WeakRef(game);
-    }
-
-    if (!game) return;
-
-    switch (msg.type) {
-        case ProcessMsgType.AddJoinToken:
-            game.addJoinTokens(msg.tokens, msg.autoFill);
-            break;
-        case ProcessMsgType.AddSpectateToken:
-            game.addSpectateToken(msg.token, msg.data);
-            break;
-    }
+    runner.handleMsg(msg);
 });
 
 setInterval(async () => {
     if (Date.now() - lastMsgTime > 10000) {
-        procLogger.warn("game.proc.parent_silent", { gameId: game?.id });
+        procLogger.warn("game.proc.parent_silent", { gameId: runner.game?.id });
         await flushLogs();
         process.exit();
     }
-
-    if (game) {
-        game?.updateData();
-    } else {
-        sendMsg({
-            type: ProcessMsgType.KeepAlive,
-        });
-    }
 }, 5000);
-
-setInterval(() => {
-    game?.update();
-}, 1000 / GAME_TPS);
-
-setInterval(() => {
-    game?.netSync();
-}, 1000 / NET_SYNC_TPS);
 
 interface GameSocketData extends IdleSocketData {
     ip: string;
@@ -256,6 +207,7 @@ const app = Bun.serve({
 
     routes: {
         "/play": async (req, httpServer) => {
+            const game = runner.game;
             if (!game) {
                 procLogger.info("ws.upgrade_rejected", { reason: "no_game" });
                 return new Response();
@@ -339,16 +291,12 @@ const app = Bun.serve({
         message(socket, message) {
             idleSockets.received(socket);
             const data = socket.data;
-            if (!game || !data.clientSocket) {
-                if (data.clientSocket) {
-                    data.clientSocket.close();
-                } else {
-                    socket.terminate();
-                }
+            if (!data.clientSocket) {
+                socket.terminate();
                 return;
             }
             if (gameWsRateLimit.isRateLimited(data.rateLimit)) {
-                game.logger.info("ws.message_rate_limited");
+                (runner.game?.logger ?? procLogger).info("ws.message_rate_limited");
                 socket.close(3000, "rate_limited");
                 return;
             }
@@ -356,7 +304,7 @@ const app = Bun.serve({
             const buff = typeof message === "string" ? textEncoder.encode(message).buffer : message;
             // binaryType is "arraybuffer" (see open), bun's types just don't know it
             if (!(buff instanceof ArrayBuffer)) return;
-            game.clientBarn.handleMsg(buff, data.clientSocket);
+            runner.socketMessage(data.clientSocket, buff);
         },
 
         close(socket) {
@@ -365,7 +313,7 @@ const app = Bun.serve({
             gameWsRateLimit.ipDisconnected(data.ip);
             if (data.clientSocket) {
                 data.clientSocket._closed = true;
-                game?.clientBarn?.handleSocketClose(data.clientSocket);
+                runner.socketClosed(data.clientSocket);
             }
         },
     },

@@ -4,7 +4,7 @@ import { Game } from "../game.ts";
 import { defaultGameOptions, type GameOptions } from "../gameOptions.ts";
 
 // only log warns and errors so test output stays readable
-const testOptions: GameOptions = {
+export const testOptions: GameOptions = {
     ...defaultGameOptions({
         debug() {},
         info() {},
