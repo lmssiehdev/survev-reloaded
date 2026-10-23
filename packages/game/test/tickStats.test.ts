@@ -2,23 +2,27 @@ import { describe, expect, test } from "bun:test";
 import { Throttle, TickStats } from "../tickStats.ts";
 
 describe("TickStats", () => {
-    test("summarises 1..100", () => {
+    test("percentiles are bucket upper edges", () => {
         const stats = new TickStats();
-        for (let i = 1; i <= 100; i++) stats.add(i);
+        // mid-bucket values 1.005 .. 9.995, one per 0.01 ms bucket
+        for (let i = 100; i < 1000; i++) stats.add((i + 0.5) / 100);
         const s = stats.summary();
-        expect(stats.count).toBe(100);
-        expect(s.mean).toBe(50.5);
-        expect([50, 51]).toContain(s.p50);
-        expect([99, 100]).toContain(s.p99);
-        expect(s.max).toBe(100);
+        expect(stats.count).toBe(900);
+        expect(s.p50).toBe(5.5);
+        expect(s.p99).toBe(9.91);
+        expect(s.max).toBe(9.995);
+        expect(s.mean).toBeCloseTo(5.5, 6);
     });
 
-    test("ring buffer keeps last capacity samples for percentiles", () => {
-        const stats = new TickStats(4);
-        for (const n of [1, 2, 3, 4, 100]) stats.add(n);
+    test("values above 50 ms report max for p99", () => {
+        const stats = new TickStats();
+        for (let i = 0; i < 98; i++) stats.add(1.005);
+        stats.add(80);
+        stats.add(120);
         const s = stats.summary();
-        expect(s.max).toBe(100);
-        expect(s.p50).toBeGreaterThanOrEqual(3);
+        expect(s.p50).toBe(1.01);
+        expect(s.p99).toBe(120);
+        expect(s.max).toBe(120);
     });
 
     test("reset clears everything", () => {

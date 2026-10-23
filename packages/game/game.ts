@@ -270,8 +270,8 @@ export class Game {
             this.slowTickCount++;
             const suppressed = this.slowTickThrottle.hit(Date.now());
             if (suppressed !== undefined) {
-                this.logger.warn("game.slow_tick", {
-                    tickMs: tickTime,
+                this.logger[tickTime > 1000 ? "error" : "warn"]("game.slow_tick", {
+                    ms: Math.round(tickTime * 100) / 100,
                     suppressed,
                     profile: this.profiler.getStats(),
                 });
@@ -303,11 +303,14 @@ export class Game {
 
         const syncTime = performance.now() - start;
         this.netSyncStats.add(syncTime);
-        if (syncTime > (1000 / this.options.gameTps) * 2) {
+        if (syncTime > (1000 / this.options.netSyncTps) * 2) {
             this.slowNetSyncCount++;
             const suppressed = this.slowNetSyncThrottle.hit(Date.now());
             if (suppressed !== undefined) {
-                this.logger.warn("game.slow_netsync", { syncMs: syncTime, suppressed });
+                this.logger[syncTime > 1000 ? "error" : "warn"]("game.slow_netsync", {
+                    ms: Math.round(syncTime * 100) / 100,
+                    suppressed,
+                });
             }
         }
     }

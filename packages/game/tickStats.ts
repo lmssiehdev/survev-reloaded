@@ -5,41 +5,51 @@ export interface TickSummary {
     max: number;
 }
 
+const BUCKET_MS = 0.01;
+const BUCKETS = 5000; // 0 to 50 ms
+
 /**
- * Fixed-size ring buffer of timings. `add` does no allocation so it is safe on the game loop hot path.
- * mean and max cover every sample since the last reset, percentiles cover the last `capacity` samples.
+ * Fixed histogram of timings: 0.01 ms buckets from 0 to 50 ms plus one overflow bucket.
+ * `add` is O(1) and allocation-free so it is safe on the game loop hot path.
+ * count, mean and max are exact; percentiles are bucket upper edges and cover every sample since reset.
+ * A percentile landing in the overflow bucket reports max.
  */
 export class TickStats {
-    private readonly buf: Float64Array;
-    private head = 0;
+    private readonly buckets = new Uint32Array(BUCKETS + 1);
+    private n = 0;
     private sum = 0;
     private maxMs = 0;
-    count = 0;
 
-    constructor(readonly capacity = 2048) {
-        this.buf = new Float64Array(capacity);
+    get count(): number {
+        return this.n;
     }
 
     add(ms: number): void {
-        this.buf[this.head] = ms;
-        this.head = (this.head + 1) % this.capacity;
-        this.count++;
+        const i = Math.floor(ms / BUCKET_MS);
+        this.buckets[i >= 0 && i < BUCKETS ? i : i < 0 ? 0 : BUCKETS]++;
+        this.n++;
         this.sum += ms;
         if (ms > this.maxMs) this.maxMs = ms;
     }
 
-    /** sorts a copy, only call occasionally (game end, once a minute) */
+    private percentile(q: number): number {
+        const rank = Math.ceil(q * this.n);
+        let seen = 0;
+        for (let i = 0; i < BUCKETS; i++) {
+            seen += this.buckets[i];
+            if (seen >= rank) return Math.round((i + 1) * BUCKET_MS * 100) / 100;
+        }
+        return this.maxMs;
+    }
+
     summary(): TickSummary {
-        if (this.count === 0) return { mean: 0, p50: 0, p99: 0, max: 0 };
-        const n = Math.min(this.count, this.capacity);
-        const sorted = this.buf.slice(0, n).sort();
-        const at = (q: number) => sorted[Math.min(n - 1, Math.floor(q * n))];
-        return { mean: this.sum / this.count, p50: at(0.5), p99: at(0.99), max: this.maxMs };
+        if (this.n === 0) return { mean: 0, p50: 0, p99: 0, max: 0 };
+        return { mean: this.sum / this.n, p50: this.percentile(0.5), p99: this.percentile(0.99), max: this.maxMs };
     }
 
     reset(): void {
-        this.head = 0;
-        this.count = 0;
+        this.buckets.fill(0);
+        this.n = 0;
         this.sum = 0;
         this.maxMs = 0;
     }
