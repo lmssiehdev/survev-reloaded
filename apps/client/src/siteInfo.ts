@@ -1,4 +1,4 @@
-import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import $ from "jquery";
@@ -50,7 +50,7 @@ export class SiteInfo {
         const modes = this.info.modes || [];
         for (let i = 0; i < modes.length; i++) {
             const mode = modes[i];
-            const mapDef = (MapDefs[mode.mapName as MapDefKey] || MapDefs.main)
+            const mapDef = (MapDefs[mode.mapName] || MapDefs.main)
                 .desc;
             const buttonText = mapDef.buttonText
                 ? mapDef.buttonText
