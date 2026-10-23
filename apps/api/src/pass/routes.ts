@@ -1,0 +1,306 @@
+import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
+import { type GetPassResponse } from "@survev/shared/types/user.ts";
+import { passUtil } from "@survev/shared/utils/passUtil.ts";
+import { util } from "@survev/shared/utils/util.ts";
+import { and, eq, inArray } from "drizzle-orm";
+import { Hono } from "hono";
+import z from "zod";
+import { settings } from "../admin/settings.ts";
+import type { AuthEnv } from "../auth/session.ts";
+import { db } from "../db/index.ts";
+import { userPasses, type UserPassTableSelect, userQuests, type UserQuestTableSelect } from "../db/schema.ts";
+import { errorResponse, query, respond } from "../lib/errors.ts";
+import { validateParams } from "../lib/middleware.ts";
+import { questHelpers } from "./quests.ts";
+
+// hardcoded for now
+export const questSlotIndexes = [0, 1];
+
+/** the active pass of a user with its quest slots in order */
+async function findPassWithQuests(
+    tx: Pick<typeof db, "query">,
+    userId: string,
+): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] } | undefined> {
+    const row = await tx.query.userPasses.findFirst({
+        where: { userId, passType: activePassType },
+        with: {
+            quests: {
+                where: { idx: { in: questSlotIndexes } },
+                orderBy: { idx: "asc" },
+            },
+        },
+    });
+    if (!row) return undefined;
+    const { quests, ...pass } = row;
+    return { pass, quests };
+}
+
+/**
+ * lazily create pass and quest if they don't exist
+ */
+async function getPassAndQuests(
+    userId: string,
+    now: number,
+): Promise<{ pass: UserPassTableSelect; quests: UserQuestTableSelect[] }> {
+    const found = await findPassWithQuests(db, userId);
+    const existingPass = found?.pass ?? null;
+    const existingQuests = found?.quests ?? [];
+
+    const hasAllSlots = existingQuests.length === questSlotIndexes.length
+        && questSlotIndexes.every((slot, index) => existingQuests[index]?.idx === slot);
+
+    if (existingPass && hasAllSlots) {
+        for (const quest of existingQuests) {
+            if (!quest.rerolled || quest.complete) continue;
+            // reset rerolled state if we have an incompatible map
+            const questDef = QuestDefs[quest.questType];
+            const serverMaps = settings.modes.filter(m => m.enabled).map(m => m.mapName);
+            const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
+            if (badMap) {
+                quest.rerolled = false;
+            }
+        }
+
+        return {
+            pass: existingPass,
+            quests: existingQuests,
+        };
+    }
+
+    // create them
+    return db.transaction(async (tx) => {
+        await tx
+            .insert(userPasses)
+            .values({ userId, passType: activePassType })
+            .onConflictDoNothing({
+                target: [userPasses.userId, userPasses.passType],
+            });
+
+        await tx
+            .delete(userQuests)
+            .where(
+                and(
+                    eq(userQuests.userId, userId),
+                    inArray(userQuests.idx, questSlotIndexes),
+                ),
+            );
+
+        const currentQuests = new Set<string>();
+        const inserts = questSlotIndexes.map((slot) => {
+            const questType = getRandomQuestType(currentQuests);
+            currentQuests.add(questType);
+
+            return {
+                userId,
+                idx: slot,
+                questType,
+                progress: 0,
+                target: QuestDefs[questType]!.target,
+                complete: false,
+                rerolled: false,
+                timeAcquired: now,
+                nextRefreshAt: passUtil.getNextQuestRefreshAt(now),
+            };
+        });
+
+        await tx.insert(userQuests).values(inserts);
+
+        const created = await findPassWithQuests(tx, userId);
+
+        if (!created?.quests.length) {
+            throw new Error("failed_to_create_user_pass_and_quests");
+        }
+
+        return created;
+    });
+}
+
+async function rerollSlot(
+    userId: string,
+    idx: number,
+    now: number,
+    rerolled: boolean,
+    loadedQuests: UserQuestTableSelect[],
+    transaction?: Parameters<Parameters<typeof db.transaction>[0]>[0],
+) {
+    const currentQuests = new Set(loadedQuests.map((quest) => quest.questType));
+    const questType = getRandomQuestType(currentQuests, rerolled ? loadedQuests[idx].questType : undefined);
+
+    await (transaction ?? db)
+        .update(userQuests)
+        .set({
+            questType,
+            progress: 0,
+            target: QuestDefs[questType]!.target,
+            complete: false,
+            rerolled,
+            timeAcquired: now,
+            nextRefreshAt: passUtil.getNextQuestRefreshAt(now),
+        })
+        .where(and(eq(userQuests.userId, userId), eq(userQuests.idx, idx)));
+
+    return questType;
+}
+
+export const PassRouter = new Hono<AuthEnv>()
+    .post(
+        "/get_pass",
+        validateParams(z.object({
+            tryRefreshQuests: z.boolean(),
+        })),
+        async (c) => {
+            const user = c.get("user");
+            const { tryRefreshQuests } = c.req.valid("json");
+            const now = Date.now();
+
+            const loaded = await query(() => getPassAndQuests(user.id, now), "Failed to load pass");
+            if (loaded.isErr()) return errorResponse(c, loaded.error);
+            const { pass, quests } = loaded.value;
+
+            let activeQuests = quests;
+
+            if (tryRefreshQuests) {
+                const expiredQuests = activeQuests.filter(
+                    (quest) => quest.nextRefreshAt - now < 0,
+                );
+                for (const quest of expiredQuests) {
+                    const newType = await rerollSlot(
+                        user.id,
+                        quest.idx,
+                        now,
+                        false,
+                        activeQuests,
+                    );
+                    activeQuests = activeQuests.map((current) =>
+                        current.idx === quest.idx
+                            ? {
+                                ...current,
+                                questType: newType,
+                                progress: 0,
+                                target: QuestDefs[newType]!.target,
+                                complete: false,
+                                rerolled: false,
+                                timeAcquired: now,
+                                nextRefreshAt: passUtil.getNextQuestRefreshAt(now),
+                            }
+                            : current
+                    );
+                }
+            }
+
+            if (pass.newItems) {
+                await db
+                    .update(userPasses)
+                    .set({
+                        newItems: false,
+                    })
+                    .where(
+                        and(
+                            eq(userPasses.userId, user.id),
+                            eq(userPasses.passType, pass.passType),
+                        ),
+                    );
+            }
+
+            const { level, xp } = passUtil.getPassLevelAndXp(pass.passType, pass.totalXp);
+            return c.json<GetPassResponse>(
+                {
+                    success: true,
+                    pass: {
+                        type: pass.passType,
+                        level,
+                        xp,
+                        unlocks: pass.unlocks || {},
+                        newItems: pass.newItems,
+                    },
+                    quests: activeQuests.map((quest) => ({
+                        idx: quest.idx,
+                        type: quest.questType,
+                        progress: quest.progress,
+                        target: quest.target,
+                        complete: quest.complete,
+                        rerolled: quest.rerolled,
+                        timeToRefresh: quest.nextRefreshAt - now,
+                    })),
+                },
+                200,
+            );
+        },
+    )
+    .post("/refresh_quest", validateParams(z.object({ idx: z.number() })), async (c) => {
+        /**
+         * Refreshing quests can have a race condition that may end up with the user getting duplicated quests
+         *
+         * Fix it by putting an "update" lock on the transaction
+         *
+         * The race condition happens like this:
+         *  - Client makes request to refresh quest IDX 0
+         *  - Server gets existing quests for request with IDX 0
+         *  - Client makes request to refresh quest IDX 1
+         *  - Server gets existing quests for request with IDX 1
+         *  - Server writes new quest for request with quest IDX 0
+         *  - The request with IDX 1 now has outdated quests and can end up choosing the same quest as IDX 0
+         */
+        const user = c.get("user");
+        const { idx } = c.req.valid("json");
+
+        const success = await query(() =>
+            db.transaction(async (transaction) => {
+                const quests = await transaction
+                    .select()
+                    .from(userQuests)
+                    .where(
+                        and(
+                            eq(userQuests.userId, user.id),
+                            inArray(userQuests.idx, questSlotIndexes),
+                        ),
+                    )
+                    .for("update");
+
+                const quest = quests.find((entry) => entry.idx === idx);
+
+                if (!quest) {
+                    return false;
+                }
+
+                const now = Date.now();
+                const expired = quest.nextRefreshAt - now < 0;
+
+                const questDef = QuestDefs[quest.questType];
+                const serverMaps = settings.modes.filter(m => m.enabled).map(m => m.mapName);
+                const badMap = !questHelpers.satisfiesMapFilter(serverMaps, questDef);
+
+                const refreshEnabled = (!quest.rerolled && !quest.complete) || expired || badMap;
+                if (!refreshEnabled) {
+                    return false;
+                }
+                await rerollSlot(user.id, idx, now, !expired && !badMap, quests, transaction);
+                return true;
+            })
+        );
+
+        return respond(c, success.map((success) => ({ success })));
+    })
+    .post(
+        "/set_pass_unlock",
+        validateParams(z.object({
+            unlockType: z.string(),
+        })),
+        (c) => {
+            // survev has not social media
+            // trivial to add tho
+
+            return c.json({ success: true }, 200);
+        },
+    );
+
+const questTypes = Object.keys(QuestDefs);
+const defaultQuestType = questTypes[0] || "quest_kills";
+
+function getRandomQuestType(currentQuests: Set<string>, rerollingId?: string) {
+    const available = questHelpers.getAvailableQuestsForModes(settings.modes, currentQuests, rerollingId);
+
+    const source = available.length > 0 ? available : questTypes;
+    return util.randomItem(source) ?? defaultQuestType;
+}

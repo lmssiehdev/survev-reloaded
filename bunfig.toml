@@ -1,0 +1,7 @@
+[install]
+# Only install package versions published at least 7 days ago (was pnpm minimumReleaseAge: 10080 minutes)
+minimumReleaseAge = 604800
+
+[test]
+# vitest-style shims (expect.soft, test.for, ...) and the game matchers
+preload = ["./packages/shared/test/testHelpers.ts"]

@@ -1,16 +1,15 @@
 reference/
 
-client/atlas-builder/pngs
+apps/client/atlas-builder/pngs
 
-# old config files
+# settings
+.env
+
+# old config files, ignored so leftover secrets aren't committed
 resurviv-config.json
 survev-config.json
-
-# new one
 survev-config.hjson
-
-# env file
-.env
+survev-config.*.hjson
 
 # sqlite db
 *.db

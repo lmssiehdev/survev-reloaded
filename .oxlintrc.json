@@ -1,5 +1,4 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [
     "oxc",
     "eslint",
@@ -11,9 +10,6 @@
     "browser": true,
     "node": true,
     "es2022": true
-  },
-  "globals": {
-    "foo": "readonly"
   },
   "settings": {},
   "rules": {
@@ -30,7 +26,88 @@
       }
     ],
     "unicorn/prefer-node-protocol": "error",
-    "unicorn/no-new-array": "off"
+    "unicorn/no-new-array": "off",
+    "import/no-restricted-paths": [
+      "error",
+      {
+        "zones": [
+          {
+            "target": "./apps/api",
+            "from": "./apps/server",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/api",
+            "from": "./apps/client",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/api",
+            "from": "./apps/bot",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/server",
+            "from": "./apps/api",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed).",
+            "except": [
+              "./src/types.ts"
+            ]
+          },
+          {
+            "target": "./apps/server",
+            "from": "./apps/client",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/server",
+            "from": "./apps/bot",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/client",
+            "from": "./apps/api",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed).",
+            "except": [
+              "./src/types.ts"
+            ]
+          },
+          {
+            "target": "./apps/client",
+            "from": "./apps/server",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/client",
+            "from": "./apps/bot",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/bot",
+            "from": "./apps/api",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed).",
+            "except": [
+              "./src/types.ts"
+            ]
+          },
+          {
+            "target": "./apps/bot",
+            "from": "./apps/server",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./apps/bot",
+            "from": "./apps/client",
+            "message": "Apps must not import another app's source; move shared code into packages/ (only the type-only @survev/api/types entry is allowed)."
+          },
+          {
+            "target": "./packages",
+            "from": "./apps",
+            "message": "Packages must not import from apps."
+          }
+        ]
+      }
+    ]
   },
   "overrides": []
 }

@@ -1,0 +1,18 @@
+{
+  "name": "@survev/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./*"
+  },
+  "scripts": {
+    "typecheck": "bun check && bun check -p test"
+  },
+  "dependencies": {
+    "obscenity": "^0.4.6",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@survev/bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../scripts/buildApp.ts src/index.ts",
+    "typecheck": "bun check",
+    "start": "bun --env-file=../../.env dist/index.js",
+    "dev": "bun --env-file=../../.env --watch --no-clear-screen src/index.ts",
+    "register-commands": "bun --env-file=../../.env src/register-commands.ts"
+  },
+  "dependencies": {
+    "@survev/config": "workspace:*",
+    "@survev/logger": "workspace:*",
+    "@survev/contracts": "workspace:*",
+    "@survev/shared": "workspace:*",
+    "discord.js": "^14.27.0",
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@survev/api": "workspace:*",
+    "@types/bun": "^1.4.3"
+  }
+}

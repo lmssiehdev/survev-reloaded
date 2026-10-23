@@ -29,7 +29,6 @@
   },
   "excludes": [
     "**/node_modules",
-    "**/*-lock.json",
     "**/*.svg"
   ],
   "plugins": [

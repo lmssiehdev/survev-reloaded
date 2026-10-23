@@ -1,0 +1,15 @@
+{
+  "name": "@survev/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "typecheck": "bun check"
+  },
+  "dependencies": {
+    "@survev/shared": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

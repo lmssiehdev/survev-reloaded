@@ -1,0 +1,15 @@
+# keep the build context small and secrets out of it
+**/node_modules
+**/dist
+.git
+.github
+.idea
+.vscode
+.env
+data
+**/*.db
+**/*.db-*
+**/lost_game_data
+apps/client/atlas-builder/pngs
+docker-compose*.yml
+Caddyfile

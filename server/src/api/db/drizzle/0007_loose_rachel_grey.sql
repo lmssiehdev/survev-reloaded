@@ -1,1 +1,0 @@
-ALTER TABLE "match_data" ADD CONSTRAINT "match_data_game_id_player_id_pk" PRIMARY KEY("game_id","player_id");

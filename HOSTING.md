@@ -1,294 +1,143 @@
 # Hosting your own survev server
-Looking to host your own survev server to mess around or play against friends? This is the place for you.
+
+The production setup is Docker Compose: [Caddy](https://caddyserver.com) serves the client and gets HTTPS
+certificates automatically, and proxies to the API, the game server, PostgreSQL and Redis.
 
 ## Prerequisites
-Before diving into the setup instructions, make sure you have the correct tools for the job. Hosting a dedicated survev server requires two things:
- * SSH access to a VPS (or some other form of dedicated hosting)
- * The ability to open ports on said machine
 
-You can find cheap VPS hosts at [Ionos](https://www.ionos.com/), [A2 Hosting](https://www.a2hosting.com), or [Vultr](https://www.vultr.com/).
+- A Linux server (VPS) with [Docker Engine and the compose plugin](https://docs.docker.com/engine/install/).
+- A domain with two DNS `A` (and `AAAA`) records pointing at the server, e.g. `survev.example.com` (website + API)
+  and `game.survev.example.com` (game server).
+- Open firewall ports: `80/tcp`, `443/tcp`, `443/udp` and the game ports (`9000-9063/tcp` by default).
+  Every game runs on its own port and clients connect to `wss://<game domain>:<port>/play`, Caddy terminates TLS on each.
 
-**NOTE:** I am not endorsing or recommending any of the following hosts, they are just a few I have found people to use.
-
-If you accept the risk, you can host a dedicated server on your home network. However, you will need to [port forward](https://en.wikipedia.org/wiki/Port_forwarding) the necessary ports via your router for others to access your server. Do not do this unless you understand what you are doing. Previous Linux knowledge required.
-
-## Setup
-This tutorial is written assuming you are using [Ubuntu 20.04](https://ubuntu.com/). Follow accordingly based on the distribution you are using.
-
-### Logging into the machine 
-If you bought a VPS (or other form of hosting) from a hosting company, then these credentials should be accessible via their dashboard. Typically, they will consist of three things:
- * **IP:** The IP of your server.
- * **Username** The username (usually root), to log in with.
- * **Password:** The password to log in with.
-
-Optionally, if your VPS provides SSH access on a different port, that will also be listed.
-
-Open a terminal (Command Prompt for Windows) and write the following command:
-```sh
-ssh username@host
-```
-replacing username and host with your username and host.
-
-If you have a custom SSH port (not 22), then use this instead:
-```sh
-ssh username@host -p port
-```
-additionally replacing port with the custom SSH port provided.
-
-After writing this command, hit enter. You will be prompted for a password.
-
-For security reasons, you cannot view your password as you type it. Type in the password, and hit enter.
-
-If you see a notice notifying you of the machine you have just logged into, congratulations! You have successfully SSH'd into your server.
-
-### Dependencies
-[Survev](https://github.com/leia-uwu/survev.git) requires a few dependencies:
- * [Git](https://git-scm.com)
- * [NGINX](https://nginx.org)
- * [Node.js](https://nodejs.org)
- * [pnpm](https://pnpm.io)
- * [PostgreSQL](https://www.postgresql.org)
-
-If you are logged in as root, start by making sure sudo is installed:
-```sh
-apt -y install sudo
-```
-
-Then install git and nginx with the following command.
-```sh
-sudo apt -y install git nginx
-```
-
-To install Node.js, install the appropriate package from your distro, or for Ubuntu:
-```sh
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - &&\
-sudo apt-get install -y nodejs
-```
-
-And finally, install pnpm:
-```sh
-npm i -g pnpm
-```
-
-### Database support (optional)
-
-IF you want to have accounts, leaderboards and IP bans, you will have to install and set-up PostgreSQL database
+## Configuration
 
 ```sh
-sudo apt install -y postgresql
-sudo systemctl enable --now postgresql
-sudo -u postgres createuser survev
-sudo -u postgres createdb survev -O survev
+git clone https://github.com/leia-uwu/survev.git && cd survev
+bun survev-setup    # or: cp .env.example .env and fill in the secrets yourself
 ```
 
+Everything is an environment variable in `.env`, documented in [`.env.example`](.env.example). For this setup set:
 
-### Building source
-Next, move into `/opt`, clone the repository and traverse into it:
-```sh
-cd /opt
-git clone https://github.com/leia-uwu/survev.git
-cd survev
-```
+- `SURVEV_DOMAIN`, `SURVEV_GAME_DOMAIN`, `POSTGRES_PASSWORD` and the three secrets (`bun survev-setup` fills these in).
+- `REGION` and `REGION_L10N` for the game server, eg `REGION=na` and `REGION_L10N=index-north-america`.
+  The game server registers its region with the API, the region list players see comes from those.
 
-Run the initial setup script, this will prompt questions and generate a `survev-config.hjson` file.
-If you want to view the config documentation look at configType.ts file
+`docker-compose.yml` derives the rest from the domains: the database URL, the public URLs, the API address and
+`GAME_PORTS` (= `SURVEV_GAME_PORTS`). The client only bakes in the public `VITE_*` variables, it gets regions,
+login methods and the captcha key from the API at runtime. Game modes, the client theme and the captcha toggle are
+stored in the database and changed through the API's `/private` routes, without a restart.
+For Discord login also set `DISCORD_CLIENT_ID` / `DISCORD_SECRET_ID` (redirect URL `https://<domain>/api/auth/callback/discord`).
 
-```sh
-pnpm survev-setup
-```
+`/private/*` is only reachable inside the compose network (`api:8000`), Caddy answers 404 for it.
 
-Build the client & server:
-```sh
-pnpm build
-```
+### Coming from survev-config.hjson
 
-### Setting up NGINX
-We will now setup NGINX to serve the client and API server.
-If you are only hosting a game server you can skip this.
+| survev-config.hjson | .env |
+| --- | --- |
+| `secrets.*` | same names (`SURVEV_API_KEY`, `DISCORD_CLIENT_ID`, ...) |
+| `database` | `DATABASE_URL` (set by compose) |
+| `oauthRedirectURI` / `oauthBasePath` | `PUBLIC_URL` (set by compose) / `CLIENT_URL` |
+| `gameServer.thisRegion`, `regions.<id>` | `REGION`, `REGION_L10N`, `REGION_URL` on each game server |
+| `gameServer.firstGamePort` / `maxGames` | `GAME_PORTS` |
+| `apiServer` / `gameServer` `proxyIPHeader` | `PROXY_IP_HEADER` (set by compose) |
+| `proxies.<host>.apiUrl` | `VITE_API_URL`, logins come from the API |
+| `cachingEnabled` | `REDIS_URL` (set by compose) |
+| `rateLimitsEnabled`, `logging` | `RATE_LIMITS`, `LOG_LEVEL` |
+| `discordGuildId` / `discordRoleId` | `DISCORD_GUILD_ID` / `DISCORD_ROLE_ID` |
+| `modes`, `clientTheme`, `captchaEnabled` | the database (`/private`), changes made there before are kept |
 
-Make sure the build directory has the proper permissions:
-```sh
-sudo chown -R www-data:www-data /opt/survev/client/dist
-```
-
-First, remove the default file:
-```sh
-sudo unlink /etc/nginx/sites-enabled/default
-sudo rm /etc/nginx/sites-available/default
-```
-
-Create a new file:
-```sh
-nano /etc/nginx/sites-available/survev.conf
-```
-
-And populate it with the following content:
-```nginx
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-
-    server_name _;
-
-    # Static files cache
-    location ~* \.(js|css|jpg|jpeg|png|gif|js|css|ico|svg)$ {
-        expires 1y;
-        etag off;
-        if_modified_since off;
-        add_header Cache-Control "public, no-transform";
-        root /opt/survev/client/dist;
-    }
-
-    location ~* \.(html)$ {
-        etag on;
-        add_header Cache-Control "no-cache";
-        root /opt/survev/client/dist;
-    }
-
-    # Client build
-    location / {
-        root /opt/survev/client/dist;
-    }
-
-    # API server
-    location /api {
-        proxy_http_version 1.1;
-
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Host $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $http_host;
-
-        proxy_pass "http://127.0.0.1:8000";
-    }
-
-    location /private {
-        proxy_http_version 1.1;
-
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Host $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $http_host;
-
-        proxy_pass "http://127.0.0.1:8000";
-    }
-
-    # Team WebSocket server
-    location /team_v2 {
-        proxy_http_version 1.1;
-
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Host $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $http_host;
-
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-
-        proxy_pass "http://127.0.0.1:8000";
-        proxy_redirect off;
-    }
-}
-```
-
-Save the file using `Ctrl + X`, and press `Y` to confirm the file name.
-
-To enable the configuration:
-```sh
-sudo ln -s /etc/nginx/sites-available/survev.conf /etc/nginx/sites-enabled/survev.conf
-sudo systemctl restart nginx
-```
-
-### Running the game and API server
-
-Next, we will create systemd unit files for the Game and API server.
-which will ensure our application starts at boot and won't terminate if we end our SSH session:
-If you are only hosting a game server, skip the API server part.
+## First start, logs, updates
 
 ```sh
-sudo nano /etc/systemd/system/survev-game.service
+docker compose up -d --build     # builds the images, migrations run when the api container starts
+docker compose ps                # everything should become healthy
+docker compose logs -f api game  # or web, postgres, redis
 ```
 
-And populate it with the following content:
-```ini
-[Unit]
-Description=survev dedicated game server.
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/survev/server
-ExecStart=/usr/bin/pnpm start:game
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Save the file using `Ctrl + X`, and press `Y` to confirm the file name.
-
-Enable the unit:
-```sh
-sudo systemctl enable --now survev-game
-```
-
-Now do the same for the API server if applicable:
+Update:
 
 ```sh
-sudo nano /etc/systemd/system/survev-api.service
+git pull && docker compose up -d --build && docker image prune -f
 ```
 
-And populate it with the following content:
-```ini
-[Unit]
-Description=survev dedicated API server.
+The Discord bot is optional: set its `DISCORD_*` variables, then `docker compose --profile bot up -d`.
 
-[Service]
-Type=simple
-WorkingDirectory=/opt/survev/server
-ExecStart=/usr/bin/pnpm start:api
-Restart=on-failure
+## Logging
 
-[Install]
-WantedBy=multi-user.target
-```
-Save the file using `Ctrl + X`, and press `Y` to confirm the file name.
+Every server app logs structured JSON (`LOG_FORMAT=json`, the default in production) to stdout, and ships the same records to [Axiom](https://axiom.co) when it is configured.
 
-Enable the unit:
+| Variable | Meaning |
+| --- | --- |
+| `LOG_LEVEL` | `debug`, `info`, `warning` or `error` (default `info` in production) |
+| `LOG_FORMAT` | `json` (production default) or `pretty` |
+| `AXIOM_TOKEN`, `AXIOM_DATASET` | logs go to Axiom only when both are set |
+| `AXIOM_URL` | ingest endpoint, default `https://api.axiom.co` |
+| `SURVEV_ENV` | `production`, `staging` or `dev`, attached to every record; defaults to `production` when `NODE_ENV=production`, else `dev` |
+| `PROCESS_STATS_MS` | interval of the `process.stats` record and of its tick stats window, default 60000 |
+
+Setting up Axiom:
+
+1. Create a dataset (for example `survev`).
+2. Create an API token with **ingest-only** permission on that dataset, nothing else.
+3. Put `AXIOM_TOKEN` and `AXIOM_DATASET` in `.env`.
+4. Set `SURVEV_ENV` per deployment (`production` on the live server, `staging` on staging) and filter on `env` in Axiom.
+
+Create these monitors in Axiom **before deploying** this version, otherwise failures go unnoticed:
+
+- any `level:fatal` record or `process.crash`
+- any `game.proc.died`
+- `http.request` with `status >= 500`, more than 10 in 5 minutes
+- `game.slow_tick`, `sum(suppressed + 1)` more than 20 in 5 minutes (records are throttled, each one carries how many were suppressed since the previous one, so counting records undercounts)
+
+One 500 response logs both `http.request` (status 500) and `http.unhandled`, so key monitors on `http.request`.
+Axiom failures never affect the game, they are printed to stderr and the records are dropped.
+
+Event names:
+
+| Event | When |
+| --- | --- |
+| `process.start`, `process.exit` | process lifecycle |
+| `process.crash` | uncaught exception or unhandled rejection, level fatal |
+| `game.proc.died` | a game process exited unexpectedly, this includes processes killed after `game.proc.unresponsive` (frozen for 10 s, killed with SIGQUIT), so the `game.proc.died` monitor covers them |
+| `game.proc.unresponsive` | the watchdog found a game process silent for 10 s and killed it, followed by `game.proc.died` |
+| `http.request` | every API request: method, route, status, durationMs |
+| `game.end` | a game ended, with its whole-game flat tick fields: `tickCount`, `tickMeanMs`, `tickP50Ms`, `tickP99Ms`, `tickMaxMs` and the same for `netSync*` |
+| `player.leave` | a player left a game |
+| `process.stats` | periodic memory and uptime; game processes add `gameId`, `alivePlayers` and the same flat `tick*` / `netSync*` fields per window |
+| `game.slow_tick`, `game.slow_netsync` | a tick or netSync over its threshold (throttled) |
+
+## Backups
+
+The database lives in the `postgres-data` volume. Dump it with `pg_dump` (a plain copy of the volume while
+Postgres runs is not a safe backup):
+
 ```sh
-sudo systemctl enable --now survev-api
+docker compose exec -T postgres pg_dump -U survev -Fc survev > survev-$(date +%F).dump
+# restore into an empty database
+docker compose exec -T postgres pg_restore -U survev -d survev --clean --if-exists < survev-2026-01-01.dump
 ```
 
-If you've done everything correctly, you should be able to access the server at `http://youriphere` (ex: `http://1.1.1.1`).
-
-### Bot setup (optional)
-
-Create a systemd unit file for the Bot
+Nightly at 4:00 with cron (`crontab -e`), keeping 14 days:
 
 ```sh
-sudo nano /etc/systemd/system/survev-bot.service
+0 4 * * * cd /opt/survev && docker compose exec -T postgres pg_dump -U survev -Fc survev > backups/survev-$(date +\%F).dump && find backups -name '*.dump' -mtime +14 -delete
 ```
 
-populate it with
+## Local testing without certificates
+
+Set `SURVEV_SCHEME=http`, `SURVEV_HTTP_PORT=8080`, `SURVEV_DOMAIN=localhost` and a `SURVEV_GAME_DOMAIN` that
+resolves to the machine, then `REGION_URL=http://<game domain>:8080`.
+
+## Dev mode
+
+Runs the Vite dev server (hot reload), the API and the game server in watch mode with the source mounted, plus
+Postgres and Redis, with the local defaults (and the root `.env` if there is one):
 
 ```sh
-[Unit]
-Description=survev bot.
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/survev/bot
-ExecStart=/usr/bin/pnpm start
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Save and enable the unit:
-
-```sh
-sudo systemctl enable --now survev-bot
-```
+The client is at http://127.0.0.1:3000 (`SURVEV_DEV_VITE_PORT` changes the host port), and the game server
+uses ports 8001 and 9000-9063 on 127.0.0.1. `docker compose -f docker-compose.dev.yml down -v` resets the database.

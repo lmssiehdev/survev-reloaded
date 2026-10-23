@@ -35,42 +35,39 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version: canary
 
       - name: Install Packages
-        run: pnpm install --filter client --filter shared --filter server
+        run: bun install
 
       - name: Restore Atlas Cache
         id: cache-atlases-restore
         uses: actions/cache@v5
         if: always()
         with:
-          path: ./client/node_modules/.atlas-cache/
+          path: ./apps/client/node_modules/.atlas-cache/
           key: "atlas-cache-${{ github.run_id }}"
           restore-keys: |
             atlas-cache
 
       - name: Build Client
-        run: pnpm run build
-        working-directory: ./client
+        run: bun run build
+        working-directory: ./apps/client
 
       - name: Save Atlas Cache
         id: cache-atlases-save
         uses: actions/cache/save@v5
         with:
-          path: ./client/node_modules/.atlas-cache/
+          path: ./apps/client/node_modules/.atlas-cache/
           key: "atlas-cache-${{ github.run_id }}"
 
       - uses: actions/upload-artifact@v7
         with:
           name: build-dist
-          path: ./client/dist
+          path: ./apps/client/dist
 
   deploy-preview:
     needs: build-preview
@@ -84,13 +81,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: canary
 
       - uses: actions/download-artifact@v8
         with:
           name: build-dist
-          path: ./client/dist/
+          path: ./apps/client/dist/
 
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -98,8 +97,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: ./client
-          packageManager: pnpm
+          workingDirectory: ./apps/client
+          packageManager: bun
           command: pages deploy ./dist --project-name=survev-deploy-test --branch=${{ github.event.pull_request.number }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 

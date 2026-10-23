@@ -1,0 +1,25 @@
+{
+  "name": "@survev/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../scripts/buildApp.ts src/gameServer.ts src/game/gameProcess.ts",
+    "typecheck": "bun check",
+    "start": "bun --env-file=../../.env dist/gameServer.js",
+    "dev": "bun scripts/devWatch.ts --env-file=../../.env src/gameServer.ts ../../packages",
+    "stressTest": "bun --env-file=../../.env src/stressTest.ts"
+  },
+  "dependencies": {
+    "@survev/config": "workspace:*",
+    "@survev/contracts": "workspace:*",
+    "@survev/game": "workspace:*",
+    "@survev/logger": "workspace:*",
+    "@survev/shared": "workspace:*",
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@survev/api": "workspace:*",
+    "@types/bun": "^1.4.3"
+  }
+}

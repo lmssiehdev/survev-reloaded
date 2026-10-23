@@ -3,35 +3,55 @@
   "version": "0.4.3",
   "type": "module",
   "description": "Open Source Surviv.io Server",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "survev-setup": "pnpm install && tsx setup.ts",
-    "dev": "concurrently \"pnpm run dev:api\" \"pnpm run dev:game\" \"pnpm run dev:client\"",
-    "dev:server": "cd server && pnpm dev",
-    "dev:api": "cd server && pnpm dev:api",
-    "dev:game": "cd server && pnpm dev:game",
-    "dev:client": "cd client && pnpm dev",
-    "build": "cd server && pnpm build && cd ../client && pnpm build",
-    "stressTest": "cd server && pnpm stressTest",
-    "lint": "oxlint --fix; dprint fmt",
-    "lint:ci": "oxlint; dprint check"
+    "survev-setup": "bun install && bun setup.ts",
+    "dev": "bun run --parallel dev:api dev:game dev:client",
+    "dev:server": "bun run --parallel dev:api dev:game",
+    "dev:api": "bun run --filter @survev/api dev",
+    "dev:game": "bun run --filter @survev/server dev",
+    "dev:client": "bun run --filter @survev/client dev",
+    "dev:bot": "bun run --filter @survev/bot dev",
+    "build": "bun run build:api && bun run build:game && bun run build:bot && bun run build:client",
+    "build:api": "bun run --filter @survev/api build",
+    "build:game": "bun run --filter @survev/server build",
+    "build:bot": "bun run --filter @survev/bot build",
+    "build:client": "bun run --filter @survev/client build",
+    "start:api": "bun run --filter @survev/api start",
+    "start:game": "bun run --filter @survev/server start",
+    "start:bot": "bun run --filter @survev/bot start",
+    "stressTest": "bun run --filter @survev/server stressTest",
+    "typecheck": "bun check && bun run --filter '*' typecheck",
+    "test": "bun test",
+    "db:generate": "bun run --filter @survev/api db:generate",
+    "db:migrate": "bun run --filter @survev/api db:migrate",
+    "db:studio": "bun run --filter @survev/api db:studio",
+    "db:wipe": "bun run --filter @survev/api db:wipe",
+    "lint": "bun lint --no-script --fix && dprint fmt",
+    "lint:ci": "bun lint --no-script && dprint check"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "bun": ">=1.4.4-canary.1"
   },
   "author": "Leia",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
-    "@types/hjson": "^2.4.6",
-    "@types/node": "~22.12.0",
-    "concurrently": "^10.0.5",
+    "@types/bun": "^1.4.3",
     "dprint": "^0.55.2",
-    "oxlint": "^1.85.0",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "enquirer": "^2.4.1",
-    "hjson": "^3.2.2",
-    "tsx": "^4.23.15"
+    "enquirer": "^2.4.1"
   },
-  "packageManager": "pnpm@11.24.0"
+  "packageManager": "bun@1.4.4-canary.1",
+  "trustedDependencies": [
+    "@taufik-nurrohman/color-picker",
+    "canvas",
+    "dprint",
+    "esbuild",
+    "sharp"
+  ]
 }

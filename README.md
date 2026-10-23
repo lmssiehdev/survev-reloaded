@@ -1,9 +1,9 @@
 <div align="center">
-    <img src="./client/public/img/survev_logo_full.png" alt="Survev logo" style="height: 200px;">
+    <img src="./apps/client/public/img/survev_logo_full.png" alt="Survev logo" style="height: 200px;">
 </div>
 <hr />
 <div align="center">
-    <img src="https://img.shields.io/badge/node.js%20-%235FA04E.svg?style=for-the-badge&logo=nodedotjs&logoColor=white">
+    <img src="https://img.shields.io/badge/bun-%23000000.svg?style=for-the-badge&logo=bun&logoColor=white">
     <img src="https://img.shields.io/badge/typescript-%233178C6?style=for-the-badge&logo=typescript&logoColor=white">
     <img src="https://img.shields.io/badge/hono-%23E36002.svg?style=for-the-badge&logo=hono&logoColor=white">
     <img src="https://img.shields.io/badge/jquery-%230769AD.svg?style=for-the-badge&logo=jquery&logoColor=white">
@@ -17,11 +17,32 @@
 <br />
 
 ## Development
-Start the client dev server using `pnpm dev:client` and API / game servers with `pnpm dev:server`,  
-or traverse into client and server directories individually to run `pnpm dev` in each.
+Run `bun dev` at the repo root to start the API server, game server and client dev server together.
+Use `bun dev:client`, `bun dev:api`, `bun dev:game` (or `bun dev:server` for API + game) to start them separately,
+or run `bun dev` inside an app directory.
 
-### Database and accounts
-Accounts are optional, they require a PostgreSQL database, to disable them add `database: { enabled: false }` to `survev-config.hjson`.
+The repo is a Bun workspace:
+- `apps/api`: API server (accounts, stats, matchmaking, team menu)
+- `apps/server`: game server, hosts games from `@survev/game` in forked processes
+- `apps/client`: Vite client
+- `apps/bot`: Discord bot
+- `packages/game`: the game simulation, free of server and runtime APIs (`@survev/game`)
+- `packages/shared`: game code shared by the client and servers (`@survev/shared`)
+- `packages/contracts`: zod schemas and types exchanged between apps (`@survev/contracts`)
+- `packages/config`: environment variables and shared server utils (`@survev/config`)
+
+Apps may import packages, but not each other (except the type-only `@survev/api/types`).
+
+### Settings
+Everything is configured with environment variables, documented in [`.env.example`](.env.example).
+Dev runs without any: the defaults point at a local Postgres, API and game server. To change something, copy
+`.env.example` to `.env` (or run `bun survev-setup`), the app scripts load it from the repo root.
+
+Game modes, the client theme and the captcha toggle are stored in the database and changed at runtime through the
+API's `/private` routes. Regions come from the game servers: each one registers itself (`REGION`, `REGION_URL`).
+
+### Database
+The API needs PostgreSQL (`DATABASE_URL`, default `postgres://survev:survev@127.0.0.1:5432/survev`).
 
 After installing [PostgreSQL](https://www.postgresql.org), start the service and create a database:
 ```sh
@@ -35,37 +56,35 @@ sudo -u postgres createdb survev -O survev
 
 Then populate the database with the schema:
 ```sh
-cd server
-
 # Run this everytime you make changes to schema.ts.
-pnpm run db:generate
-pnpm run db:migrate
+bun run db:generate
+bun run db:migrate
 
 # Start the server
-pnpm run dev
+bun run dev
 # or
-# pnpm run dev:api
-# pnpm run dev:game
+# bun run dev:api
+# bun run dev:game
 ```
 
 To interact with the database through an interface:
 ```sh
-pnpm run db:studio 
+bun run db:studio 
 ```
 
 To wipe the database and start over:
 ```sh
-# Set database permissions.
-sudo -u postgres psql -c "ALTER USER survev WITH PASSWORD 'survev';"
+# Set database permissions (it drops and recreates the database as this user).
+sudo -u postgres psql -c "ALTER USER survev WITH PASSWORD 'survev' CREATEDB;"
 
 # Wipe database.
-pnpm run db:wipe
+bun run db:wipe
 ```
 
 **NOTE:** Do not run this in production!
 
 ### Caching
-Caching is disabled by default. Set `cachingEnabled` to `true` in `config.ts` to use it.
+Caching is disabled by default. Set `REDIS_URL` (eg `redis://127.0.0.1:6379`) to use it.
 
 Install [Redis](https://redis.io):
 ```sh

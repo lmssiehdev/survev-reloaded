@@ -1,0 +1,60 @@
+# Logging perf comparison: 2026-10-23
+
+Baseline: docs/superpowers/plans/2026-10-23-logging-baseline.txt (old code, LOG_LEVEL=debug, 79 stress bots, 180 s, 15 s windows).
+New: this branch, LOG_LEVEL=info LOG_FORMAT=json, Axiom shipping ON to a fake local endpoint (127.0.0.1:4318),
+PROCESS_STATS_MS=15000 (windows match the baseline), API_PORT=8010, 79 bots, `bun run stressTest` (185 s cap).
+Note: the baseline logged debug lines, the new run is info level with the Axiom sink active. Machine was shared with other dev processes.
+Fields are per-window process.stats of the game proc: players, tickMeanMs, tickP50Ms, tickP99Ms, tickMaxMs.
+game.end never fired (the stress test ends before the game does), so there is no whole-game tick summary.
+
+## Baseline (Avg ms/tick per 15 s window)
+steady lines 0.59-0.69, mean of steady lines ~0.65 ms (first 9 steady lines, before bots die off: 0.67)
+
+## New, run 1 (players, mean, p50, p99, max)
+"players":0,"tickMeanMs":0.1,"tickP50Ms":0.08,"tickP99Ms":0.48,"tickMaxMs":2.98,"netSyncMeanMs":0.09,"netSyncP50Ms":0.07,"netSyncP99Ms":0.36
+"players":74,"tickMeanMs":0.24,"tickP50Ms":0.14,"tickP99Ms":0.89,"tickMaxMs":2.65,"netSyncMeanMs":0.71,"netSyncP50Ms":0.26,"netSyncP99Ms":2.51
+"players":78,"tickMeanMs":0.82,"tickP50Ms":0.75,"tickP99Ms":1.57,"tickMaxMs":10.16,"netSyncMeanMs":2.61,"netSyncP50Ms":2.52,"netSyncP99Ms":3.99
+"players":77,"tickMeanMs":0.72,"tickP50Ms":0.7,"tickP99Ms":1.2,"tickMaxMs":2.52,"netSyncMeanMs":2.57,"netSyncP50Ms":2.44,"netSyncP99Ms":4.05
+"players":76,"tickMeanMs":0.72,"tickP50Ms":0.69,"tickP99Ms":1.21,"tickMaxMs":5.86,"netSyncMeanMs":2.34,"netSyncP50Ms":2.29,"netSyncP99Ms":3.41
+"players":76,"tickMeanMs":0.76,"tickP50Ms":0.73,"tickP99Ms":1.18,"tickMaxMs":6.35,"netSyncMeanMs":2.5,"netSyncP50Ms":2.38,"netSyncP99Ms":3.66
+"players":76,"tickMeanMs":0.76,"tickP50Ms":0.73,"tickP99Ms":1.22,"tickMaxMs":5.87,"netSyncMeanMs":2.62,"netSyncP50Ms":2.52,"netSyncP99Ms":3.88
+"players":76,"tickMeanMs":0.74,"tickP50Ms":0.72,"tickP99Ms":1.17,"tickMaxMs":2.49,"netSyncMeanMs":2.52,"netSyncP50Ms":2.43,"netSyncP99Ms":3.81
+"players":75,"tickMeanMs":0.74,"tickP50Ms":0.71,"tickP99Ms":1.23,"tickMaxMs":4.27,"netSyncMeanMs":2.4,"netSyncP50Ms":2.3,"netSyncP99Ms":3.6
+"players":74,"tickMeanMs":0.72,"tickP50Ms":0.71,"tickP99Ms":1.15,"tickMaxMs":2.52,"netSyncMeanMs":2.34,"netSyncP50Ms":2.28,"netSyncP99Ms":3.61
+"players":73,"tickMeanMs":0.71,"tickP50Ms":0.69,"tickP99Ms":1.14,"tickMaxMs":3.81,"netSyncMeanMs":2.42,"netSyncP50Ms":2.36,"netSyncP99Ms":3.69
+"players":71,"tickMeanMs":0.68,"tickP50Ms":0.67,"tickP99Ms":1.02,"tickMaxMs":1.2,"netSyncMeanMs":2.31,"netSyncP50Ms":2.29,"netSyncP99Ms":3.1
+"players":68,"tickMeanMs":0.65,"tickP50Ms":0.63,"tickP99Ms":1.02,"tickMaxMs":5.54,"netSyncMeanMs":2.31,"netSyncP50Ms":2.25,"netSyncP99Ms":3.37
+"players":66,"tickMeanMs":0.63,"tickP50Ms":0.61,"tickP99Ms":1.14,"tickMaxMs":5.85,"netSyncMeanMs":2.22,"netSyncP50Ms":2.19,"netSyncP99Ms":3.29
+"players":34,"tickMeanMs":0.31,"tickP50Ms":0.25,"tickP99Ms":0.9,"tickMaxMs":2.32,"netSyncMeanMs":0.41,"netSyncP50Ms":0.08,"netSyncP99Ms":3.14
+"players":24,"tickMeanMs":0.23,"tickP50Ms":0.21,"tickP99Ms":0.52,"tickMaxMs":0.86,"netSyncMeanMs":0.09,"netSyncP50Ms":0.09,"netSyncP99Ms":0.21
+"players":21,"tickMeanMs":0.25,"tickP50Ms":0.2,"tickP99Ms":0.71,"tickMaxMs":1.67,"netSyncMeanMs":0.12,"netSyncP50Ms":0.13,"netSyncP99Ms":0.27
+"players":21,"tickMeanMs":0.16,"tickP50Ms":0.16,"tickP99Ms":0.33,"tickMaxMs":0.58,"netSyncMeanMs":0.07,"netSyncP50Ms":0.07,"netSyncP99Ms":0.15
+
+## New, run 2 (fresh servers)
+"players":0,"tickMeanMs":0.11,"tickP50Ms":0.1,"tickP99Ms":0.51,"tickMaxMs":3.1,"netSyncMeanMs":0.1,"netSyncP50Ms":0.07,"netSyncP99Ms":0.35
+"players":12,"tickMeanMs":0.08,"tickP50Ms":0.08,"tickP99Ms":0.3,"tickMaxMs":1.75,"netSyncMeanMs":0.09,"netSyncP50Ms":0.05,"netSyncP99Ms":0.78
+"players":79,"tickMeanMs":0.57,"tickP50Ms":0.59,"tickP99Ms":1.22,"tickMaxMs":5.64,"netSyncMeanMs":2.05,"netSyncP50Ms":2.22,"netSyncP99Ms":3.8
+"players":78,"tickMeanMs":0.68,"tickP50Ms":0.66,"tickP99Ms":1.14,"tickMaxMs":6.88,"netSyncMeanMs":2.48,"netSyncP50Ms":2.41,"netSyncP99Ms":3.51
+"players":77,"tickMeanMs":0.72,"tickP50Ms":0.7,"tickP99Ms":1.24,"tickMaxMs":2.66,"netSyncMeanMs":2.58,"netSyncP50Ms":2.49,"netSyncP99Ms":3.65
+"players":77,"tickMeanMs":0.75,"tickP50Ms":0.73,"tickP99Ms":1.1,"tickMaxMs":2.75,"netSyncMeanMs":2.64,"netSyncP50Ms":2.56,"netSyncP99Ms":4.32
+"players":77,"tickMeanMs":0.74,"tickP50Ms":0.71,"tickP99Ms":1.15,"tickMaxMs":1.66,"netSyncMeanMs":2.63,"netSyncP50Ms":2.55,"netSyncP99Ms":3.76
+"players":76,"tickMeanMs":0.74,"tickP50Ms":0.73,"tickP99Ms":1.1,"tickMaxMs":3.21,"netSyncMeanMs":2.6,"netSyncP50Ms":2.54,"netSyncP99Ms":3.69
+"players":75,"tickMeanMs":0.75,"tickP50Ms":0.73,"tickP99Ms":1.2,"tickMaxMs":2.77,"netSyncMeanMs":2.53,"netSyncP50Ms":2.48,"netSyncP99Ms":3.64
+"players":74,"tickMeanMs":0.79,"tickP50Ms":0.75,"tickP99Ms":1.26,"tickMaxMs":5.75,"netSyncMeanMs":2.52,"netSyncP50Ms":2.49,"netSyncP99Ms":3.65
+"players":74,"tickMeanMs":0.72,"tickP50Ms":0.71,"tickP99Ms":1.05,"tickMaxMs":6.34,"netSyncMeanMs":2.53,"netSyncP50Ms":2.49,"netSyncP99Ms":3.53
+"players":74,"tickMeanMs":0.74,"tickP50Ms":0.73,"tickP99Ms":1.13,"tickMaxMs":1.9,"netSyncMeanMs":2.7,"netSyncP50Ms":2.57,"netSyncP99Ms":4.46
+"players":74,"tickMeanMs":0.74,"tickP50Ms":0.73,"tickP99Ms":1.14,"tickMaxMs":6,"netSyncMeanMs":2.58,"netSyncP50Ms":2.55,"netSyncP99Ms":3.79
+"players":74,"tickMeanMs":0.71,"tickP50Ms":0.7,"tickP99Ms":1.03,"tickMaxMs":6.27,"netSyncMeanMs":2.55,"netSyncP50Ms":2.53,"netSyncP99Ms":3.47
+
+## Result
+Steady windows = >=70 players, first and last window dropped.
+run 1: 10 windows after the join ramp (a 0.24 ms window at 74 players was still mid-join): mean 0.737 ms (+13% vs 0.65), p99 mean 1.21 ms.
+       counting the mid-join window too: mean 0.692 ms (+6.4%).
+run 2: 11 windows: mean 0.722 ms (+11% vs 0.65), p99 mean 1.16 ms (the 0.57 window is the join ramp).
+Against the baseline's like-for-like first 9 steady windows (0.67): +10.0% (run 1), +7.8% (run 2).
+netSync mean ~2.3-2.6 ms, p99 ~3.3-4.0 ms (no baseline for it).
+
+Fake Axiom endpoint received: run 1: 91 requests / 496 records, run 2: 71 requests / 475 records.
+
+Verdict: NOT a clear pass. Against the 0.65 ms steady mean the ramp-excluded results are +13% / +11%, outside the 10% budget,
+the like-for-like and ramp-included readings are inside it. Reproduced in a second run, no code was tuned.

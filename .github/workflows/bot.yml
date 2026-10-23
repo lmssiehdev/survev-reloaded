@@ -5,11 +5,12 @@ on:
     branches:
       - master
     paths: &paths
-      - "bot/**"
-      - "server/**"
-      - "shared/**"
+      - "apps/bot/**"
+      - "apps/api/**"
+      - "packages/**"
       - "*.json"
-      - "pnpm-lock.yaml"
+      - "bun.lock"
+      - ".bun-version"
       - ".github/workflows/bot.yml"
 
   pull_request:
@@ -24,16 +25,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          bun-version-file: ".bun-version"
 
       - name: Install Packages
-        run: pnpm install --filter bot --filter shared --filter server
+        run: bun install --frozen-lockfile
 
       - name: Typecheck Bot
-        run: pnpm run typecheck
-        working-directory: ./bot
+        run: bun run typecheck
+        working-directory: ./apps/bot
+
+      - name: Build Bot
+        run: bun run build
+        working-directory: ./apps/bot
