@@ -109,5 +109,38 @@
       }
     ]
   },
-  "overrides": []
+  "overrides": [
+    {
+      "files": [
+        "packages/game/**/*.ts",
+        "packages/shared/**/*.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "node:*",
+                  "bun",
+                  "bun:*"
+                ],
+                "message": "packages/game and packages/shared must stay browser-safe; pass host I/O in instead, see GameRunnerHost."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "packages/game/test/**",
+        "packages/shared/test/**"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }
