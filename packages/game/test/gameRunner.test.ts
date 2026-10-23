@@ -1,7 +1,7 @@
 import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import * as net from "@survev/shared/net/net.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
-import { expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 import type { Client } from "../client.ts";
 import type { Game, GameData } from "../game.ts";
 import { GameRunner } from "../gameRunner.ts";
@@ -32,6 +32,12 @@ class TestSocket extends ClientSocket<Client> {
     }
 }
 
+const runners: GameRunner[] = [];
+// clears the tick timers of games a test left running
+afterEach(() => {
+    for (const runner of runners.splice(0)) runner.abort("server_restart");
+});
+
 function createRunner() {
     const updates: GameData[] = [];
     const saved: Game[] = [];
@@ -42,6 +48,7 @@ function createRunner() {
         saveGame: (game) => saved.push(game),
         onGameStopped: (game) => stopped.push(game),
     });
+    runners.push(runner);
     runner.create("test", { mapName: "main", teamMode: TeamMode.Solo });
     const lastData = () => updates.at(-1);
     return { runner, saved, stopped, lastData };

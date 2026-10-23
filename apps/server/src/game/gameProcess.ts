@@ -106,8 +106,6 @@ const runner = new GameRunner({
         });
     },
 });
-runner.start();
-
 // also a keep alive, the manager kills processes it hasn't heard from in 10 seconds
 setInterval(() => {
     if (runner.game) runner.game.updateData();
