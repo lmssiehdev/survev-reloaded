@@ -6,7 +6,7 @@ import { LocalConnection } from "@survev/game/localConnection.ts";
 export function connectLocalGame(mode: GameMode, joinToken: string) {
     const runner = new GameRunner({
         // debug logs land in the browser's verbose level
-        gameOptions: () => ({ ...defaultGameOptions(console), gameTps: 60 }),
+        gameOptions: () => ({ ...defaultGameOptions(console), gameTps: 60, minPlayers: 1 }),
     });
     runner.create(crypto.randomUUID(), mode);
     runner.game!.addJoinTokens([{ joinToken, userId: null, ip: "" }], true);

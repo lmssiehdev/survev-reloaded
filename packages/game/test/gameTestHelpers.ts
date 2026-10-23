@@ -18,6 +18,6 @@ export const testOptions: GameOptions = {
     },
 };
 
-export function createGame(teamMode: TeamMode, mapName: MapDefKey) {
-    return new Game("test", { mapName, teamMode }, testOptions);
+export function createGame(teamMode: TeamMode, mapName: MapDefKey, options = testOptions) {
+    return new Game("test", { mapName, teamMode }, options);
 }

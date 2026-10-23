@@ -370,7 +370,8 @@ export class Game {
     checkGameOver() {
         if (this.over) return;
 
-        const didGameEnd = this.started && this.modeManager.aliveCount() <= 1;
+        const didGameEnd = this.started
+            && this.modeManager.aliveCount() < this.options.minPlayers;
 
         if (didGameEnd) {
             this.over = true;
