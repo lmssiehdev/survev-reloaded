@@ -1,6 +1,6 @@
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 
-/** the API's origin (VITE_API_URL) when it isn't the one the client is served from, eg on game portals */
+/** the API's origin (VITE_API_URL) when it isn't the one the client is served from */
 const apiUrl = import.meta.env.VITE_API_URL || "";
 
 export const api = {
@@ -20,7 +20,7 @@ export const api = {
     anyLoginSupported() {
         return api.logins.discord || api.logins.mock;
     },
-    /** cookies only go out when logins work, portals that host the client on their own domain can't send them */
+    /** cookies only go out when logins work, a client served from another domain can't send them */
     credentials(): RequestCredentials {
         return api.anyLoginSupported() ? "include" : "omit";
     },

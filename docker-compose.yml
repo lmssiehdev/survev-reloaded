@@ -7,10 +7,6 @@ x-build: &build
   # the client bakes the public VITE_* variables in
   args:
     VITE_API_URL: ${VITE_API_URL:-}
-    VITE_AD_PREFIX: ${VITE_AD_PREFIX:-}
-    VITE_GAMEMONETIZE_ID: ${VITE_GAMEMONETIZE_ID:-}
-    VITE_SPELLSYNC_PROJECT_ID: ${VITE_SPELLSYNC_PROJECT_ID:-}
-    VITE_SPELLSYNC_PUBLIC_TOKEN: ${VITE_SPELLSYNC_PUBLIC_TOKEN:-}
 
 services:
   web:

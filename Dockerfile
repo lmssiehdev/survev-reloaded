@@ -39,7 +39,7 @@ RUN bun run build:bot
 
 # The client gets everything else from the API at runtime, only the public VITE_* values are baked in
 FROM deps AS client-build
-ARG VITE_API_URL VITE_AD_PREFIX VITE_GAMEMONETIZE_ID VITE_SPELLSYNC_PROJECT_ID VITE_SPELLSYNC_PUBLIC_TOKEN
+ARG VITE_API_URL
 COPY . .
 RUN --mount=type=cache,target=/app/apps/client/node_modules/.atlas-cache \
     bun run build:client

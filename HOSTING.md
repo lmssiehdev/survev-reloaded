@@ -37,7 +37,6 @@ For Discord login also set `DISCORD_CLIENT_ID` / `DISCORD_SECRET_ID` (redirect U
 | survev-config.hjson | .env |
 | --- | --- |
 | `secrets.*` | same names (`SURVEV_API_KEY`, `DISCORD_CLIENT_ID`, ...) |
-| `secrets.AD_PREFIX`, `GAMEMONETIZE_ID`, `SPELLSYNC_*` | `VITE_AD_PREFIX`, `VITE_GAMEMONETIZE_ID`, `VITE_SPELLSYNC_*` |
 | `database` | `DATABASE_URL` (set by compose) |
 | `oauthRedirectURI` / `oauthBasePath` | `PUBLIC_URL` (set by compose) / `CLIENT_URL` |
 | `gameServer.thisRegion`, `regions.<id>` | `REGION`, `REGION_L10N`, `REGION_URL` on each game server |

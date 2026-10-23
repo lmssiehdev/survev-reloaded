@@ -125,7 +125,6 @@ const defaultConfig = {
     loadout: loadout.defaultLoadout(),
     perkModeRole: "",
 
-    prerollGamesPlayed: 0,
     lastNewsTimestamp: 0,
     totalGamesPlayed: 0,
     promptAppRate: true,

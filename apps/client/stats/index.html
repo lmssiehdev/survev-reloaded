@@ -33,19 +33,8 @@
         <link rel="canonical" href="http://survev.io/stats" />
         <link rel="apple-touch-icon-precomposed" href="img/icon_app.png">
         <link rel="icon" href="/favicon.ico" type="image/x-icon">
-        <!-- Cookie consent -->
-        <script>
-            var consented = true;
-            try {
-                var cfg = JSON.parse(localStorage.getItem("survev_config")) || {};
-                if (cfg.cookiesConsented != undefined) {
-                    consented = cfg.cookiesConsented;
-                }
-            } catch {}
-            window.cookiesConsented = consented;
-        </script>
         <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed:400,700" rel="stylesheet">
+        <link rel="preload" href="/fonts/phantom-guardians-bold.otf" as="font" type="font/otf" crossorigin>
     </head>
     <body>
         <div id="wrapper">
@@ -99,48 +88,7 @@
                 <!-- Background -->
                 <div id="leaderboard-bg" class="stats-bg"></div>
 
-                <div id="adsLeaderBoardTop" style="display: none">
-                    <!-- Top ad -->
-                    <div id="ad-block-top" class="container mt-3">
-                        <div class="ad-block-top-leaderboard">
-                            <!-- Tag ID: survevio_728x90_leaderboard -->
-                            <div align="center" id="survevio_728x90_leaderboard_top"></div>
-                        </div>
-
-                        <div class="ad-block-top-med-rect">
-                            <!-- Tag ID: survevio_300x250_leaderboard -->
-                            <div align="center" id="survevio_300x250_leaderboard_top"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="adsPlayerTop" style="display: none">
-                    <div id="ad-block-top" class="container mt-3">
-                        <div class="ad-block-top-leaderboard">
-                            <!-- Tag ID: survevio_728x90_playerprofile -->
-                            <div align="center" id="survevio_728x90_playerprofile_top"></div>
-                        </div>
-
-                        <div class="ad-block-top-med-rect">
-                            <!-- Tag ID: survevio_300x250_playerprofile -->
-                            <div align="center" id="survevio_300x250_playerprofile_top"></div>
-                        </div>
-                    </div>
-                </div>
                 <div id="content"></div>
-                <div id="adsLeaderBoardBottom" style="display: none" class="col-12">
-                    <div class="ad-block-bot-med-rect">
-                        <!-- Tag ID: survevio_300x250_leaderboard -->
-                        <div align="center" id="survevio_300x250_leaderboard_bottom"></div>
-                    </div>
-                </div>
-
-                <div id="adsPlayerBottom" style="display: none" class="col-12">
-                    <div class="ad-block-bot-med-rect">
-                        <!-- Tag ID: survevio_300x250_playerprofile -->
-                        <div align="center" id="survevio_300x250_playerprofile_bottom"></div>
-                    </div>
-                </div>
             </div>
 
             <div id="footer" class="footer">

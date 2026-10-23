@@ -26,7 +26,6 @@ import { type MapSprite, MapSpriteBarn } from "../objects/mapSprite.ts";
 import type { ParticleBarn } from "../objects/particles.ts";
 import type { PlaneBarn } from "../objects/plane.ts";
 import type { ClientPlayerStatus, Player, PlayerBarn } from "../objects/player.ts";
-import { SDK } from "../sdk/sdk.ts";
 import type { Localization } from "./localization.ts";
 import { PieTimer } from "./pieTimer.ts";
 import type { Touch } from "./touch.ts";
@@ -82,7 +81,6 @@ export class UiManager {
     statsHeader = $("#ui-stats-header");
     statsInfoBox = $("#ui-stats-info-box");
     statsOptions = $("#ui-stats-options");
-    statsAds = $(".ui-stats-ad-container");
     statsLogo = $("#ui-stats-logo");
     escMenuElem = $("#ui-game-menu");
     escMenuDisplayed = false;
@@ -349,9 +347,6 @@ export class UiManager {
             helpers.toggleFullScreen();
             this.toggleEscMenu();
         });
-
-        // Display full screen
-        $("#btn-game-fullscreen").css("display", SDK.isAnySDK ? "none" : "block");
 
         this.resumeButton.on("mousedown", (e) => {
             e.stopPropagation();
@@ -1234,22 +1229,6 @@ export class UiManager {
         this.playerKills.html(kills);
     }
 
-    removeAds() {
-        SDK.removeAllAds();
-    }
-
-    refreshMainPageAds() {
-        const ads = ["728x90"];
-
-        if (SDK.isCrazyGames) {
-            for (let i = 0; i < ads.length; i++) {
-                SDK.requestAd(ads[i]);
-            }
-        }
-
-        SDK.enterMenuAdState();
-    }
-
     clearUI() {
         this.m_pieTimer.stop();
         this.displayMapLarge(true);
@@ -1275,7 +1254,6 @@ export class UiManager {
             opacity: 0,
         });
         this.statsContents.stop().hide();
-        SDK.enterGameplayAdState();
     }
 
     teamModeToString(teamMode: TeamMode) {
@@ -1353,7 +1331,6 @@ export class UiManager {
 
     quitGame() {
         this.game.m_gameOver = true;
-        this.refreshMainPageAds();
         this.game.onQuit();
     }
 
@@ -1381,7 +1358,6 @@ export class UiManager {
             this.clearStatsElems();
             this.setSpectating(false, teamMode);
 
-            this.removeAds();
             this.statsMain.css("display", "block");
             this.statsLogo.css("display", "block");
 
@@ -1395,7 +1371,7 @@ export class UiManager {
             const victory = localTeamId == winningTeamId;
             const statsDelay = victory ? 1750 : 2500;
 
-            this.setBannerAd(statsDelay, ui2);
+            setTimeout(() => ui2.hideKillMessage(), Math.max(statsDelay - 150, 0));
 
             const isLocalTeamWinner = localTeamId == winningTeamId || (spectating && winningTeamId == teamId);
             const spectatingAnotherTeam = spectating && localTeamId != teamId;
@@ -1514,9 +1490,7 @@ export class UiManager {
                 html: this.localization.translate("game-play-new-game"),
             });
             restartButton.on("click", () => {
-                SDK.requestFullscreenAd(() => {
-                    this.quitGame();
-                });
+                this.quitGame();
             });
             this.statsOptions.append(restartButton);
             const alive = this.playersAliveCounter + this.playersAliveRedCounter + this.playersAliveBlueCounter;
@@ -1604,7 +1578,6 @@ export class UiManager {
         this.statsHeader.empty();
         this.statsInfoBox.empty();
         this.statsOptions.empty();
-        this.statsAds.css("display", "none");
         this.statsContents.stop();
         this.statsContents.css({
             display: "none",
@@ -1666,9 +1639,7 @@ export class UiManager {
             html: this.localization.translate("game-play-new-game"),
         });
         a.on("click", () => {
-            SDK.requestFullscreenAd(() => {
-                this.quitGame();
-            });
+            this.quitGame();
         });
         this.statsOptions.append(a);
         a.css({
@@ -1706,24 +1677,6 @@ export class UiManager {
             },
             1000,
         );
-    }
-
-    setBannerAd(time: number, ui2: UiManager2) {
-        let delay = Math.max(time - 150, 0);
-        setTimeout(() => {
-            const showMobileBanner = device.mobile && !device.tablet;
-            $("#ui-stats-ad-container-desktop").css(
-                "display",
-                showMobileBanner ? "none" : "inline-block",
-            );
-            $("#ui-stats-ad-container-mobile").css(
-                "display",
-                showMobileBanner ? "inline-block" : "none",
-            );
-            SDK.enterDeathAdState();
-
-            ui2.hideKillMessage();
-        }, delay);
     }
 
     setSpectateTarget(

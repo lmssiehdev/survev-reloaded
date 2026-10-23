@@ -22,7 +22,6 @@ import { InputHandler } from "./input.ts";
 import { InputBinds, InputBindUi } from "./inputBinds.ts";
 import { PingTest } from "./pingTest.ts";
 import { ResourceManager } from "./resources.ts";
-import { SDK } from "./sdk/sdk.ts";
 import { SiteInfo } from "./siteInfo.ts";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
@@ -129,12 +128,7 @@ export class Application {
                 this.tryLoad();
             });
         };
-        this.loadBrowserDeps(onLoadComplete);
-    }
-
-    async loadBrowserDeps(onLoadCompleteCb: () => void) {
-        await SDK.init(this);
-        onLoadCompleteCb();
+        onLoadComplete();
     }
 
     tryLoad() {
@@ -145,15 +139,10 @@ export class Application {
             if (device.mobile) {
                 Menu.applyMobileBrowserStyling(device.tablet);
             }
-            if (SDK.isSpellSync) {
-                this.localization.setLocale(window.spellSync.language);
-                this.updateLogoBasedOnLanguage(window.spellSync.language);
-            } else {
-                const language = this.config.get("language") || this.localization.detectLocale();
-                this.config.set("language", language);
-                this.localization.setLocale(language);
-                this.updateLogoBasedOnLanguage(language);
-            }
+            const language = this.config.get("language") || this.localization.detectLocale();
+            this.config.set("language", language);
+            this.localization.setLocale(language);
+            this.updateLogoBasedOnLanguage(language);
             this.localization.populateLanguageSelect();
             this.siteInfo.load().then(() => {
                 this.pingTest.setRegions(this.siteInfo.info.regions ?? {});
@@ -168,19 +157,13 @@ export class Application {
             this.nameInput.attr("maxLength", net.Constants.PlayerNameMaxLen);
 
             this.playMode0Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(0);
-                });
+                this.tryQuickStartGame(0);
             });
             this.playMode1Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(1);
-                });
+                this.tryQuickStartGame(1);
             });
             this.playMode2Btn.on("click", () => {
-                SDK.requestMidGameAd(() => {
-                    this.tryQuickStartGame(2);
-                });
+                this.tryQuickStartGame(2);
             });
 
             this.serverSelect.on("change", () => {
@@ -237,9 +220,6 @@ export class Application {
                 const r = t.target.value;
                 if (r) {
                     this.config.set("language", r as ConfigType["language"]);
-                    if (SDK.isSpellSync && window.spellSync) {
-                        window.spellSync.changeLanguage(r);
-                    }
                     this.updateLogoBasedOnLanguage(r);
                 }
             });
@@ -361,8 +341,6 @@ export class Application {
                 if (errMsg) {
                     console.warn("Quitting", errMsg);
                 }
-
-                SDK.gamePlayStop();
             };
             this.game = new Game(
                 this.pixi,
@@ -401,8 +379,6 @@ export class Application {
             this.config.addModifiedListener(this.onConfigModified.bind(this));
             loadStaticDomImages();
 
-            SDK.gameLoadComplete();
-
             this.tryJoinGameFromParam();
         }
     }
@@ -427,7 +403,7 @@ export class Application {
 
     /** hide pass and show news if login is unsupported, again once site_info says which logins the API has */
     updateLoginSupport() {
-        const loginSupported = !SDK.isAnySDK && api.anyLoginSupported();
+        const loginSupported = api.anyLoginSupported();
         $(".right-column-toggle").toggle(loginSupported);
         $("#news-wrapper").toggle(!loginSupported);
         $("#pass-wrapper").toggle(loginSupported);
@@ -512,21 +488,9 @@ export class Application {
     }
 
     setDOMFromConfig() {
-        if (SDK.isAnySDK && !this.config.get("playerName")) {
-            SDK.getPlayerName().then((username) => {
-                if (!username) return;
-                this.config.set("playerName", username);
-                this.nameInput.val(username);
-            });
-        }
-
         this.nameInput.val(this.config.get("playerName")!);
         this.serverSelect.find("option").each((_i, ele) => {
-            const spellSyncLang = SDK.isSpellSync && window.spellSync.language;
-            const configRegion = this.config.get("region");
-            ele.selected = spellSyncLang
-                ? ele.value === spellSyncLang
-                : ele.value === configRegion;
+            ele.selected = ele.value === this.config.get("region");
         });
         this.languageSelect.val(this.localization.getLocale());
     }
@@ -593,7 +557,7 @@ export class Application {
         }
 
         // Hide the left section if on mobile, oriented portrait, and viewing create team
-        $("#ad-block-left").css(
+        $("#left-block").css(
             "display",
             !device.isLandscape && this.teamMenu.active ? "none" : "block",
         );
@@ -639,13 +603,7 @@ export class Application {
     tryJoinTeam(create: boolean, url?: string) {
         if (this.active && this.quickPlayPendingModeIdx === -1) {
             // Join team if the url contains a team address
-            let roomUrl = url || window.location.hash.slice(1);
-
-            const sdkRoom = SDK.getRoomInviteParam();
-            if (sdkRoom) {
-                roomUrl = sdkRoom;
-                create = false;
-            }
+            const roomUrl = url || window.location.hash.slice(1);
 
             if (create || roomUrl != "") {
                 // The main menu and squad menus have separate
