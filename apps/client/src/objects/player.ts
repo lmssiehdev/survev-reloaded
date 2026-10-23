@@ -28,7 +28,6 @@ import type { Camera } from "../camera.ts";
 import type { DebugRendererOpts } from "../config.ts";
 import { debugLines } from "../debug/debugLines.ts";
 import { device } from "../device.ts";
-import { errorLogManager } from "../errorLogs.ts";
 import type { Ctx } from "../game.ts";
 import { helpers } from "../helpers.ts";
 import type { InputHandler } from "../input.ts";
@@ -2882,9 +2881,6 @@ export class PlayerBarn {
         const playerIds = factionMode ? this.playerIds : team.playerIds;
 
         if (playerIds.length != playerStatus.length) {
-            errorLogManager.logError(
-                `PlayerIds and playerStatus out of sync. OurLen: ${playerIds.length} MsgLen: ${playerStatus.length} FactionMode: ${factionMode}`,
-            );
             return;
         }
 
@@ -2949,7 +2945,6 @@ export class PlayerBarn {
     updateGroupStatus(groupId: number, groupStatus: GroupStatus[]) {
         const info = this.getGroupInfo(groupId);
         if (info.playerIds.length != groupStatus.length) {
-            errorLogManager.logError("PlayerIds and groupStatus out of sync");
             return;
         }
         for (let i = 0; i < info.playerIds.length; i++) {

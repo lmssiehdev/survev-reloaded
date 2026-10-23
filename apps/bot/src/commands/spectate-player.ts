@@ -1,7 +1,7 @@
 import type { ModRouterSpectateGameRes } from "@survev/contracts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { type ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from "discord.js";
-import { Config } from "../config.ts";
+import { env } from "../env.ts";
 import { botLogger, Command, hasBotPermission, honoClient } from "../utils.ts";
 import { sendNoPermissionMessage } from "./helpers.ts";
 
@@ -39,15 +39,13 @@ export const spectateCommandHandler = {
 
         // Stupid thing that updates the message as it gets more responses from servers :)
         const responses: ModRouterSpectateGameRes[] = [];
-        // @HACK we should probably have a `clientUrl` config...
-        const clientUrl = URL.canParse(Config.oauthBasePath) ? Config.oauthBasePath : Config.oauthRedirectURI;
 
         const editReply = async (done: boolean) => {
             const playerData: Array<{ region: string; data: string; url: string }> = responses.map(data => {
                 return data.players.map((gameData) => {
                     const joinData = gameData.data;
 
-                    const url = new URL(clientUrl);
+                    const url = new URL(env.PUBLIC_URL);
                     // shortened because long URLs make the discord message run out of characters faster...
                     url.searchParams.set("u", btoa(joinData.urls.join(",")));
                     url.searchParams.set("jt", joinData.joinToken);
@@ -153,7 +151,7 @@ export const spectateCommandHandler = {
                     responses.push(jsonRes);
                     await editReply(jsonRes.done);
                 } catch (e) {
-                    botLogger.error("Failed to parse API response:", e);
+                    botLogger.error("bot.spectate_response_parse_failed", { err: e });
                 }
             }
         }

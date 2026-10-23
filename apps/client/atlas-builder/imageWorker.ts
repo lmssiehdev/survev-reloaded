@@ -1,7 +1,7 @@
 import { createCanvas, loadImage } from "canvas";
 import fs from "node:fs";
 import Path from "node:path";
-import { atlasLogger, imageFolder, imagesCacheFolder, type ImgCache } from "./atlasBuilder.ts";
+import { imageFolder, imagesCacheFolder, type ImgCache } from "./atlasBuilder.ts";
 import { scaledSprites } from "./atlasDefs.ts";
 import { detectEdges, type Edges } from "./detectEdges.ts";
 
@@ -26,7 +26,7 @@ async function renderImage(path: string, hash: string) {
             tolerance: 0,
         });
     } catch (error) {
-        atlasLogger.error(`Failed to detect edges for ${path}`, error);
+        console.error(`Failed to detect edges for ${path}`, error);
         edges = {
             top: 0,
             bottom: 0,

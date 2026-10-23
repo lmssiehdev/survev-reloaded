@@ -1,18 +1,27 @@
-import { proxy } from "./proxy.ts";
+import type { SiteInfoRes } from "@survev/shared/types/api.ts";
+
+/** the API's origin (VITE_API_URL) when it isn't the one the client is served from, eg on game portals */
+const apiUrl = import.meta.env.VITE_API_URL || "";
 
 export const api = {
     resolveUrl(url: string) {
-        const proxyDef = proxy.getProxyDef();
-        if (proxyDef && proxyDef.def.apiUrl) {
-            return proxyDef.def.apiUrl + url;
-        }
-        return url;
+        return apiUrl + url;
     },
     resolveRoomHost() {
-        const proxyDef = proxy.getProxyDef();
-        if (proxyDef && proxyDef.def.apiUrl) {
-            return new URL(proxyDef.def.apiUrl).host;
-        }
-        return window.location.host;
+        return apiUrl ? new URL(apiUrl).host : window.location.host;
+    },
+
+    /** login methods the API has set up, filled in by site_info */
+    logins: { discord: false, mock: false } as SiteInfoRes["logins"],
+
+    loginSupported(type: keyof SiteInfoRes["logins"]) {
+        return api.logins[type];
+    },
+    anyLoginSupported() {
+        return api.logins.discord || api.logins.mock;
+    },
+    /** cookies only go out when logins work, portals that host the client on their own domain can't send them */
+    credentials(): RequestCredentials {
+        return api.anyLoginSupported() ? "include" : "omit";
     },
 };

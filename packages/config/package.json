@@ -9,12 +9,10 @@
     "typecheck": "bun check"
   },
   "dependencies": {
-    "@survev/shared": "workspace:*",
-    "hjson": "^3.2.2",
-    "obscenity": "^0.4.6"
+    "@survev/logger": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.3",
-    "@types/hjson": "^2.4.6"
+    "@types/bun": "^1.4.3"
   }
 }

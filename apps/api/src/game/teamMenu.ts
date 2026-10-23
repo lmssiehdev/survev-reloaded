@@ -1,0 +1,624 @@
+import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
+import type { FindGamePrivateBody } from "@survev/contracts";
+import { getLogger } from "@survev/logger/node.ts";
+import type { FindGamePrivateError } from "@survev/shared/types/api.ts";
+import {
+    type ClientRoomData,
+    type ClientToServerTeamMsg,
+    type RoomData,
+    type ServerToClientTeamMsg,
+    type TeamErrorMsg,
+    type TeamMenuErrorType,
+    type TeamMenuPlayer,
+    type TeamPlayGameMsg,
+    zTeamClientMsg,
+} from "@survev/shared/types/team.ts";
+import { validateUserName } from "@survev/shared/utils/badWords.ts";
+import { assert, util } from "@survev/shared/utils/util.ts";
+import { Hono } from "hono";
+import { upgradeWebSocket } from "hono/bun";
+import type { WSContext } from "hono/ws";
+import { randomUUID } from "node:crypto";
+import { settings } from "../admin/settings.ts";
+import { sessionMiddleware } from "../auth/session.ts";
+import { env } from "../env.ts";
+import { getHonoIp, isBehindProxy, verifyTurnstile } from "../lib/ip.ts";
+import { findIpBan, hashIp } from "../moderation/bans.ts";
+import { findGame, getFindGamePlayerData, isRegion, regionIds } from "./regions.ts";
+
+interface SocketData {
+    rateLimit: Record<symbol, number>;
+    player: Player;
+    ip: string;
+}
+
+class Player {
+    room?: Room;
+
+    name = "Player";
+
+    inGame = false;
+
+    get isLeader() {
+        // first player is always leader
+        return !!this.room && this.room.players[0] == this;
+    }
+
+    get playerId() {
+        return this.room ? this.room.players.indexOf(this) : -1;
+    }
+
+    get data(): TeamMenuPlayer {
+        return {
+            name: this.name,
+            inGame: this.inGame,
+            isLeader: this.isLeader,
+            playerId: this.playerId,
+        };
+    }
+
+    lastMsgTime = Date.now();
+
+    disconnectTimeout: ReturnType<typeof setTimeout>;
+
+    encodedIp: string;
+
+    constructor(
+        public socket: WSContext<SocketData>,
+        public teamMenu: TeamMenu,
+        public userId: string | null,
+        public ip: string,
+    ) {
+        this.encodedIp = hashIp(ip);
+        // disconnect if didn't join a room in 5 seconds
+        this.disconnectTimeout = setTimeout(() => {
+            if (!this.room) {
+                this.socket.close();
+            }
+        }, 5000);
+    }
+
+    setName(name: string) {
+        this.name = validateUserName(name).validName;
+    }
+
+    send<T extends ServerToClientTeamMsg["type"]>(
+        type: T,
+        data: (ServerToClientTeamMsg & { type: T })["data"],
+    ) {
+        this.socket.send(
+            JSON.stringify({
+                type,
+                data,
+            }),
+        );
+    }
+}
+
+class Room {
+    players: Player[] = [];
+
+    data: RoomData = {
+        roomUrl: "",
+        findingGame: false,
+        lastError: undefined,
+        region: "",
+        autoFill: true,
+        enabledGameModeIdxs: [],
+        gameModeIdx: 1,
+        maxPlayers: 4,
+        captchaEnabled: false,
+    };
+
+    constructor(
+        public teamMenu: TeamMenu,
+        public id: string,
+        initialData: ClientRoomData,
+    ) {
+        this.data.roomUrl = `#${id}`;
+        this.data.enabledGameModeIdxs = teamMenu.allowedGameModeIdxs();
+        this.data.captchaEnabled = settings.captchaEnabled;
+
+        this.setProps(initialData);
+    }
+
+    addPlayer(player: Player) {
+        if (this.players.length >= this.data.maxPlayers) return;
+
+        this.players.push(player);
+        player.room = this;
+
+        clearTimeout(player.disconnectTimeout);
+
+        this.sendState();
+    }
+
+    onMsg(player: Player, msg: ClientToServerTeamMsg) {
+        if (player.room !== this) return;
+
+        player.lastMsgTime = Date.now();
+        switch (msg.type) {
+            case "changeName": {
+                player.setName(msg.data.name);
+                this.sendState();
+                break;
+            }
+            case "keepAlive": {
+                player.send("keepAlive", {});
+                break;
+            }
+            case "gameComplete": {
+                player.inGame = false;
+                this.sendState();
+                break;
+            }
+            case "setRoomProps": {
+                if (!player.isLeader) break;
+                this.setProps(msg.data);
+                break;
+            }
+            case "kick": {
+                if (!player.isLeader) break;
+                this.kick(msg.data.playerId);
+                break;
+            }
+            case "playGame": {
+                if (!player.isLeader) break;
+                this.findGame(msg.data);
+                break;
+            }
+        }
+    }
+
+    setProps(props: ClientRoomData) {
+        let region = props.region;
+        if (!isRegion(region)) {
+            region = regionIds()[0] ?? region;
+        }
+        this.data.region = region;
+
+        let gameModeIdx = props.gameModeIdx;
+
+        const modes = settings.modes;
+
+        if (!this.data.enabledGameModeIdxs.includes(gameModeIdx)) {
+            // we don't allow creating teams if there's no valid team mode
+            // so this will never be -1
+            gameModeIdx = modes.findIndex((mode) => mode.enabled && mode.teamMode > 1);
+        }
+
+        this.data.gameModeIdx = gameModeIdx;
+
+        this.data.maxPlayers = modes[gameModeIdx].teamMode;
+        this.data.autoFill = props.autoFill;
+
+        // kick players that don't fit on the new max players
+        while (this.players.length > this.data.maxPlayers) {
+            this.kick(this.players.length - 1);
+        }
+
+        this.sendState();
+    }
+
+    kick(playerId: number) {
+        const player = this.players[playerId];
+        if (!player) return;
+
+        player.send("kicked", {});
+
+        this.removePlayer(player);
+    }
+
+    removePlayer(player: Player) {
+        if (!util.removeFrom(this.players, player)) {
+            return;
+        }
+
+        player.room = undefined;
+        player.socket.close();
+
+        this.sendState();
+
+        if (!this.players.length) {
+            this.teamMenu.removeRoom(this);
+        }
+    }
+
+    findGameCooldown = 0;
+
+    async findGame(data: TeamPlayGameMsg["data"]) {
+        if (this.data.findingGame) return;
+        if (this.players.some((p) => p.inGame)) return;
+        const roomLeader = this.players[0];
+        if (!roomLeader) return;
+
+        this.data.findingGame = true;
+        this.sendState();
+
+        let region = data.region;
+        if (!isRegion(region)) {
+            region = regionIds()[0] ?? region;
+        }
+        this.data.region = region;
+
+        const tokenMap = new Map<Player, string>();
+
+        const playerData = await getFindGamePlayerData(
+            this.players.map((player) => {
+                const joinToken = randomUUID();
+                tokenMap.set(player, joinToken);
+                return {
+                    joinToken,
+                    userId: player.userId,
+                    ip: player.ip,
+                } satisfies FindGamePrivateBody["playerData"][0];
+            }),
+        );
+
+        const mode = settings.modes[this.data.gameModeIdx];
+        if (!mode || !mode.enabled) {
+            return;
+        }
+
+        if (this.data.captchaEnabled) {
+            if (!data.turnstileToken) {
+                this.data.lastError = "find_game_invalid_captcha";
+                this.sendState();
+                return;
+            }
+
+            const captcha = await verifyTurnstile(data.turnstileToken, roomLeader.ip);
+            if (captcha.isErr() || !captcha.value) {
+                this.data.lastError = captcha.isErr() ? "find_game_error" : "find_game_invalid_captcha";
+                this.sendState();
+                return;
+            }
+        }
+
+        const res = await findGame({
+            mapName: mode.mapName,
+            teamMode: mode.teamMode,
+            autoFill: this.data.autoFill,
+            region: region,
+            version: data.version,
+            playerData,
+        });
+
+        if ("error" in res) {
+            const errMap: Partial<Record<FindGamePrivateError, TeamMenuErrorType>> = {
+                full: "find_game_full",
+                invalid_protocol: "find_game_invalid_protocol",
+            };
+
+            this.data.lastError = errMap[res.error] || "find_game_error";
+            this.sendState();
+            // 1 second cooldown on error
+            this.findGameCooldown = Date.now() + 1000;
+            return;
+        }
+
+        this.findGameCooldown = Date.now() + 5000;
+
+        const joinData = res;
+        if (!joinData) return;
+
+        this.data.lastError = undefined;
+
+        for (const player of this.players) {
+            player.inGame = true;
+            const token = tokenMap.get(player);
+
+            if (!token) {
+                this.teamMenu.logger.warning("team.missing_token");
+                continue;
+            }
+
+            player.send("joinGame", {
+                joinToken: token,
+                urls: res.urls,
+            });
+        }
+
+        this.sendState();
+    }
+
+    sendState() {
+        const players = this.players.map((p) => p.data);
+        // all players must be logged in to disable it
+        this.data.captchaEnabled = settings.captchaEnabled && !this.players.every((p) => !!p.userId);
+        for (const player of this.players) {
+            player.send("state", {
+                localPlayerId: player.playerId,
+                room: this.data,
+                players,
+            });
+        }
+    }
+}
+
+const teamCodeCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789";
+function generateTeamCode(): string {
+    let str = "";
+    for (let i = 0; i < 4; i++) {
+        str += teamCodeCharacters.charAt(
+            Math.floor(Math.random() * teamCodeCharacters.length),
+        );
+    }
+    return `${str}`;
+}
+
+export class TeamMenu {
+    rooms = new Map<string, Room>();
+
+    logger = getLogger(["api", "team-menu"]);
+
+    playersByIp = new Map<string, Set<Player>>();
+
+    /** open team menu sockets, one per player */
+    get socketCount(): number {
+        let n = 0;
+        for (const set of this.playersByIp.values()) n += set.size;
+        return n;
+    }
+
+    /** sweeps empty rooms, finished find_game cooldowns and silent players */
+    start() {
+        setInterval(() => {
+            for (const room of this.rooms.values()) {
+                // just making sure ig
+                if (!room.players.length) {
+                    this.removeRoom(room);
+                    continue;
+                }
+                if (room.data.findingGame && room.findGameCooldown < Date.now()) {
+                    room.data.findingGame = false;
+                    room.sendState();
+                }
+
+                // kick players that haven't sent a keep alive msg in over a minute
+                // client sends it every 45 seconds
+                for (const player of room.players) {
+                    if (player.lastMsgTime < Date.now() - 8 * 60 * 1000) {
+                        player.send("error", { type: "lost_conn" });
+                        room.removePlayer(player);
+                    }
+                }
+            }
+        }, 1000);
+    }
+
+    allowedGameModeIdxs() {
+        return settings.modes
+            .map((_, i) => i)
+            .filter((i) => {
+                const mode = settings.modes[i];
+                return mode.enabled && mode.teamMode > 1;
+            });
+    }
+
+    readonly router = this.createRouter();
+
+    private createRouter() {
+        const teamMenu = this;
+
+        const httpRateLimit = new HTTPRateLimit(5, 2000);
+        const wsRateLimit = new WebSocketRateLimit(50, 1000, 5);
+
+        return new Hono().get(
+            "/team_v2",
+            sessionMiddleware,
+            upgradeWebSocket(async (c) => {
+                const ip = getHonoIp(c, env.PROXY_IP_HEADER);
+
+                const user = c.var.user;
+                const userId = user && !user.banned ? user.id : null;
+
+                let closeReason: TeamMenuErrorType | undefined;
+                if (!ip || httpRateLimit.isRateLimited(ip) || wsRateLimit.isIpRateLimited(ip)) {
+                    closeReason = "rate_limited";
+                } else if (await findIpBan(ip)) {
+                    closeReason = "banned";
+                } else if (await isBehindProxy(ip, !userId)) {
+                    closeReason = "behind_proxy";
+                }
+
+                if (ip) wsRateLimit.ipConnected(ip);
+
+                // hono/bun creates a new WSContext for every event,
+                // so keep the one from onOpen to persist the data stored in `raw`
+                let socket: WSContext<SocketData>;
+
+                return {
+                    onOpen(_event, ws) {
+                        socket = ws as WSContext<SocketData>;
+                        ws.raw = {
+                            ip,
+                            rateLimit: {},
+                            player: undefined,
+                        };
+
+                        if (closeReason) {
+                            ws.send(
+                                JSON.stringify(
+                                    {
+                                        type: "error",
+                                        data: {
+                                            type: closeReason as TeamMenuErrorType,
+                                        },
+                                    } satisfies TeamErrorMsg,
+                                ),
+                            );
+                            teamMenu.logger.info("team.socket_rejected", { reason: closeReason });
+                            ws.close();
+                            return;
+                        }
+                        teamMenu.onOpen(ws as WSContext<SocketData>, userId, ip!);
+                    },
+
+                    onMessage(event, _ws) {
+                        const ws = socket;
+                        const data = ws.raw! as SocketData;
+
+                        if (wsRateLimit.isRateLimited(data.rateLimit)) {
+                            teamMenu.logger.info("team.rate_limited");
+                            ws.close();
+                            return;
+                        }
+
+                        try {
+                            teamMenu.onMsg(
+                                ws as WSContext<SocketData>,
+                                event.data as string,
+                            );
+                        } catch (err) {
+                            teamMenu.logger.error("team.message_failed", { err });
+                            ws.close();
+                        }
+                    },
+
+                    onClose(_event, _ws) {
+                        const ws = socket;
+                        teamMenu.onClose(ws as WSContext<SocketData>);
+
+                        const data = ws.raw! as SocketData;
+                        wsRateLimit.ipDisconnected(data.ip);
+                    },
+                };
+            }),
+        );
+    }
+
+    onOpen(ws: WSContext<SocketData>, userId: string | null, ip: string) {
+        const player = new Player(ws, this, userId, ip);
+        ws.raw!.player = player;
+
+        let players = this.playersByIp.get(player.encodedIp);
+        if (!players) {
+            players = new Set();
+            this.playersByIp.set(player.encodedIp, players);
+        }
+        players.add(player);
+    }
+
+    onMsg(ws: WSContext<SocketData>, data: string) {
+        let msg: ClientToServerTeamMsg;
+        try {
+            assert(data.length < 1024);
+            msg = zTeamClientMsg.parse(JSON.parse(data));
+        } catch (e) {
+            this.logger.info("team.bad_message", { err: e });
+            ws.close();
+            return;
+        }
+
+        const player = ws.raw?.player;
+        // i really don't think this is necessary but /shrug
+        if (!player) {
+            this.logger.warning("team.player_not_found");
+            ws.close();
+            return;
+        }
+
+        // handle creation and joining messages
+        // other messages are handled on the player class
+        if (!player.room) {
+            switch (msg.type) {
+                case "create": {
+                    // don't allow creating a team if there's no team mode enabled
+                    if (!this.allowedGameModeIdxs().length) {
+                        player.send("error", { type: "create_failed" });
+                        break;
+                    }
+
+                    player.setName(msg.data.playerData.name);
+
+                    const room = this.createRoom(msg.data.roomData);
+                    room.addPlayer(player);
+
+                    break;
+                }
+                case "join": {
+                    const room = this.rooms.get(msg.data.roomUrl);
+                    if (!room) {
+                        player.send("error", { type: "join_not_found" });
+                        break;
+                    }
+
+                    if (room.players.length >= room.data.maxPlayers) {
+                        player.send("error", { type: "join_full" });
+                        break;
+                    }
+                    player.setName(msg.data.playerData.name);
+
+                    room.addPlayer(player);
+                }
+            }
+        }
+
+        // player.room is set on room.addPlayer
+        // if we don't have a room at this point it meant both creation and joining failed
+        // so close the socket
+        if (!player.room) {
+            this.logger.debug("team.player_not_in_room");
+            ws.close();
+            return;
+        }
+
+        // handle messages for when the player is already inside a room
+        player.room.onMsg(player, msg);
+    }
+
+    onClose(ws: WSContext<SocketData>) {
+        const player = ws.raw?.player;
+
+        if (!player) {
+            this.logger.debug("team.player_not_found_on_close");
+            ws.close();
+            return;
+        }
+
+        const byIp = this.playersByIp.get(player.encodedIp);
+        if (byIp) {
+            byIp.delete(player);
+            if (byIp.size === 0) {
+                this.playersByIp.delete(player.encodedIp);
+            }
+        }
+
+        // meh just to make sure we dont keep timeouts with references hanging
+        // not like it matters because its 5 seconds...
+        clearTimeout(player.disconnectTimeout);
+
+        if (player.room) {
+            player.room.removePlayer(player);
+        }
+    }
+
+    createRoom(data: ClientRoomData) {
+        let roomUrl = generateTeamCode();
+        while (this.rooms.has(roomUrl)) {
+            roomUrl = generateTeamCode();
+        }
+
+        const room = new Room(this, roomUrl, data);
+        this.rooms.set(roomUrl, room);
+        return room;
+    }
+
+    removeRoom(room: Room) {
+        this.rooms.delete(room.id);
+    }
+
+    disconnectPlayers(encodedIp: string) {
+        const players = this.playersByIp.get(encodedIp);
+        if (!players) return;
+
+        for (const player of players) {
+            player.socket.close();
+        }
+        players.clear();
+        this.playersByIp.delete(encodedIp);
+    }
+}
+
+export const teamMenu = new TeamMenu();

@@ -5,14 +5,10 @@
     "": {
       "name": "survev",
       "dependencies": {
-        "@survev/config": "workspace:*",
-        "@survev/shared": "workspace:*",
         "enquirer": "^2.4.1",
-        "hjson": "^3.2.2",
       },
       "devDependencies": {
-        "@types/hjson": "^2.4.6",
-        "@types/node": "~22.12.0",
+        "@types/bun": "^1.4.3",
         "dprint": "^0.55.2",
         "typescript": "^6.0.3",
       },
@@ -24,20 +20,19 @@
         "@hono/zod-validator": "^0.8.0",
         "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
+        "@survev/logger": "workspace:*",
         "@survev/shared": "workspace:*",
         "better-auth": "^1.7.8",
         "better-result": "^3.0.1",
         "drizzle-orm": "1.0.0-rc.4",
-        "hjson": "^3.2.2",
         "hono": "^4.13.8",
-        "obscenity": "^0.4.6",
+        "postgres": "^3.4.9",
         "slugify": "^1.6.9",
         "zod": "^4.6.5",
       },
       "devDependencies": {
         "@types/bun": "^1.4.3",
         "drizzle-kit": "1.0.0-rc.4",
-        "unique-username-generator": "^1.5.1",
       },
     },
     "apps/bot": {
@@ -45,6 +40,7 @@
       "dependencies": {
         "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
+        "@survev/logger": "workspace:*",
         "@survev/shared": "workspace:*",
         "discord.js": "^14.27.0",
         "hono": "^4.13.8",
@@ -52,6 +48,7 @@
       },
       "devDependencies": {
         "@survev/api": "workspace:*",
+        "@types/bun": "^1.4.3",
       },
     },
     "apps/client": {
@@ -59,6 +56,7 @@
       "dependencies": {
         "@survev/shared": "workspace:*",
         "@taufik-nurrohman/color-picker": "1.4.2",
+        "better-auth": "^1.7.8",
         "bootstrap": "^4.6.2",
         "ejs": "^4.0.1",
         "hono": "^4.13.8",
@@ -77,6 +75,7 @@
         "canvas": "^3.2.3",
         "codefend": "^3.2.0",
         "maxrects-packer": "^2.7.3",
+        "rolldown": "^1.2.9",
         "sharp": "^0.35.4",
         "svg-parser": "^2.1.0",
         "svgo": "^4.1.0",
@@ -90,30 +89,25 @@
       "dependencies": {
         "@survev/config": "workspace:*",
         "@survev/contracts": "workspace:*",
+        "@survev/game": "workspace:*",
+        "@survev/logger": "workspace:*",
         "@survev/shared": "workspace:*",
-        "hjson": "^3.2.2",
         "hono": "^4.13.8",
-        "nanotimer": "^0.3.15",
-        "obscenity": "^0.4.6",
-        "typescript": "^6.0.3",
         "zod": "^4.6.5",
       },
       "devDependencies": {
         "@survev/api": "workspace:*",
         "@types/bun": "^1.4.3",
-        "@types/nanotimer": "^0.3.2",
       },
     },
     "packages/config": {
       "name": "@survev/config",
       "dependencies": {
-        "@survev/shared": "workspace:*",
-        "hjson": "^3.2.2",
-        "obscenity": "^0.4.6",
+        "@survev/logger": "workspace:*",
+        "zod": "^4.6.5",
       },
       "devDependencies": {
         "@types/bun": "^1.4.3",
-        "@types/hjson": "^2.4.6",
       },
     },
     "packages/contracts": {
@@ -123,14 +117,33 @@
         "zod": "^4.6.5",
       },
     },
+    "packages/game": {
+      "name": "@survev/game",
+      "dependencies": {
+        "@survev/contracts": "workspace:*",
+        "@survev/shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
+    "packages/logger": {
+      "name": "@survev/logger",
+      "dependencies": {
+        "@logtape/logtape": "^2.4.1",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
     "packages/shared": {
       "name": "@survev/shared",
       "dependencies": {
+        "obscenity": "^0.4.6",
         "zod": "^4.6.5",
       },
       "devDependencies": {
         "@types/bun": "^1.4.3",
-        "rolldown": "^1.2.9",
       },
     },
   },
@@ -318,6 +331,8 @@
 
     "@js-temporal/polyfill": ["@js-temporal/polyfill@0.5.1", "", { "dependencies": { "jsbi": "^4.3.0" } }, "sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ=="],
 
+    "@logtape/logtape": ["@logtape/logtape@2.4.1", "", {}, "sha512-faEZkjQf5pI8WsnCXbpBInC9SeWqYUNAtLviTLkCI3JLHFkV1bKrfxbIJc96TVqqVjSUz8LYtX0JWKdiBwEpCg=="],
+
     "@noble/ciphers": ["@noble/ciphers@2.4.0", "", {}, "sha512-AnjFn0Jv92laAkvMrghlFZq4qQCIN/4DxFV/eooqtC2YTjB7kBeLMS2T9KJX4Dn+ZVXLOwK0lSgqDtx9gvxtiw=="],
 
     "@noble/hashes": ["@noble/hashes@2.4.0", "", {}, "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA=="],
@@ -472,6 +487,10 @@
 
     "@survev/contracts": ["@survev/contracts@workspace:packages/contracts"],
 
+    "@survev/game": ["@survev/game@workspace:packages/game"],
+
+    "@survev/logger": ["@survev/logger@workspace:packages/logger"],
+
     "@survev/server": ["@survev/server@workspace:apps/server"],
 
     "@survev/shared": ["@survev/shared@workspace:packages/shared"],
@@ -488,11 +507,7 @@
 
     "@types/ejs": ["@types/ejs@3.1.5", "", {}, "sha512-nv+GSx77ZtXiJzwKdsASqi+YQ5Z7vwHsTP0JY2SiQgjGckkBRKZnk8nIM+7oUZ1VCtuTz0+By4qVR7fqzp/Dfg=="],
 
-    "@types/hjson": ["@types/hjson@2.4.6", "", {}, "sha512-tEQ4hlyKfsb9WWeueUY5eRnU2eK+KdE0eofSpQ05v9Aah4VvWwIRIid/ZN1zZZ0TfeVTRDgabKKqKZXEkfD3Sw=="],
-
     "@types/jquery": ["@types/jquery@3.5.34", "", { "dependencies": { "@types/sizzle": "2.3.10" } }, "sha512-3m3939S3erqmTLJANS/uy0B6V7BorKx7RorcGZVjZ62dF5PAGbKEDZK1CuLtKombJkFA2T1jl8LAIIs7IV6gBQ=="],
-
-    "@types/nanotimer": ["@types/nanotimer@0.3.2", "", {}, "sha512-KdUvVLlifjNSkjb5OOyu0hJmHtNfLv/IUXmSOyf3cAMluefhBpY3XikvvC5wKBEVKbMnFLeJ1cb15PbRq/nDQA=="],
 
     "@types/node": ["@types/node@22.12.0", "", { "dependencies": { "undici-types": "6.20.0" } }, "sha512-Fll2FZ1riMjNmlmJOdAyY5pUbkftXslB5DgEzlIuNaiWhXd00FhWxVC/r4yV/4wBb9JfImTu+jiSvXTkJ7F/gA=="],
 
@@ -632,8 +647,6 @@
 
     "hasown": ["hasown@2.0.4", "", { "dependencies": { "function-bind": "1.1.2" } }, "sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A=="],
 
-    "hjson": ["hjson@3.2.2", "", { "bin": { "hjson": "bin/hjson" } }, "sha512-MkUeB0cTIlppeSsndgESkfFD21T2nXPRaBStLtf3cAYA2bVEFdXlodZB0TukwZiobPD1Ksax5DK4RTZeaXCI3Q=="],
-
     "hono": ["hono@4.13.8", "", {}, "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="],
 
     "ieee754": ["ieee754@1.2.1", "", {}, "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA=="],
@@ -706,8 +719,6 @@
 
     "nanostores": ["nanostores@1.5.5", "", {}, "sha512-FixtE239Gl6Gz0ZGCK0WzvNwObNCIwVT+L7zQcf1QgcA6AzBxblzqe9OT88qiucNkhsjSOqiogSaF5jVbJiqSA=="],
 
-    "nanotimer": ["nanotimer@0.3.15", "", {}, "sha512-xj8HcwceqeRbfSuwNIzYhdbyZu3zoiHX3y2cyVB/cLn0RzVCI8ZZVQLZELEUMG2tYEsjqbCLb3b4q1lDC7ENnA=="],
-
     "napi-build-utils": ["napi-build-utils@2.0.0", "", {}, "sha512-GEbrYkbfF7MoNaoh2iGG84Mnf/WZfB0GdGEsM8wz7Expx/LlWf5U8t9nvJKXSp3qr5IsEbK04cBGhol/KwOsWA=="],
 
     "node-abi": ["node-abi@3.96.0", "", { "dependencies": { "semver": "7.8.5" } }, "sha512-rebQ/lz7i0EkoLzUVSrKRzA69zMkwLp95kKMWoMDkkM00Suxz0D7zEQPwRml5fQum24mj7bPvmlgLAmu2JCiYg=="],
@@ -735,6 +746,8 @@
     "popper.js": ["popper.js@1.16.1", "", {}, "sha512-Wb4p1J4zyFTbM+u6WuO4XstYx4Ky9Cewe4DWrel7B0w6VVICvPwdOpotjzcf6eD8TsckVnIMNONQyPIUFOUbCQ=="],
 
     "postcss": ["postcss@8.5.28", "", { "dependencies": { "nanoid": "3.3.19", "picocolors": "1.1.1", "source-map-js": "1.2.1" } }, "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A=="],
+
+    "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
 
     "prebuild-install": ["prebuild-install@7.1.3", "", { "dependencies": { "detect-libc": "2.1.2", "expand-template": "2.0.3", "github-from-package": "0.0.0", "minimist": "1.2.8", "mkdirp-classic": "0.5.3", "napi-build-utils": "2.0.0", "node-abi": "3.96.0", "pump": "3.0.4", "rc": "1.2.8", "simple-get": "4.0.1", "tar-fs": "2.1.5", "tunnel-agent": "0.6.0" }, "bin": { "prebuild-install": "bin.js" } }, "sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug=="],
 
@@ -813,8 +826,6 @@
     "undici": ["undici@6.28.1", "", {}, "sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA=="],
 
     "undici-types": ["undici-types@6.20.0", "", {}, "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg=="],
-
-    "unique-username-generator": ["unique-username-generator@1.5.1", "", { "bin": { "usernamegen": "dist/cli.js", "usergen": "dist/cli.js", "unique-username": "dist/cli.js", "uuname": "dist/cli.js" } }, "sha512-Q0pSKPyij4L7Tm6Bo3XsWeFG9qbyWTtwb3jTN+XgGhCFdlvQn6Fj0DCfYElw0kp/Xp7Jv1Q+CL+aA8S07RMChA=="],
 
     "url": ["url@0.11.4", "", { "dependencies": { "punycode": "1.4.1", "qs": "6.15.3" } }, "sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg=="],
 

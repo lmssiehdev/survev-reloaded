@@ -5,6 +5,7 @@ import $ from "jquery";
 import { api } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { device } from "./device.ts";
+import { helpers } from "./helpers.ts";
 import type { Localization } from "./ui/localization.ts";
 
 export class SiteInfo {
@@ -17,26 +18,31 @@ export class SiteInfo {
     ) {
     }
 
-    load() {
+    /** resolves once site_info is in, or failed to load */
+    async load() {
         const locale = this.localization.getLocale();
+        const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
+        const data = await fetch(siteInfoUrl)
+            .then((res) => res.json() as Promise<SiteInfoRes>)
+            .catch((err) => void console.error("Failed to load site info", err));
+        if (!data) return;
+
+        this.info = data;
+        this.loaded = true;
+        api.logins = data.logins;
+        helpers.turnstileSiteKey = data.turnstileSiteKey;
+        if (data.captchaEnabled && data.turnstileSiteKey) helpers.loadTurnstile();
 
         const mainSelector = $("#server-opts");
         const teamSelector = $("#team-server-opts");
-
-        for (const region in GAME_REGIONS) {
-            const data = GAME_REGIONS[region];
-            const name = this.localization.translate(data.l10n);
-            const elm = `<option value='${region}' data-l10n='${data.l10n}' data-label='${name}'>${name}</option>`;
-            mainSelector.append(elm);
-            teamSelector.append(elm);
+        for (const [region, { l10n }] of Object.entries(data.regions)) {
+            const name = this.localization.translate(l10n);
+            for (const selector of [mainSelector, teamSelector]) {
+                $("<option>", { value: region, text: name, "data-l10n": l10n, "data-label": name }).appendTo(selector);
+            }
         }
 
-        const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
-        fetch(siteInfoUrl).then(res => res.json()).then((data: SiteInfoRes) => {
-            this.info = data || {};
-            this.loaded = true;
-            this.updatePageFromInfo();
-        });
+        this.updatePageFromInfo();
     }
 
     getGameModeStyles() {
@@ -97,18 +103,10 @@ export class SiteInfo {
             const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode > 1);
             $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
 
-            // Region pops
-            const pops = this.info.pops;
-            if (pops) {
-                const regions = Object.keys(pops);
-
-                for (let i = 0; i < regions.length; i++) {
-                    const region = regions[i];
-                    const data = pops[region];
-                    const sel = $("#server-opts").children(`option[value="${region}"]`);
-                    const players = this.localization.translate("index-players");
-                    sel.text(`${sel.data("label")} [${data.playerCount} ${players}]`);
-                }
+            const players = this.localization.translate("index-players");
+            for (const [region, { playerCount }] of Object.entries(this.info.regions)) {
+                const sel = $("#server-opts").children(`option[value="${region}"]`);
+                sel.text(`${sel.data("label")} [${playerCount} ${players}]`);
             }
             let hasTwitchStreamers = false;
             const featuredStreamersElem = $("#featured-streamers");

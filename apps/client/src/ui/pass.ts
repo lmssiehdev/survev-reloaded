@@ -5,6 +5,7 @@ import type { HealEffectDef } from "@survev/shared/defs/gameObjects/healEffectDe
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
 import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import type { PassState, QuestState } from "@survev/shared/types/user.ts";
@@ -43,7 +44,7 @@ function humanizeTime(time: number, minutesFloor = false) {
 export class Pass {
     pass = {
         data: {
-            type: PASS_TYPE,
+            type: activePassType,
         },
         currentXp: 0,
         currentLevel: 1,

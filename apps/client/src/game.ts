@@ -22,7 +22,6 @@ import { SpectateAction } from "@survev/shared/net/spectateMsg.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
-import { errorLogManager } from "./errorLogs.ts";
 import { Gas } from "./gas.ts";
 import { helpers } from "./helpers.ts";
 import { type InputHandler, Key } from "./input.ts";
@@ -1133,11 +1132,6 @@ export class Game {
             const clientType = this.m_objectCreator.m_getObjById(obj.__id)?.__type ?? 0;
             if (obj.__type !== clientType) {
                 const errString = `updateObjPart: type mismatch, received ${obj.__type}, client has ${clientType};`;
-                errorLogManager.logError(errString, {
-                    id: obj.__id,
-                    ids: Object.keys(this.m_objectCreator.m_idToObj),
-                    msg,
-                });
                 console.error(errString);
                 continue;
             }

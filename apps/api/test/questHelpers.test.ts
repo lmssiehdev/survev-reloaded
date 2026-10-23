@@ -1,7 +1,7 @@
 import { MapId, TeamMode } from "@survev/shared/gameConfig.ts";
 import { describe, expect, test } from "bun:test";
 import "@survev/shared/test/testHelpers.ts";
-import { questHelpers } from "../src/utils/questHelpers.ts";
+import { questHelpers } from "../src/pass/quests.ts";
 
 describe("Quest helpers", () => {
     describe("getAvailableQuestsForModes", () => {

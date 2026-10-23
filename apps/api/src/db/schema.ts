@@ -7,6 +7,7 @@ import {
     index,
     integer,
     json,
+    jsonb,
     pgEnum,
     pgTable,
     primaryKey,
@@ -280,3 +281,14 @@ export const bans = pgTable(
 );
 
 export type Ban = typeof bans.$inferSelect;
+
+//
+// SETTINGS
+//
+
+/** what admins changed at runtime through /private; overrides the config file defaults (see settings.ts) */
+export const serverSettings = pgTable("server_settings", {
+    key: text("key").primaryKey(),
+    value: jsonb("value").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});

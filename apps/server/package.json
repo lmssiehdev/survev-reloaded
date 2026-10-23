@@ -5,25 +5,21 @@
   "scripts": {
     "build": "bun ../../scripts/buildApp.ts src/gameServer.ts src/game/gameProcess.ts",
     "typecheck": "bun check",
-    "start": "bun dist/gameServer.js",
-    "dev": "bun scripts/devWatch.ts src/gameServer.ts ../../packages ../../survev-config.hjson",
-    "stressTest": "bun src/stressTest.ts",
-    "lint": "cd ../.. && bun run lint"
+    "start": "bun --env-file=../../.env dist/gameServer.js",
+    "dev": "bun scripts/devWatch.ts --env-file=../../.env src/gameServer.ts ../../packages",
+    "stressTest": "bun --env-file=../../.env src/stressTest.ts"
   },
   "dependencies": {
     "@survev/config": "workspace:*",
     "@survev/contracts": "workspace:*",
+    "@survev/game": "workspace:*",
+    "@survev/logger": "workspace:*",
     "@survev/shared": "workspace:*",
-    "hjson": "^3.2.2",
     "hono": "^4.13.8",
-    "nanotimer": "^0.3.15",
-    "obscenity": "^0.4.6",
-    "typescript": "^6.0.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@survev/api": "workspace:*",
-    "@types/bun": "^1.4.3",
-    "@types/nanotimer": "^0.3.2"
+    "@types/bun": "^1.4.3"
   }
 }

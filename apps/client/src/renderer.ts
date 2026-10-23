@@ -2,7 +2,6 @@ import { Constants } from "@survev/shared/net/net.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "./camera.ts";
-import { errorLogManager } from "./errorLogs.ts";
 import type { Game } from "./game.ts";
 import type { Map } from "./map.ts";
 
@@ -64,23 +63,6 @@ export class Renderer {
     }
 
     addPIXIObj(obj: PIXI.Container, layer: number, zOrd: number, zIdx?: number) {
-        if (!obj.transform) {
-            const err = new Error();
-            const str = {
-                type: "addChild",
-                stack: err.stack,
-                browser: navigator.userAgent,
-                playing: this.game.m_playing,
-                gameOver: this.game.m_gameOver,
-                spectating: this.game.m_spectating,
-                time: this.game.m_playingTicker,
-                mode: this.game.teamMode,
-                layer,
-                zOrd,
-                zIdx,
-            };
-            errorLogManager.logError("addPixiObj", str);
-        }
         if (obj.__layerIdx === undefined) {
             obj.__layerIdx = -1;
             obj.__zOrd = -1;

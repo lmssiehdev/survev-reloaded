@@ -3,9 +3,8 @@ import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { api } from "./api.ts";
+import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
-import { errorLogManager } from "./errorLogs.ts";
-import { proxy } from "./proxy.ts";
 
 import type { UserRouterApp } from "@survev/api/types";
 import { hc, type InferResponseType } from "hono/client";
@@ -44,9 +43,8 @@ export class Account {
 
     constructor(public config: ConfigManager) {
         this.router = hc<UserRouterApp>(api.resolveUrl("/api/user"), {
-            init: {
-                credentials: proxy.anyLoginSupported() ? "include" : "omit",
-            },
+            fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+                fetch(input, { ...init, credentials: api.credentials() }),
         });
     }
 
@@ -110,9 +108,12 @@ export class Account {
         const storedLoadout = this.config.get("loadout")!;
         this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
         this.emit("loadout", this.loadout);
+    }
 
+    /** once site_info says which logins the API has */
+    initLogin() {
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
-        if (proxy.anyLoginSupported()) {
+        if (api.anyLoginSupported()) {
             this.loadProfile();
             return;
         }
@@ -124,7 +125,7 @@ export class Account {
     logout() {
         this.config.set("profile", null);
         this.config.set("loadout", loadouts.defaultLoadout());
-        this.fetchApi("logout", {}, () => {
+        authClient.signOut().finally(() => {
             window.location.reload();
         });
     }
@@ -138,7 +139,7 @@ export class Account {
             this.profile = {} as this["profile"];
             this.items = [];
             if (err) {
-                errorLogManager.storeGeneric("account", "load_profile_error");
+                // leave the profile logged out
             } else if (data.banned) {
                 this.emit("error", "account_banned", data.reason);
             } else if (data.success) {
@@ -162,7 +163,6 @@ export class Account {
     resetStats() {
         this.fetchApi("reset_stats", {}, (err) => {
             if (err) {
-                errorLogManager.storeGeneric("account", "reset_stats_error");
                 this.emit("error", "server_error");
             }
         });
@@ -171,7 +171,6 @@ export class Account {
     deleteAccount() {
         this.fetchApi("delete", {}, (err) => {
             if (err) {
-                errorLogManager.storeGeneric("account", "delete_error");
                 this.emit("error", "server_error");
                 return;
             }
@@ -183,7 +182,6 @@ export class Account {
     setUsername(username: string, callback: (err?: string) => void) {
         this.fetchApi("username", { json: { username } }, (err, res) => {
             if (err) {
-                errorLogManager.storeGeneric("account", "set_username_error");
                 callback(err);
                 return;
             }
@@ -207,7 +205,6 @@ export class Account {
 
         this.fetchApi("loadout", { json: { loadout } }, (err, res) => {
             if (err) {
-                errorLogManager.storeGeneric("account", "set_loadout_error");
                 this.emit("error", "server_error");
             }
             if (err || !res.loadout) {
@@ -237,11 +234,7 @@ export class Account {
                     status,
                     itemTypes,
                 },
-            }, (err) => {
-                if (err) {
-                    errorLogManager.storeGeneric("account", "set_item_status_error");
-                }
-            });
+            }, () => {});
         }
     }
 
@@ -250,7 +243,7 @@ export class Account {
             this.pass = {} as PassState;
             this.quests = [];
             if (err || !res.success) {
-                errorLogManager.storeGeneric("account", "get_pass_error");
+                // no pass available, keep the empty state
             } else {
                 this.pass = res.pass || {} as PassState;
                 this.quests = res.quests || [];
@@ -268,7 +261,7 @@ export class Account {
     setPassUnlock(unlockType: string) {
         this.fetchApi("set_pass_unlock", { json: { unlockType } }, (err, res) => {
             if (err || !res.success) {
-                errorLogManager.storeGeneric("account", "set_pass_unlock_error");
+                // unlock failed, nothing to refresh
             } else {
                 this.getPass(false);
             }
@@ -278,7 +271,6 @@ export class Account {
     refreshQuest(idx: number) {
         this.fetchApi("refresh_quest", { json: { idx } }, (err, res) => {
             if (err) {
-                errorLogManager.storeGeneric("account", "refresh_quest_error");
                 return;
             }
             if (res.success) {

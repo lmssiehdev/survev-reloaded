@@ -1,7 +1,4 @@
-import { Config } from "@survev/config/serverConfig.ts";
-import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { getIp } from "@survev/config/utils/ip.ts";
-import { logErrorToWebhook, ServerLogger } from "@survev/config/utils/logger.ts";
+import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import {
     type FindGamePrivateBody,
@@ -13,48 +10,39 @@ import {
     zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "@survev/contracts";
-import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging } from "@survev/logger/node.ts";
+import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { z, type ZodObject } from "zod";
 import pkgJson from "../../../package.json" with { type: "json" };
+import { env } from "./env.ts";
 import { GameProcess, GameProcessManager, ProcState } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
+import { getIp } from "./utils/ip.ts";
 import { LOST_GAME_DATA_DIR } from "./utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "./utils/websocket.ts";
 
-process.on("uncaughtException", async (err) => {
-    console.error(err);
-
-    await logErrorToWebhook("server", "Game server error:", err);
-
-    process.exit(1);
-});
-
-// Bun keeps an inherited "ignore SIGINT" disposition (e.g. when started as a background
-// job by a script), Node resets it to the default. Exit on SIGINT like Node does by default,
-// game processes then get "disconnect" and close their sockets with "server_restart"
-process.on("SIGINT", () => {
-    process.exit(130);
-});
+// nothing imported above logs while it loads, so logging can be set up here.
+// logProcessStart exits on SIGINT/SIGTERM (also when SIGINT was inherited as ignored, e.g. from a
+// background job), game processes then get "disconnect" and close their sockets with "server_restart"
+await setupServerLogging(loggingOptions("game-server", sharedEnv.REGION));
+installCrashHandlers();
+logProcessStart({ version: pkgJson.version });
 
 class GameServer {
-    readonly logger = new ServerLogger("GameServer");
+    readonly logger = getLogger(["game-server"]);
 
-    readonly region = Config.regions[Config.gameServer.thisRegion];
-    readonly regionId = Config.gameServer.thisRegion;
+    readonly regionId = env.REGION;
 
     readonly manager = new GameProcessManager();
 
     getUrlsForGame(game: GameProcess) {
-        const protocol = this.region.https ? "wss" : "ws";
-        const mainPortUrl = new URL(`${protocol}://${this.region.address}/play`);
-
-        const gamePortUrl = new URL(mainPortUrl.toString());
-        gamePortUrl.port = game.port.toString();
-
-        return [gamePortUrl.toString()];
+        const url = new URL("/play", env.REGION_URL);
+        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+        url.port = game.port.toString();
+        return [url.toString()];
     }
 
     async findGame(body: FindGamePrivateBody): Promise<FindGamePrivateRes> {
@@ -103,18 +91,26 @@ class GameServer {
         };
     }
 
+    /** the API being down is logged once, not on every report */
+    reportFailing = false;
+
     async sendData() {
         try {
             await apiPrivateRouter.update_region.$post({
                 json: {
                     data: {
                         playerCount: this.manager.getPlayerCount(),
+                        url: env.REGION_URL,
+                        l10n: env.REGION_L10N,
                     },
-                    regionId: Config.gameServer.thisRegion,
+                    regionId: env.REGION,
                 },
             });
+            if (this.reportFailing) this.logger.info("region.update_recovered");
+            this.reportFailing = false;
         } catch (err) {
-            this.logger.error(`Failed to update region: `, err);
+            if (!this.reportFailing) this.logger.error("region.update_failed", { err });
+            this.reportFailing = true;
         }
     }
 
@@ -135,13 +131,13 @@ class GameServer {
             try {
                 data = await Bun.file(filePath).json();
             } catch (err) {
-                this.logger.warn(`Skipping unreadable lost game file ${fileName}:`, err);
+                this.logger.warn("lost_games.skip_unreadable", { fileName, err });
                 continue;
             }
 
             const parsed = zSaveGameMatchData.safeParse(data);
             if (!parsed.success) {
-                this.logger.warn(`Skipping invalid lost game file ${fileName}:`, z.prettifyError(parsed.error));
+                this.logger.warn("lost_games.skip_invalid", { fileName, reason: z.prettifyError(parsed.error) });
                 continue;
             }
 
@@ -151,7 +147,7 @@ class GameServer {
 
         if (games.length < 2) return;
 
-        this.logger.info(`${games.length} lost games found, trying to save...`);
+        this.logger.info("lost_games.saving", { count: games.length });
 
         let res: Pick<Response, "ok"> | undefined = undefined;
         try {
@@ -161,11 +157,11 @@ class GameServer {
                 },
             });
         } catch (err) {
-            this.logger.error(`Failed to fetch API save game:`, err);
+            this.logger.error("lost_games.save_failed", { err });
         }
 
         if (res?.ok) {
-            this.logger.info(`successfully saved lost games!`);
+            this.logger.info("lost_games.saved", { count: games.length });
             // if we successfully saved the games we can remove them
             for (const fileName of files) {
                 const filePath = path.resolve(dir, fileName);
@@ -178,7 +174,7 @@ class GameServer {
 const server = new GameServer();
 
 if (process.env.NODE_ENV !== "production") {
-    server.manager.newGame(Config.modes[0]);
+    server.manager.newGame({ mapName: "main", teamMode: TeamMode.Solo });
 }
 
 const pingHTTPRateLimit = new HTTPRateLimit(1, 3000);
@@ -194,31 +190,28 @@ async function handleJsonPost<T extends ZodObject>(
     validator: T,
     handler: (body: z.infer<T>) => Promise<Record<string, unknown>>,
 ): Promise<Response> {
-    if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+    if (req.headers.get("survev-api-key") !== sharedEnv.SURVEV_API_KEY) {
         return new Response("403 Forbidden", { status: 403 });
     }
 
     const parsed = validator.safeParse(await req.json().catch(() => undefined));
     if (!parsed.success) {
-        server.logger.warn(`${new URL(req.url).pathname} error: `, parsed.error);
+        server.logger.warn("http.bad_request", { path: new URL(req.url).pathname, err: parsed.error });
         return new Response("400 Bad Request", { status: 400 });
     }
 
     try {
         return Response.json(await handler(parsed.data));
     } catch (error) {
-        server.logger.warn(`${new URL(req.url).pathname} error: `, error);
+        server.logger.error("http.handler_failed", { path: new URL(req.url).pathname, err: error });
         return new Response("500 Internal Server Error", { status: 500 });
     }
 }
 
 const app = Bun.serve({
-    hostname: Config.gameServer.host,
-    port: Config.gameServer.port,
-    tls: Config.gameServer.ssl && {
-        key: Bun.file(Config.gameServer.ssl.keyFile),
-        cert: Bun.file(Config.gameServer.ssl.certFile),
-    },
+    hostname: env.GAME_HOST,
+    port: env.GAME_PORT,
+    tls: env.ssl,
     // Bun responds with 413 to bigger bodies
     maxRequestBodySize: 1024 * 1024, // 1 MB
 
@@ -229,7 +222,7 @@ const app = Bun.serve({
 
         "/private/status": {
             GET: (req) => {
-                if (req.headers.get("survev-api-key") !== Config.secrets.SURVEV_API_KEY) {
+                if (req.headers.get("survev-api-key") !== sharedEnv.SURVEV_API_KEY) {
                     return new Response("403 Forbidden", { status: 403 });
                 }
 
@@ -258,10 +251,10 @@ const app = Bun.serve({
 
         // ping test
         "/ptc": (req, httpServer) => {
-            const ip = getIp(req, httpServer, Config.gameServer.proxyIPHeader);
+            const ip = getIp(req, httpServer, env.PROXY_IP_HEADER);
 
             if (!ip) {
-                server.logger.warn("Invalid IP Found:", ip);
+                server.logger.warn("ping.invalid_ip");
                 return new Response();
             }
 
@@ -299,7 +292,7 @@ const app = Bun.serve({
 
         message(socket, message) {
             if (pingWsRateLimit.isRateLimited(socket.data.rateLimit)) {
-                server.logger.warn("Ping websocket rate limited, closing socket.");
+                server.logger.warn("ping.rate_limited");
                 socket.terminate();
                 return;
             }
@@ -312,16 +305,13 @@ const app = Bun.serve({
     },
 });
 
+// often, the API only knows this region from these reports (and forgets it after a restart)
 server.sendData();
 setInterval(() => {
     server.sendData();
-}, 20 * 1000);
+}, 5 * 1000);
 
-server.logger.info(`Survev Game Server v${pkgJson.version} - GIT ${GIT_VERSION}`);
-server.logger.info(
-    `Listening on ${app.hostname}:${app.port}`,
-);
-server.logger.info("Press Ctrl+C to exit.");
+server.logger.info("game_server.listening", { host: app.hostname, port: app.port });
 
 // try to save lost games every hour
 // Bun.cron runs in the system timezone. Keep the try/catch: a throw or rejection
@@ -330,6 +320,6 @@ Bun.cron("0 * * * *", async () => {
     try {
         await server.tryToSaveLostGames();
     } catch (err) {
-        server.logger.error("Failed to save lost games", err);
+        server.logger.error("lost_games.cron_failed", { err });
     }
 });

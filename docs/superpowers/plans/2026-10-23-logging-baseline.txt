@@ -1,0 +1,16 @@
+# Baseline before logging changes: 2026-10-23, 79 bots, 180s stress test, LOG_LEVEL=debug (API on :8010 because :8000 was taken by another service). First line is pre-stress idle.
+Game #913b | [DEBG] Avg ms/tick: 0.11 | Load: 1.1%
+Game #913b | [DEBG] Avg ms/tick: 0.12 | Load: 1.2%
+Game #913b | [DEBG] Avg ms/tick: 0.67 | Load: 6.7%
+Game #913b | [DEBG] Avg ms/tick: 0.69 | Load: 6.9%
+Game #913b | [DEBG] Avg ms/tick: 0.66 | Load: 6.6%
+Game #913b | [DEBG] Avg ms/tick: 0.66 | Load: 6.6%
+Game #913b | [DEBG] Avg ms/tick: 0.68 | Load: 6.8%
+Game #913b | [DEBG] Avg ms/tick: 0.67 | Load: 6.7%
+Game #913b | [DEBG] Avg ms/tick: 0.68 | Load: 6.8%
+Game #913b | [DEBG] Avg ms/tick: 0.66 | Load: 6.6%
+Game #913b | [DEBG] Avg ms/tick: 0.66 | Load: 6.6%
+Game #913b | [DEBG] Avg ms/tick: 0.61 | Load: 6.1%
+Game #913b | [DEBG] Avg ms/tick: 0.60 | Load: 6.0%
+Game #913b | [DEBG] Avg ms/tick: 0.59 | Load: 5.9%
+Game #913b | [DEBG] Avg ms/tick: 0.30 | Load: 3.0%

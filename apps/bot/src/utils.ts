@@ -1,5 +1,6 @@
 import type { PrivateRouteApp } from "@survev/api/types";
-import { Logger } from "@survev/shared/utils/logger.ts";
+import { sharedEnv } from "@survev/config/env.ts";
+import { getLogger } from "@survev/logger/node.ts";
 import type {
     ButtonInteraction,
     ComponentType,
@@ -10,7 +11,7 @@ import type {
 } from "discord.js";
 import { MessageFlags, PermissionFlagsBits } from "discord.js";
 import { hc } from "hono/client";
-import { API_URL, Config, DISCORD_GUILD_ID, DISCORD_ROLE_ID } from "./config.ts";
+import { env } from "./env.ts";
 
 // we love enums
 export const enum Command {
@@ -34,14 +35,14 @@ export const enum Command {
     ClearCache = "clear_cache",
 }
 
-export const honoClient = hc<PrivateRouteApp>(API_URL, {
+export const honoClient = hc<PrivateRouteApp>(`${env.API_URL}/private`, {
     headers: {
-        "survev-api-key": Config.secrets.SURVEV_API_KEY,
+        "survev-api-key": sharedEnv.SURVEV_API_KEY,
     },
 });
 
 export function isAdmin(interaction: Interaction) {
-    if (interaction.guild?.id !== DISCORD_GUILD_ID) {
+    if (interaction.guild?.id !== env.DISCORD_GUILD_ID) {
         return false;
     }
 
@@ -53,7 +54,7 @@ export function isAdmin(interaction: Interaction) {
 }
 
 export function hasBotPermission(interaction: Interaction): boolean {
-    if (interaction.guild?.id !== DISCORD_GUILD_ID) {
+    if (interaction.guild?.id !== env.DISCORD_GUILD_ID) {
         return false;
     }
 
@@ -62,7 +63,7 @@ export function hasBotPermission(interaction: Interaction): boolean {
     }
 
     if (interaction.inCachedGuild()) {
-        return interaction.member.roles.cache.has(DISCORD_ROLE_ID);
+        return interaction.member.roles.cache.has(env.DISCORD_ROLE_ID);
     }
 
     return false;
@@ -118,7 +119,7 @@ export function createCollector<
     });
 }
 
-export const botLogger = new Logger(Config.logging, "Bot");
+export const botLogger = getLogger(["bot"]);
 
 /** every API reply, ok or error, carries a message; fall back for non json errors (proxies, crashes) */
 export async function apiMessage(res: Pick<Response, "json" | "status">): Promise<string> {

@@ -1,5 +1,4 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": [
     "oxc",
     "eslint",
@@ -11,9 +10,6 @@
     "browser": true,
     "node": true,
     "es2022": true
-  },
-  "globals": {
-    "foo": "readonly"
   },
   "settings": {},
   "rules": {

@@ -1,23 +1,21 @@
-import { Config } from "@survev/config/serverConfig.ts";
-import { SQL } from "bun";
+import postgres from "postgres";
+import { env } from "../env.ts";
 
-const sql = new SQL({
-    hostname: Config.database.host,
-    port: Config.database.port,
-    username: "postgres",
-    password: "postgres",
-    database: "postgres",
-});
+// drops and recreates the database in DATABASE_URL, connecting to the "postgres" database as the same user
+const url = new URL(env.DATABASE_URL);
+const name = url.pathname.slice(1);
+const owner = decodeURIComponent(url.username);
+url.pathname = "/postgres";
+
+const sql = postgres(url.toString(), { max: 1 });
 
 try {
-    await sql.unsafe(
-        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'survev'`,
-    );
-    await sql.unsafe(`DROP DATABASE IF EXISTS survev`);
-    await sql.unsafe(`CREATE DATABASE survev OWNER survev`);
+    await sql`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = ${name}`;
+    await sql`DROP DATABASE IF EXISTS ${sql(name)}`;
+    await sql`CREATE DATABASE ${sql(name)} OWNER ${sql(owner)}`;
     console.log("Database wiped successfully");
 } catch (error) {
     console.error("Error dropping database:", error);
 } finally {
-    await sql.close();
+    await sql.end();
 }

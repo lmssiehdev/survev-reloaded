@@ -2,9 +2,9 @@ import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
 import $ from "jquery";
 import type { Account } from "../account.ts";
 import { api } from "../api.ts";
+import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { proxy } from "../proxy.ts";
 import { SDK } from "../sdk/sdk.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
@@ -61,18 +61,13 @@ function createLoginOptions(
     };
 
     // Define the available login methods
-    if (proxy.loginSupported("google")) {
-        addLoginOption("google", () => {
-            window.location.href = api.resolveUrl("/api/auth/google");
-        });
-    }
-    if (proxy.loginSupported("discord")) {
+    if (api.loginSupported("discord")) {
         addLoginOption("discord", () => {
-            window.location.href = api.resolveUrl("/api/auth/discord");
+            signInWithDiscord();
         });
     }
 
-    if (proxy.loginSupported("mock")) {
+    if (api.loginSupported("mock")) {
         addLoginOption("mock", () => {
             window.location.href = api.resolveUrl("/api/auth/mock");
         });
@@ -324,16 +319,18 @@ export class ProfileUi {
             return false;
         });
 
-        const loginSupported = !SDK.isAnySDK && proxy.anyLoginSupported();
+        this.updateLoginSupport();
+    }
 
-        $(".account-block").toggle(loginSupported);
+    /** again once site_info says which logins the API has */
+    updateLoginSupport() {
+        $(".account-block").toggle(!SDK.isAnySDK && api.anyLoginSupported());
     }
 
     onError(type: string, data?: string) {
         const typeText = {
             server_error: "Operation failed, please try again later.",
             facebook_account_in_use: "Failed linking Facebook account.<br/>Account already in use!",
-            google_account_in_use: "Failed linking Google account.<br/>Account already in use!",
             twitch_account_in_use: "Failed linking Twitch account.<br/>Account already in use!",
             discord_account_in_use: "Failed linking Discord account.<br/>Account already in use!",
             account_banned: `Account banned: ${data}`,

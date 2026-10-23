@@ -1,8 +1,8 @@
 import type { FindGamePrivateBody } from "@survev/contracts";
+import type { SpectateTokenData } from "@survev/game/game.ts";
+import type { GameMode } from "@survev/game/gameOptions.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
-import type { ServerGameConfig } from "../utils/types.ts";
-import type { SpectateTokenData } from "./game.ts";
 
 export interface GameData {
     id: string;
@@ -32,7 +32,7 @@ export enum ProcessMsgType {
 
 export interface CreateGameMsg {
     type: ProcessMsgType.Create;
-    config: ServerGameConfig;
+    config: GameMode;
     id: string;
 }
 
