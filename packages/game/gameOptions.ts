@@ -93,3 +93,23 @@ export interface GameOptions {
     defaultItems: DefaultItems;
     debug: GameDebugOptions;
 }
+
+export const GAME_TPS = 100;
+export const NET_SYNC_TPS = 33;
+
+/** a plain game: no rate limits, bots or debug tools; hosts override what they configure */
+export function defaultGameOptions(logger: GameLogger): GameOptions {
+    return {
+        logger,
+        gameTps: GAME_TPS,
+        netSyncTps: NET_SYNC_TPS,
+        rateLimitsEnabled: false,
+        uniqueInGameNames: true,
+        defaultItems: {},
+        debug: {
+            spawnMode: "default",
+            allowBots: false,
+            allowEditMsg: false,
+        },
+    };
+}
