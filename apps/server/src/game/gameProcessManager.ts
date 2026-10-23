@@ -264,10 +264,11 @@ export class GameProcessManager {
             });
             // lost the IPC channel, the process can't be used anymore
             proc.process.on("disconnect", () => {
-                if (!proc.exited) {
+                if (!proc.killed && !proc.exited) {
                     this.logger.warn("game.proc.disconnected", { childPid: proc.process.pid, port: proc.port });
                 }
-                this.killProcess(proc);
+                // not an intentional kill: if the process dies on its own it must still log game.proc.died
+                this.killProcess(proc, "SIGTERM", false);
             });
             this.logger.info("game.proc.spawn", { childPid: gameProc.process.pid, port: gameProc.port });
         } else {
@@ -280,10 +281,11 @@ export class GameProcessManager {
         return gameProc;
     }
 
-    killProcess(gameProc: GameProcess, signal: NodeJS.Signals = "SIGTERM"): void {
+    /** `intentional` false (lost IPC) cleans up without marking the exit as requested */
+    killProcess(gameProc: GameProcess, signal: NodeJS.Signals = "SIGTERM", intentional = true): void {
         this.removeProcess(gameProc);
         if (gameProc.exited) return;
-        gameProc.killed = true;
+        if (intentional) gameProc.killed = true;
 
         // send SIGTERM, if still hasn't terminated after 5 seconds, send SIGKILL >:3
         gameProc.process.kill(signal);
