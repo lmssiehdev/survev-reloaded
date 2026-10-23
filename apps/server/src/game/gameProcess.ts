@@ -4,7 +4,8 @@ import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
 import { Game } from "@survev/game/game.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
-import { flushLogs, getLogger, installCrashHandlers, setupServerLogging } from "@survev/logger/node.ts";
+import type { TickSummary } from "@survev/game/tickStats.ts";
+import { flushLogs, getLogger, installCrashHandlers, setupServerLogging, startProcessStats } from "@survev/logger/node.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import type { ServerWebSocket } from "bun";
 import path from "node:path";
@@ -51,6 +52,31 @@ process.on("uncaughtException", () => {
     broadcastDisconnect("server_crashed");
     game = undefined;
 });
+
+// one game per process; the windows are reset on every read, the game-lifetime stats are not
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+function flatten(prefix: string, s: TickSummary) {
+    return {
+        [`${prefix}MeanMs`]: r2(s.mean),
+        [`${prefix}P50Ms`]: r2(s.p50),
+        [`${prefix}P99Ms`]: r2(s.p99),
+        [`${prefix}MaxMs`]: r2(s.max),
+    };
+}
+
+startProcessStats(() => {
+    if (!game) return { gameId: undefined, players: 0 };
+    const stats = {
+        gameId: game.id,
+        players: game.playerBarn.livingPlayers.length,
+        ...flatten("tick", game.tickWindow.summary()),
+        ...flatten("netSync", game.netSyncWindow.summary()),
+    };
+    game.tickWindow.reset();
+    game.netSyncWindow.reset();
+    return stats;
+}, sharedEnv.PROCESS_STATS_MS);
 
 function stopGame() {
     game = undefined;

@@ -55,6 +55,8 @@ export const sharedEnv = parseEnv({
     SURVEV_API_KEY: secret("dev-api-key"),
     /** this game server's region id, also shown on error webhooks */
     REGION: z.string().min(1).default("local"),
+    /** interval of the process.stats log line in ms, lower it to see them sooner in dev */
+    PROCESS_STATS_MS: int(60000),
 });
 
 /** the options every app passes to `setupServerLogging` */

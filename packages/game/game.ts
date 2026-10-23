@@ -75,6 +75,9 @@ export class Game {
 
     tickStats = new TickStats();
     netSyncStats = new TickStats();
+    /** per-minute windows for process.stats, reset by the reader; the lifetime stats above are for game.end */
+    tickWindow = new TickStats();
+    netSyncWindow = new TickStats();
     startedAt = Date.now();
     playersPeak = 0;
     playersTotal = 0;
@@ -266,6 +269,7 @@ export class Game {
         const tickTime = performance.now() - this.now;
 
         this.tickStats.add(tickTime);
+        this.tickWindow.add(tickTime);
         if (tickTime > (1000 / this.options.gameTps) * 2) {
             this.slowTickCount++;
             const suppressed = this.slowTickThrottle.hit(Date.now());
@@ -303,6 +307,7 @@ export class Game {
 
         const syncTime = performance.now() - start;
         this.netSyncStats.add(syncTime);
+        this.netSyncWindow.add(syncTime);
         if (syncTime > (1000 / this.options.netSyncTps) * 2) {
             this.slowNetSyncCount++;
             const suppressed = this.slowNetSyncThrottle.hit(Date.now());

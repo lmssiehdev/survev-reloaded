@@ -354,6 +354,13 @@ export class TeamMenu {
 
     playersByIp = new Map<string, Set<Player>>();
 
+    /** open team menu sockets, one per player */
+    get socketCount(): number {
+        let n = 0;
+        for (const set of this.playersByIp.values()) n += set.size;
+        return n;
+    }
+
     /** sweeps empty rooms, finished find_game cooldowns and silent players */
     start() {
         setInterval(() => {

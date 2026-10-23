@@ -35,6 +35,31 @@ export function installCrashHandlers(): void {
     process.on("unhandledRejection", (reason) => void crash("rejection", reason));
 }
 
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Logs `process.stats` (memory, uptime and whatever `extra` returns) every `intervalMs`.
+ * An `extra` that throws is logged as `process.stats_failed`. Returns a function that stops it.
+ */
+export function startProcessStats(extra: () => Record<string, unknown>, intervalMs = 60000): () => void {
+    const logger = getLogger(["process"]);
+    const timer = setInterval(() => {
+        try {
+            const mem = process.memoryUsage();
+            logger.info("process.stats", {
+                rssMb: round1(mem.rss / 1048576),
+                heapUsedMb: round1(mem.heapUsed / 1048576),
+                uptimeS: Math.round(process.uptime()),
+                ...extra(),
+            });
+        } catch (err) {
+            logger.warning("process.stats_failed", { err });
+        }
+    }, intervalMs);
+    timer.unref();
+    return () => clearInterval(timer);
+}
+
 let processStarted = false;
 const SIGNAL_EXIT_CODES = { SIGINT: 130, SIGTERM: 143 } as const;
 

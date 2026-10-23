@@ -1,5 +1,5 @@
-import { loggingOptions } from "@survev/config/env.ts";
-import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging } from "@survev/logger/node.ts";
+import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
+import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging, startProcessStats } from "@survev/logger/node.ts";
 import { lt } from "drizzle-orm";
 import { websocket } from "hono/bun";
 import pkgJson from "../../../package.json" with { type: "json" };
@@ -15,6 +15,7 @@ import { cleanupOldPlayerIps } from "./moderation/bans.ts";
 await setupServerLogging(loggingOptions("api"));
 installCrashHandlers();
 logProcessStart({ version: pkgJson.version });
+startProcessStats(() => ({ teamMenuSockets: teamMenu.socketCount }), sharedEnv.PROCESS_STATS_MS);
 
 const logger = getLogger(["api"]);
 

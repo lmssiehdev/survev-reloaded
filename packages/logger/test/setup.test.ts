@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { flushLogs, getLogger, setupLogging, withContext } from "../index.ts";
-import { setupServerLogging } from "../node.ts";
+import { setupServerLogging, startProcessStats } from "../node.ts";
 
 type Line = Record<string, unknown>;
 
@@ -177,4 +177,28 @@ test("crash handler logs process.crash as JSON on stdout and exits 1", async () 
     expect(crash).toMatchObject({ kind: "rejection", level: "fatal", app: "api" });
     expect((crash!.err as { message: string }).message).toBe("nope");
     expect(typeof crash!.pid).toBe("number");
+});
+
+test("startProcessStats logs memory, uptime and extra fields", async () => {
+    const f = await setup("info");
+    const stop = startProcessStats(() => ({ gameId: "g1", players: 3 }), 10);
+    await Bun.sleep(60);
+    stop();
+    await flushLogs();
+    const line = f.lines.find((l) => l.message === "process.stats");
+    expect(line).toBeDefined();
+    expect(line).toMatchObject({ level: "info", gameId: "g1", players: 3 });
+    for (const k of ["rssMb", "heapUsedMb", "uptimeS"]) expect(typeof line![k]).toBe("number");
+});
+
+test("startProcessStats logs process.stats_failed when extra throws and keeps running", async () => {
+    const f = await setup("info");
+    const stop = startProcessStats(() => {
+        throw new Error("boom");
+    }, 10);
+    await Bun.sleep(60);
+    stop();
+    await flushLogs();
+    expect(f.lines.some((l) => l.message === "process.stats_failed" && l.level === "warning")).toBe(true);
+    expect(f.lines.some((l) => l.message === "process.stats")).toBe(false);
 });
