@@ -11,7 +11,6 @@ const testOptions: GameOptions = {
         warn: console.warn,
         error: console.error,
     },
-    debugLogs: false,
     gameTps: 100,
     netSyncTps: 33,
     rateLimitsEnabled: false,

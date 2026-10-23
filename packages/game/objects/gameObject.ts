@@ -208,9 +208,7 @@ export abstract class BaseGameObject {
 
     serializePartial(): void {
         if (!this.initialized) {
-            this.game.logger.warn(
-                "Tried to partially serialized object that has not been initialized",
-            );
+            this.game.logger.warn("object.serialize_uninitialized", { kind: "partial", objType: this.__type });
             return;
         }
         assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
@@ -230,9 +228,7 @@ export abstract class BaseGameObject {
 
     serializeFull(): void {
         if (!this.initialized) {
-            this.game.logger.warn(
-                "Tried to fully serialized object that has not been initialized",
-            );
+            this.game.logger.warn("object.serialize_uninitialized", { kind: "full", objType: this.__type });
             return;
         }
         assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
@@ -320,7 +316,7 @@ export abstract class BaseGameObject {
     destroyed = false;
     destroy() {
         if (this.destroyed) {
-            this.game.logger.warn("Tried to destroy object twice");
+            this.game.logger.warn("object.destroy_twice", { objType: this.__type });
             return;
         }
         this.game.grid.remove(this as unknown as GameObject);

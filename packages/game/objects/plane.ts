@@ -308,7 +308,7 @@ export class PlaneBarn {
         }
 
         if (!id) {
-            this.game.logger.warn("Plane Barn: ran out of IDs");
+            this.game.logger.warn("plane.ids_exhausted");
             return;
         }
 
@@ -451,7 +451,7 @@ export class PlaneBarn {
         }
 
         if (!id) {
-            this.game.logger.warn("Plane Barn: ran out of IDs");
+            this.game.logger.warn("plane.ids_exhausted");
             return;
         }
 

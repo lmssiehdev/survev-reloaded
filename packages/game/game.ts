@@ -22,6 +22,7 @@ import { PlayerBarn } from "./objects/player.ts";
 import { ProjectileBarn } from "./objects/projectile.ts";
 import { SmokeBarn } from "./objects/smoke.ts";
 import { Profiler } from "./profiler.ts";
+import { Throttle, TickStats } from "./tickStats.ts";
 
 export interface JoinTokenData {
     userId: string | null;
@@ -71,14 +72,16 @@ export class Game {
 
     now!: number;
     profiler = new Profiler();
-    perfTicker = 0;
-    tickTimes: number[] = [];
 
-    tickTimeWarnThreshold: number;
-    gameTickWarnings = 0;
-
-    netSyncWarnThreshold: number;
-    netSyncWarnings = 0;
+    tickStats = new TickStats();
+    netSyncStats = new TickStats();
+    startedAt = Date.now();
+    playersPeak = 0;
+    playersTotal = 0;
+    slowTickCount = 0;
+    slowNetSyncCount = 0;
+    private slowTickThrottle = new Throttle(10000);
+    private slowNetSyncThrottle = new Throttle(10000);
 
     joinTokens = new Map<string, JoinToken>();
 
@@ -116,9 +119,7 @@ export class Game {
         this.id = id;
         this.options = options;
         this.logger = options.logger;
-        this.tickTimeWarnThreshold = (1000 / options.gameTps) * 4;
-        this.netSyncWarnThreshold = (1000 / options.netSyncTps) * 4;
-        this.logger.info("Creating");
+        this.logger.debug("game.creating");
 
         this.config = config;
 
@@ -155,7 +156,7 @@ export class Game {
 
         this.map.init();
 
-        this.logger.info(`Created in ${Date.now() - start} ms`);
+        this.logger.debug("game.created", { durationMs: Date.now() - start });
 
         this.updateData();
     }
@@ -264,42 +265,16 @@ export class Game {
 
         const tickTime = performance.now() - this.now;
 
-        if (tickTime > 1000) {
-            let errString = `Tick took over 1 second! ${tickTime.toFixed(2)}ms\n`;
-            errString += "Profiler stats:\n";
-            errString += this.profiler.getStats();
-            this.logger.error(errString);
-        } else if (tickTime > this.tickTimeWarnThreshold) {
-            this.logger.warn(
-                `Tick took over ${this.tickTimeWarnThreshold}ms! ${tickTime.toFixed(2)}ms`,
-            );
-            this.gameTickWarnings++;
-
-            if (this.gameTickWarnings > 20) {
-                let errString = `Server is overloaded! Increasing tickTimeWarnThreshold.\n`;
-                errString += "Profiler stats:\n";
-                errString += this.profiler.getStats();
-                this.logger.warn(errString);
-
-                this.gameTickWarnings = 0;
-                this.tickTimeWarnThreshold *= 2;
-            }
-        }
-
-        if (this.options.debugLogs) {
-            this.tickTimes.push(tickTime);
-
-            this.perfTicker += dt;
-            if (this.perfTicker >= 15) {
-                this.perfTicker = 0;
-                const mspt = this.tickTimes.reduce((a, b) => a + b) / this.tickTimes.length;
-
-                this.logger.debug(
-                    `Avg ms/tick: ${mspt.toFixed(2)} | Load: ${
-                        ((mspt / (1000 / this.options.gameTps)) * 100).toFixed(1)
-                    }%`,
-                );
-                this.tickTimes = [];
+        this.tickStats.add(tickTime);
+        if (tickTime > (1000 / this.options.gameTps) * 2) {
+            this.slowTickCount++;
+            const suppressed = this.slowTickThrottle.hit(Date.now());
+            if (suppressed !== undefined) {
+                this.logger.warn("game.slow_tick", {
+                    tickMs: tickTime,
+                    suppressed,
+                    profile: this.profiler.getStats(),
+                });
             }
         }
     }
@@ -327,21 +302,12 @@ export class Game {
         this.mapIndicatorBarn.flush();
 
         const syncTime = performance.now() - start;
-        if (syncTime > 1000) {
-            this.logger.error(`Tick took over 1 second! ${syncTime.toFixed(2)}ms`);
-        } else if (syncTime > this.netSyncWarnThreshold) {
-            this.logger.warn(
-                `Tick took over ${this.netSyncWarnThreshold}ms! ${syncTime.toFixed(2)}ms`,
-            );
-            this.netSyncWarnings++;
-
-            if (this.netSyncWarnings > 20) {
-                this.logger.warn(
-                    `Server is overloaded! Increasing netSyncWarnThreshold.`,
-                );
-
-                this.netSyncWarnings = 0;
-                this.netSyncWarnThreshold *= 2;
+        this.netSyncStats.add(syncTime);
+        if (syncTime > (1000 / this.options.gameTps) * 2) {
+            this.slowNetSyncCount++;
+            const suppressed = this.slowNetSyncThrottle.hit(Date.now());
+            if (suppressed !== undefined) {
+                this.logger.warn("game.slow_netsync", { syncMs: syncTime, suppressed });
             }
         }
     }
@@ -416,7 +382,16 @@ export class Game {
         for (const client of this.clientBarn.clients) {
             client.disconnect();
         }
-        this.logger.info("Game Ended");
+        this.logger.info("game.end", {
+            durationMs: Date.now() - this.startedAt,
+            playersPeak: this.playersPeak,
+            playersTotal: this.playersTotal,
+            tick: this.tickStats.summary(),
+            netSync: this.netSyncStats.summary(),
+            slowTicks: this.slowTickCount,
+            slowNetSyncs: this.slowNetSyncCount,
+            reason: this.started && this.over ? "finished" : "stopped",
+        });
         this._saveGameToDatabase();
         this.updateData();
     }

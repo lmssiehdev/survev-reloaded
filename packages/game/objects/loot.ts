@@ -106,7 +106,7 @@ export class LootBarn {
         const def = GameObjectDefs.typeToDef(type);
 
         if (!("lootImg" in def)) {
-            this.game.logger.warn("Invalid loot type:", type);
+            this.game.logger.warn("loot.invalid_type", { type });
             return;
         }
 

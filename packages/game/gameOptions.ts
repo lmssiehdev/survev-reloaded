@@ -15,10 +15,10 @@ export interface GameMode {
 }
 
 export interface GameLogger {
-    debug(...message: any[]): void;
-    info(...message: any[]): void;
-    warn(...message: any[]): void;
-    error(...message: any[]): void;
+    debug(message: string, props?: Record<string, unknown>): void;
+    info(message: string, props?: Record<string, unknown>): void;
+    warn(message: string, props?: Record<string, unknown>): void;
+    error(message: string, props?: Record<string, unknown>): void;
 }
 
 export interface GameDebugOptions {
@@ -70,7 +70,6 @@ export interface DefaultItems {
  */
 export interface GameOptions {
     logger: GameLogger;
-    debugLogs: boolean;
     /**
      * Game tick rate.
      * Controls how many physics and logic ticks the game will try to process every second.

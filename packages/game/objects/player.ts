@@ -231,7 +231,9 @@ export class PlayerBarn {
             player.roleMenuTicker = GameConfig.player.perkModeRoleSelectDuration + 5;
         }
 
-        this.game.logger.info(`Player ${player.name} joined`);
+        this.game.playersTotal++;
+        this.game.playersPeak = Math.max(this.game.playersPeak, this.livingPlayers.length + 1);
+        this.game.logger.debug("player.join", { playerId: player.__id });
 
         this.newPlayers.push(player);
         this.game.objectRegister.register(player);
@@ -797,6 +799,7 @@ export class Player extends BaseGameObject {
     layer: number;
     aimLayer = 0;
     dead = false;
+    joinedAt = Date.now();
     downed = false;
 
     downedCount = 0;

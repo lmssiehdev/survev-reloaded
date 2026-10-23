@@ -263,8 +263,7 @@ export class GameMap {
         const now = performance.now();
         const old = this.loggingTimes.pop();
 
-        const time = `${Math.round(now - old!)}ms`.padEnd(6);
-        this.game.logger.debug(time, msg);
+        this.game.logger.debug("map.timing", { step: msg, ms: Math.round(now - old!) });
     }
 
     constructor(game: Game) {
@@ -313,7 +312,7 @@ export class GameMap {
 
     init(seed?: number) {
         this.seed = seed ?? util.randomInt(0, 2 ** 32 - 1);
-        this.game.logger.debug("Generating map with seed", this.seed);
+        this.game.logger.debug("map.generating", { seed: this.seed });
 
         this.obstacles = [];
         this.dynamicObstacles = [];
@@ -870,9 +869,7 @@ export class GameMap {
                     this.genAuto(bridge.type, bridge.pos, 0, bridge.ori);
                 }
             } else {
-                this.game.logger.warn(
-                    "Failed to generate faction bridges, restarting map gen",
-                );
+                this.game.logger.warn("map.faction_bridges_failed");
                 this.loggingTimes.length = 0;
                 this.init();
                 return false;
@@ -1232,7 +1229,7 @@ export class GameMap {
             }
             attempts++;
         }
-        if (logOnFailure) this.game.logger.warn("Failed to spawn", type);
+        if (logOnFailure) this.game.logger.warn("map.spawn_failed", { type });
         return false;
     }
 

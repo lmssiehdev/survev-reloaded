@@ -11,7 +11,6 @@ export function serverGameOptions(gameId: string, config: GameMode): GameOptions
     const logger = getLogger(["game"]).with({ gameId, mapName: config.mapName, teamMode: config.teamMode });
     return {
         logger,
-        debugLogs: sharedEnv.LOG_LEVEL === "debug",
         gameTps: GAME_TPS,
         netSyncTps: NET_SYNC_TPS,
         rateLimitsEnabled: sharedEnv.RATE_LIMITS,

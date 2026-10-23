@@ -182,21 +182,17 @@ export class ClientBarn {
             type = deserialized.type;
             error = deserialized.error;
         } catch (err) {
-            this.game.logger.error(
-                "Failed to deserialize msg: ",
+            this.game.logger.error("ws.deserialize_failed", {
                 err,
-                "msg buffer: ",
-                // JSON.stringify doesn't work on buffers, so need to convert to an Uint8Array first
-                // and then to a regular array... 😭
-                // the slice is to make sure it doesn't overflow the error webhook
-                JSON.stringify([...new Uint8Array(buff.slice(0, 255))]),
-            );
+                // first bytes only, enough to identify the message
+                buffer: [...new Uint8Array(buff.slice(0, 255))],
+            });
             socket.close("invalid_packet");
             return;
         }
 
         if (error) {
-            this.game.logger.warn("Disconnecting socket because of packet error:", error);
+            this.game.logger.warn("ws.packet_error", { error });
             socket.close(error);
             return;
         }
@@ -208,7 +204,7 @@ export class ClientBarn {
 
             const joinData = this.game.joinTokens.get(joinMsg.joinToken);
             if (!joinData || joinData.expiresAt < Date.now()) {
-                this.game.logger.warn("Client tried to join without or with expired join token");
+                this.game.logger.warn("ws.join_token_invalid");
                 socket.close("invalid_token");
                 if (joinData) {
                     this.game.joinTokens.delete(joinMsg.joinToken);
@@ -229,7 +225,7 @@ export class ClientBarn {
         }
 
         if (!client) {
-            this.game.logger.warn("No client found and we didn't receive a JoinMsg, closing socket");
+            this.game.logger.warn("ws.no_client_no_join");
             socket.close("invalid_packet");
             return;
         }
@@ -249,7 +245,12 @@ export class ClientBarn {
 
         if (!client.player) return;
         const player = client.player;
-        this.game.logger.info(`"${player.name}" left`);
+        this.game.logger.info("player.leave", {
+            playerId: player.__id,
+            durationMs: Date.now() - player.joinedAt,
+            dead: player.dead,
+            kills: player.kills,
+        });
 
         // reset direction and movement
         player.dirNew = v2.create(1, 0);
