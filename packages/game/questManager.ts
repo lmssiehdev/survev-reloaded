@@ -97,7 +97,7 @@ export class QuestManager {
             this.player.client.sendInstantMsg(MsgType.UpdatePass, new UpdatePassMsg());
         }
 
-        this.game.sendQuestProgress(this.player.userId, progress);
+        this.game.hooks.sendQuestProgress?.(this.player.userId, progress);
 
         // reset the deltas in case they get flushed again
         for (const quest of this.quests) {

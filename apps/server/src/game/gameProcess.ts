@@ -2,8 +2,9 @@ import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
 import { HTTPRateLimit, WebSocketRateLimit } from "@survev/config/utils/rateLimit.ts";
 import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
-import { Game } from "@survev/game/game.ts";
+import { Game, type GameHooks, type QuestProgress } from "@survev/game/game.ts";
 import { GAME_TPS, NET_SYNC_TPS } from "@survev/game/gameOptions.ts";
+import { type ProcessMsg, ProcessMsgType } from "@survev/game/ipcTypes.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
 import { flatStats } from "@survev/game/tickStats.ts";
 import {
@@ -23,7 +24,6 @@ import { serverGameOptions } from "../utils/serverGameOptions.ts";
 import { LOST_GAME_DATA_DIR } from "../utils/types.ts";
 import { UWS_BACKPRESSURE_LIMIT } from "../utils/websocket.ts";
 import { type IdleSocketData, IdleSocketMonitor } from "./idleSockets.ts";
-import { type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
 const port = parseInt(process.argv[2]);
 
@@ -35,8 +35,8 @@ function sendMsg(msg: ProcessMsg) {
     process.send!(msg);
 }
 
-let game: ServerGame | undefined;
-let gameWeakRef: WeakRef<ServerGame> | undefined;
+let game: Game | undefined;
+let gameWeakRef: WeakRef<Game> | undefined;
 
 const procLogger = getLogger(["game-proc"]).with({ port });
 
@@ -118,7 +118,7 @@ async function saveGame(gameId: string, values: SaveGameBody["matchData"]) {
     }
 }
 
-async function sendQuestProgress(userId: string, progress: Array<{ id: string; delta: number }>) {
+async function sendQuestProgress(userId: string, progress: QuestProgress) {
     try {
         const req = await apiPrivateRouter.quest_progress.$post({
             json: {
@@ -135,100 +135,30 @@ async function sendQuestProgress(userId: string, progress: Array<{ id: string; d
     }
 }
 
-/**
- * Implements methods only used when the game is actually running on a server
- */
-class ServerGame extends Game {
-    override updateData() {
-        sendMsg({
-            type: ProcessMsgType.UpdateData,
-            id: this.id,
-            teamMode: this.teamMode,
-            mapName: this.mapName,
-            canJoin: this.canJoin,
-            aliveCount: this.aliveCount,
-            startedTime: this.startedTime,
-            stopped: this.stopped,
-            timeRunning: this.timeRunning,
-            livingPlayers: this.playerBarn.livingPlayers.map(p => {
-                return {
-                    id: p.__id,
-                    userId: p.userId,
-                    name: p.name,
-                    disconnected: p.disconnected,
-                };
-            }),
-        });
-        if (this.stopped) {
+const gameHooks: GameHooks = {
+    updateData(game) {
+        sendMsg({ type: ProcessMsgType.UpdateData, ...game.getData() });
+        if (game.stopped) {
             stopGame();
         }
-    }
-
-    override _saveGameToDatabase() {
+    },
+    saveGame(game) {
         // don't save games that never started
-        if (!this.started) return;
-
-        const players = this.modeManager.getPlayersSortedByRank();
-        /**
-         * teamTotal is for total teams that started the match, i hope?
-         *
-         * it also seems to be unused by the client so we could also remove it?
-         */
-        const teamTotal = new Set(players.map(({ player }) => player.teamId)).size;
-
-        const teamKills = players.reduce(
-            (acc, curr) => {
-                acc[curr.player.teamId] = (acc[curr.player.teamId] ?? 0) + curr.player.kills;
-                return acc;
-            },
-            {} as Record<string, number>,
-        );
-
-        const values: SaveGameBody["matchData"] = players.map(({ player, rank }) => {
-            return {
-                // *NOTE: userId is optional; we save the game stats for non logged users too
-                userId: player.userId,
-                region: env.REGION,
-                username: player.name,
-                playerId: player.matchDataId,
-                teamMode: this.teamMode,
-                teamCount: player.group?.players.length ?? 1,
-                teamTotal: teamTotal,
-                teamId: player.teamId,
-                timeAlive: Math.round(player.timeAlive),
-                died: player.dead,
-                kills: player.kills,
-                teamKills: teamKills[player.teamId] ?? 0,
-                damageDealt: Math.round(player.damageDealt),
-                damageTaken: Math.round(player.damageTaken),
-                killerId: player.killedBy?.matchDataId || 0,
-                gameId: this.id,
-                mapId: this.map.mapId,
-                mapSeed: this.map.seed,
-                killedIds: player.killedIds,
-                rank: rank,
-                ip: player.client.ip,
-                findGameIp: player.client.findGameIp,
-                role: player.role,
-            };
-        });
-
+        if (!game.started) return;
+        const values = game.matchData().map(row => ({ ...row, region: env.REGION }));
         // only save the game if it has more than 2 players lol
         if (values.length < 2) return;
-        saveGame(this.id, values);
-    }
-
-    override sendQuestProgress(userId: string, progress: Array<{ id: string; delta: number }>) {
-        sendQuestProgress(userId, progress);
-    }
-}
+        saveGame(game.id, values);
+    },
+    sendQuestProgress,
+};
 
 let lastMsgTime = Date.now();
 process.on("message", (msg: ProcessMsg) => {
     lastMsgTime = Date.now();
 
     if (msg.type === ProcessMsgType.Create && !game) {
-        game = new ServerGame(msg.id, msg.config, serverGameOptions(msg.id, msg.config));
+        game = new Game(msg.id, msg.config, serverGameOptions(msg.id, msg.config), gameHooks);
         gameWeakRef = new WeakRef(game);
     }
 

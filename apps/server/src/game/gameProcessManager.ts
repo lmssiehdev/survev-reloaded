@@ -1,6 +1,7 @@
 import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
-import type { SpectateTokenData } from "@survev/game/game.ts";
+import type { GameData, SpectateTokenData } from "@survev/game/game.ts";
 import type { GameMode } from "@survev/game/gameOptions.ts";
+import { type ProcessMsg, ProcessMsgType } from "@survev/game/ipcTypes.ts";
 import { getLogger } from "@survev/logger/node.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import type { TeamMode } from "@survev/shared/gameConfig.ts";
@@ -8,7 +9,6 @@ import { util } from "@survev/shared/utils/util.ts";
 import { type ChildProcess, fork } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { env } from "../env.ts";
-import { type GameData, type ProcessMsg, ProcessMsgType } from "./ipcTypes.ts";
 
 // run the source in dev, the bundled build in production
 const procFile = import.meta.filename.endsWith(".ts") ? "src/game/gameProcess.ts" : "dist/gameProcess.js";
