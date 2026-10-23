@@ -123,7 +123,10 @@ test("non-2xx is reported once and later records still ship", async () => {
     sink(rec(2));
     await sleep(5);
     expect(calls.length).toBe(2);
-    expect(lines(calls[1])[0].message).toBe("m2");
+    const second = lines(calls[1]);
+    expect(second[0].message).toBe("logger.dropped");
+    expect(second[0].dropped).toBe(1);
+    expect(second[1].message).toBe("m2");
     await sink[Symbol.asyncDispose]();
 });
 
@@ -144,4 +147,38 @@ test("asyncDispose flushes remaining records before resolving", async () => {
     sink(rec(1));
     await sink[Symbol.asyncDispose]();
     expect(f.calls.length).toBe(1);
+});
+
+test("strips trailing slashes from baseUrl", async () => {
+    const f = fakeFetch();
+    const sink = createAxiomSink({ token: "t", dataset: "ds", baseUrl: "https://eu.example.com//", fetch: f.fn });
+    sink(rec(1));
+    await sink[Symbol.asyncDispose]();
+    expect(f.calls[0].url).toBe("https://eu.example.com/v1/datasets/ds/ingest");
+});
+
+test("a hung request times out, is logged, and the next batch still ships with the loss counted", async () => {
+    let n = 0;
+    const calls: Call[] = [];
+    const fn = ((url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        if (n++ === 0) {
+            return new Promise((_, reject) =>
+                init.signal!.addEventListener("abort", () => reject(init.signal!.reason))
+            );
+        }
+        return Promise.resolve(new Response(null, { status: 200 }));
+    }) as unknown as typeof fetch;
+    const sink = createAxiomSink({ token: "t", dataset: "ds", fetch: fn, requestTimeoutMs: 20, flushIntervalMs: 15 });
+    sink(rec(1));
+    sink(rec(2));
+    await sleep(60);
+    sink(rec(3));
+    await sink[Symbol.asyncDispose]();
+    expect(errSpy).toHaveBeenCalled();
+    expect(calls.length).toBe(2);
+    const shipped = lines(calls[1]);
+    expect(shipped[0].message).toBe("logger.dropped");
+    expect(shipped[0].dropped).toBe(2);
+    expect(shipped.length).toBe(2);
 });

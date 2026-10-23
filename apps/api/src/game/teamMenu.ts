@@ -309,7 +309,7 @@ class Room {
             const token = tokenMap.get(player);
 
             if (!token) {
-                this.teamMenu.logger.warning("team.missing_token", { playerName: player.name });
+                this.teamMenu.logger.warning("team.missing_token");
                 continue;
             }
 

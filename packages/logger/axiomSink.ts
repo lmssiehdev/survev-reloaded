@@ -9,11 +9,13 @@ export type AxiomSinkOptions = {
     flushIntervalMs?: number;
     batchSize?: number;
     maxQueue?: number;
+    /** abort a request after this long, default 10000 */
+    requestTimeoutMs?: number;
 };
 
 export function createAxiomSink(opts: AxiomSinkOptions): Sink & AsyncDisposable {
     const doFetch = opts.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
-    const url = `${opts.baseUrl ?? "https://api.axiom.co"}/v1/datasets/${opts.dataset}/ingest`;
+    const url = `${(opts.baseUrl ?? "https://api.axiom.co").replace(/\/+$/, "")}/v1/datasets/${opts.dataset}/ingest`;
     const batchSize = opts.batchSize ?? 500;
     const maxQueue = opts.maxQueue ?? 10_000;
 
@@ -41,13 +43,15 @@ export function createAxiomSink(opts: AxiomSinkOptions): Sink & AsyncDisposable 
                     "Content-Type": "application/x-ndjson",
                 },
                 body: batch.map((r) => JSON.stringify(r)).join("\n"),
+                signal: AbortSignal.timeout(opts.requestTimeoutMs ?? 10_000),
             });
             if (!res.ok) {
-                dropped += droppedNow;
+                dropped += droppedNow + batch.length - (droppedNow > 0 ? 1 : 0);
+                void res.body?.cancel();
                 console.error("axiom ingest failed", res.status);
             }
         } catch (err) {
-            dropped += droppedNow;
+            dropped += droppedNow + batch.length - (droppedNow > 0 ? 1 : 0);
             console.error("axiom ingest failed", err);
         }
     }

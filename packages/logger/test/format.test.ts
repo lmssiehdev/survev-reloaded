@@ -73,3 +73,11 @@ test("recordToJson keeps colliding prop keys as prop_<key>", () => {
     expect(json.message).toBe("hello");
     expect(json.level).toBe("info");
 });
+
+test("serializeError strips the query string from path and url props", () => {
+    const err = Object.assign(new Error("boom"), { path: "https://x/y?key=secret", url: "https://x/z?key=secret" });
+    const out = serializeError(err);
+    expect(out.path).toBe("https://x/y");
+    expect(out.url).toBe("https://x/z");
+    expect(JSON.stringify(out)).not.toContain("secret");
+});

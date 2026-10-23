@@ -204,7 +204,7 @@ export class ClientBarn {
 
             const joinData = this.game.joinTokens.get(joinMsg.joinToken);
             if (!joinData || joinData.expiresAt < Date.now()) {
-                this.game.logger.warn("ws.join_token_invalid");
+                this.game.logger.info("ws.join_token_invalid");
                 socket.close("invalid_token");
                 if (joinData) {
                     this.game.joinTokens.delete(joinMsg.joinToken);

@@ -44,7 +44,12 @@ export class TickStats {
 
     summary(): TickSummary {
         if (this.n === 0) return { mean: 0, p50: 0, p99: 0, max: 0 };
-        return { mean: this.sum / this.n, p50: this.percentile(0.5), p99: this.percentile(0.99), max: this.maxMs };
+        return {
+            mean: this.sum / this.n,
+            p50: Math.min(this.percentile(0.5), this.maxMs),
+            p99: Math.min(this.percentile(0.99), this.maxMs),
+            max: this.maxMs,
+        };
     }
 
     reset(): void {
@@ -53,6 +58,20 @@ export class TickStats {
         this.sum = 0;
         this.maxMs = 0;
     }
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** flat log fields (2 decimals) for a stats window: tickCount, tickMeanMs, tickP50Ms, tickP99Ms, tickMaxMs */
+export function flatStats(prefix: "tick" | "netSync", s: TickStats) {
+    const t = s.summary();
+    return {
+        [`${prefix}Count`]: s.count,
+        [`${prefix}MeanMs`]: r2(t.mean),
+        [`${prefix}P50Ms`]: r2(t.p50),
+        [`${prefix}P99Ms`]: r2(t.p99),
+        [`${prefix}MaxMs`]: r2(t.max),
+    } as Record<`${typeof prefix}${"Count" | "MeanMs" | "P50Ms" | "P99Ms" | "MaxMs"}`, number>;
 }
 
 /** allows one hit per window; allowed hits return how many were suppressed since the previous allowed one */

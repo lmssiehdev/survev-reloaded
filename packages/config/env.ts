@@ -46,7 +46,7 @@ export const sharedEnv = parseEnv({
     AXIOM_DATASET: z.string().optional(),
     /** Axiom ingest endpoint, override to point at a regional edge or a test server */
     AXIOM_URL: z.string().url().default("https://api.axiom.co"),
-    SURVEV_ENV: z.enum(["production", "staging", "dev"]).default("dev"),
+    SURVEV_ENV: z.enum(["production", "staging", "dev"]).default(isProd ? "production" : "dev"),
     RATE_LIMITS: bool(isProd),
     /** shared by the API, game servers and bot to call each other's private routes */
     SURVEV_API_KEY: secret("dev-api-key"),
@@ -66,6 +66,8 @@ export function loggingOptions(app: AppName, region?: string): ServerLoggingOpti
         env: sharedEnv.SURVEV_ENV,
         git: GIT_VERSION,
         region,
-        axiom: AXIOM_TOKEN && AXIOM_DATASET ? { token: AXIOM_TOKEN, dataset: AXIOM_DATASET, baseUrl: AXIOM_URL } : undefined,
+        axiom: AXIOM_TOKEN && AXIOM_DATASET
+            ? { token: AXIOM_TOKEN, dataset: AXIOM_DATASET, baseUrl: AXIOM_URL }
+            : undefined,
     };
 }

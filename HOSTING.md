@@ -75,7 +75,7 @@ Every server app logs structured JSON (`LOG_FORMAT=json`, the default in product
 | `LOG_FORMAT` | `json` (production default) or `pretty` |
 | `AXIOM_TOKEN`, `AXIOM_DATASET` | logs go to Axiom only when both are set |
 | `AXIOM_URL` | ingest endpoint, default `https://api.axiom.co` |
-| `SURVEV_ENV` | `production`, `staging` or `dev`, attached to every record |
+| `SURVEV_ENV` | `production`, `staging` or `dev`, attached to every record; defaults to `production` when `NODE_ENV=production`, else `dev` |
 | `PROCESS_STATS_MS` | interval of the `process.stats` record and of its tick stats window, default 60000 |
 
 Setting up Axiom:
@@ -90,7 +90,7 @@ Create these monitors in Axiom **before deploying** this version, otherwise fail
 - any `level:fatal` record or `process.crash`
 - any `game.proc.died`
 - `http.request` with `status >= 500`, more than 10 in 5 minutes
-- `game.slow_tick`, more than 20 in 5 minutes
+- `game.slow_tick`, `sum(suppressed + 1)` more than 20 in 5 minutes (records are throttled, each one carries how many were suppressed since the previous one, so counting records undercounts)
 
 One 500 response logs both `http.request` (status 500) and `http.unhandled`, so key monitors on `http.request`.
 Axiom failures never affect the game, they are printed to stderr and the records are dropped.
@@ -101,11 +101,12 @@ Event names:
 | --- | --- |
 | `process.start`, `process.exit` | process lifecycle |
 | `process.crash` | uncaught exception or unhandled rejection, level fatal |
-| `game.proc.died` | a game process exited unexpectedly |
+| `game.proc.died` | a game process exited unexpectedly, this includes processes killed after `game.proc.unresponsive` (frozen for 10 s, killed with SIGQUIT), so the `game.proc.died` monitor covers them |
+| `game.proc.unresponsive` | the watchdog found a game process silent for 10 s and killed it, followed by `game.proc.died` |
 | `http.request` | every API request: method, route, status, durationMs |
-| `game.end` | a game ended, with its whole-game tick summary |
+| `game.end` | a game ended, with its whole-game flat tick fields: `tickCount`, `tickMeanMs`, `tickP50Ms`, `tickP99Ms`, `tickMaxMs` and the same for `netSync*` |
 | `player.leave` | a player left a game |
-| `process.stats` | periodic memory, uptime and per window tick and netSync mean, p50, p99, max |
+| `process.stats` | periodic memory and uptime; game processes add `gameId`, `alivePlayers` and the same flat `tick*` / `netSync*` fields per window |
 | `game.slow_tick`, `game.slow_netsync` | a tick or netSync over its threshold (throttled) |
 
 ## Backups

@@ -20,7 +20,9 @@ function serializeErrorAt(err: unknown, depth: number, seen: WeakSet<object>): S
     const out: SerializedError = { name: err.name, message: err.message };
     for (const [k, v] of Object.entries(err)) {
         if (k === "name" || k === "message" || k === "stack" || k === "cause") continue;
-        out[k] = serializeAt(v, depth + 1, seen);
+        out[k] = (k === "path" || k === "url") && typeof v === "string"
+            ? v.split("?")[0]
+            : serializeAt(v, depth + 1, seen);
     }
     if (err.stack !== undefined) out.stack = err.stack;
     if (err.cause !== undefined) out.cause = serializeAt(err.cause, depth + 1, seen);

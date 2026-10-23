@@ -43,3 +43,14 @@ describe("Throttle", () => {
         expect(t.hit(10001)).toBe(2);
     });
 });
+
+describe("percentile clamp", () => {
+    test("percentiles never exceed max", () => {
+        const stats = new TickStats();
+        stats.add(1.001); // bucket upper edge is 1.01
+        const s = stats.summary();
+        expect(s.p50).toBe(1.001);
+        expect(s.p99).toBe(1.001);
+        expect(s.max).toBe(1.001);
+    });
+});

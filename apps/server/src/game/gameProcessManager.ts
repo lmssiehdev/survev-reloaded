@@ -195,7 +195,7 @@ export class GameProcessManager {
                     });
                     // sigquit can dump a core of the process
                     // useful for debugging infinite loops
-                    this.killProcess(proc, "SIGQUIT");
+                    this.killProcess(proc, "SIGQUIT", false);
                     continue;
                 }
             }

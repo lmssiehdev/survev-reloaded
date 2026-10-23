@@ -22,7 +22,7 @@ import { PlayerBarn } from "./objects/player.ts";
 import { ProjectileBarn } from "./objects/projectile.ts";
 import { SmokeBarn } from "./objects/smoke.ts";
 import { Profiler } from "./profiler.ts";
-import { Throttle, TickStats } from "./tickStats.ts";
+import { flatStats, Throttle, TickStats } from "./tickStats.ts";
 
 export interface JoinTokenData {
     userId: string | null;
@@ -394,8 +394,8 @@ export class Game {
             durationMs: Date.now() - this.startedAt,
             playersPeak: this.playersPeak,
             playersTotal: this.playersTotal,
-            tick: this.tickStats.summary(),
-            netSync: this.netSyncStats.summary(),
+            ...flatStats("tick", this.tickStats),
+            ...flatStats("netSync", this.netSyncStats),
             slowTicks: this.slowTickCount,
             slowNetSyncs: this.slowNetSyncCount,
             reason: this.started && this.over ? "finished" : "stopped",

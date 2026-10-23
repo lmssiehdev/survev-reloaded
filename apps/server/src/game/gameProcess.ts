@@ -4,8 +4,14 @@ import type { SaveGameBody } from "@survev/contracts";
 import type { Client } from "@survev/game/client.ts";
 import { Game } from "@survev/game/game.ts";
 import { ClientSocket } from "@survev/game/socket.ts";
-import type { TickSummary } from "@survev/game/tickStats.ts";
-import { flushLogs, getLogger, installCrashHandlers, setupServerLogging, startProcessStats } from "@survev/logger/node.ts";
+import { flatStats } from "@survev/game/tickStats.ts";
+import {
+    flushLogs,
+    getLogger,
+    installCrashHandlers,
+    setupServerLogging,
+    startProcessStats,
+} from "@survev/logger/node.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import type { ServerWebSocket } from "bun";
 import path from "node:path";
@@ -42,7 +48,7 @@ function broadcastDisconnect(reason: GameWsDisconnectReason) {
 }
 process.on("disconnect", async () => {
     broadcastDisconnect("server_restart");
-    procLogger.info("game.proc.parent_disconnected");
+    procLogger.info("game.proc.parent_disconnected", { gameId: game?.id });
     await flushLogs();
     process.exit();
 });
@@ -54,24 +60,13 @@ process.on("uncaughtException", () => {
 });
 
 // one game per process; the windows are reset on every read, the game-lifetime stats are not
-const r2 = (n: number) => Math.round(n * 100) / 100;
-
-function flatten(prefix: string, s: TickSummary) {
-    return {
-        [`${prefix}MeanMs`]: r2(s.mean),
-        [`${prefix}P50Ms`]: r2(s.p50),
-        [`${prefix}P99Ms`]: r2(s.p99),
-        [`${prefix}MaxMs`]: r2(s.max),
-    };
-}
-
 startProcessStats(() => {
-    if (!game) return { gameId: undefined, players: 0 };
+    if (!game) return { gameId: undefined, alivePlayers: 0 };
     const stats = {
         gameId: game.id,
-        players: game.playerBarn.livingPlayers.length,
-        ...flatten("tick", game.tickWindow.summary()),
-        ...flatten("netSync", game.netSyncWindow.summary()),
+        alivePlayers: game.playerBarn.livingPlayers.length,
+        ...flatStats("tick", game.tickWindow),
+        ...flatStats("netSync", game.netSyncWindow),
     };
     game.tickWindow.reset();
     game.netSyncWindow.reset();
@@ -331,7 +326,7 @@ const app = Bun.serve({
     routes: {
         "/play": async (req, httpServer) => {
             if (!game) {
-                procLogger.warn("ws.upgrade_rejected", { reason: "no_game" });
+                procLogger.info("ws.upgrade_rejected", { reason: "no_game" });
                 return new Response();
             }
 
@@ -343,7 +338,7 @@ const app = Bun.serve({
             }
 
             if (gameHTTPRateLimit.isRateLimited(ip) || gameWsRateLimit.isIpRateLimited(ip)) {
-                game.logger.warn("ws.upgrade_rejected", { reason: "rate_limited" });
+                game.logger.info("ws.upgrade_rejected", { reason: "rate_limited" });
                 return new Response("429 Too Many Requests", { status: 429 });
             }
 
@@ -422,7 +417,7 @@ const app = Bun.serve({
                 return;
             }
             if (gameWsRateLimit.isRateLimited(data.rateLimit)) {
-                game.logger.warn("ws.message_rate_limited");
+                game.logger.info("ws.message_rate_limited");
                 socket.close(3000, "rate_limited");
                 return;
             }

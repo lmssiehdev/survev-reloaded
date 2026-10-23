@@ -19,7 +19,9 @@ export async function fetchJson<T>(
         }
         return Result.ok(await res.json() as T);
     } catch (cause) {
-        logger.warn("upstream.request_failed", { name, err: cause });
+        // bun fetch errors carry the full url in `path`, so log only these fields
+        const { name: errName, message, code } = cause as { name?: string; message?: string; code?: string };
+        logger.warn("upstream.request_failed", { name, err: { name: errName, message, code } });
         return Result.err(new UpstreamError({ message: `${name} request failed`, cause }));
     }
 }

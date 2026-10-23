@@ -112,20 +112,22 @@ async function fetchIpInfo(ip: string): Promise<IpInfo | undefined> {
     if (data.isErr()) return undefined;
 
     const res = data.value;
+    const msg: unknown = Reflect.get(res, "message");
+    const reason = typeof msg === "string" ? msg : undefined;
     switch (res.status) {
         case "ok":
         case "warning":
             if (res.status === "warning") {
-                logger.warning("proxycheck.warning", { ip });
+                logger.warning("proxycheck.warning", { reason });
             }
             if (!res[ip]?.detections) {
-                logger.warning("proxycheck.no_detections", { ip, status: res.status });
+                logger.warning("proxycheck.no_detections", { status: res.status, reason });
                 return undefined;
             }
             return res[ip];
         case "denied":
         case "error":
-            logger.warning("proxycheck.failed", { ip, status: res.status });
+            logger.warning("proxycheck.failed", { status: res.status, reason });
             return undefined;
     }
 }
