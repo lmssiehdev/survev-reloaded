@@ -1,4 +1,5 @@
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
+import { helpers } from "./helpers.ts";
 
 function createTest(region: string, { address, https }: SiteInfoRes["regions"][string]) {
     return {
@@ -166,5 +167,19 @@ export class PingTest {
             }
         }
         return zones;
+    }
+
+    /** the region to find a game in and its zones by ping, ?region= and ?zone= override them */
+    getMatchRegion(region: string) {
+        const paramRegion = helpers.getParameterByName("region");
+        if (paramRegion !== undefined && paramRegion.length > 0) {
+            region = paramRegion;
+        }
+        let zones = this.getZones(region);
+        const paramZone = helpers.getParameterByName("zone");
+        if (paramZone !== undefined && paramZone.length > 0) {
+            zones = [paramZone];
+        }
+        return { region, zones };
     }
 }

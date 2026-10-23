@@ -683,22 +683,9 @@ export class Application {
                 delay = 0;
             }
 
-            const version = GameConfig.protocolVersion;
-            let region = this.config.get("region")!;
-            const paramRegion = helpers.getParameterByName("region");
-            if (paramRegion !== undefined && paramRegion.length > 0) {
-                region = paramRegion;
-            }
-            let zones = this.pingTest.getZones(region);
-            const paramZone = helpers.getParameterByName("zone");
-            if (paramZone !== undefined && paramZone.length > 0) {
-                zones = [paramZone];
-            }
-
             const matchArgs: FindGameBody = {
-                version,
-                region,
-                zones,
+                version: GameConfig.protocolVersion,
+                ...this.pingTest.getMatchRegion(this.config.get("region")!),
                 playerCount: 1,
                 autoFill: true,
                 gameModeIdx,

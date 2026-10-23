@@ -354,21 +354,9 @@ export class TeamMenu {
 
     tryStartGame() {
         if (this.isLeader && !this.roomData.findingGame) {
-            const version = GameConfig.protocolVersion;
-            let region = this.roomData.region;
-            const paramRegion = helpers.getParameterByName("region");
-            if (paramRegion !== undefined && paramRegion.length > 0) {
-                region = paramRegion;
-            }
-            let zones = this.pingTest.getZones(region);
-            const paramZone = helpers.getParameterByName("zone");
-            if (paramZone !== undefined && paramZone.length > 0) {
-                zones = [paramZone];
-            }
             const matchArgs: TeamPlayGameMsg["data"] = {
-                version,
-                region,
-                zones,
+                version: GameConfig.protocolVersion,
+                ...this.pingTest.getMatchRegion(this.roomData.region),
             };
 
             helpers.verifyTurnstile(this.roomData.captchaEnabled, (token) => {
