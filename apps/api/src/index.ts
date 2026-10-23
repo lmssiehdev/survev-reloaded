@@ -1,5 +1,11 @@
 import { loggingOptions, sharedEnv } from "@survev/config/env.ts";
-import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging, startProcessStats } from "@survev/logger/node.ts";
+import {
+    getLogger,
+    installCrashHandlers,
+    logProcessStart,
+    setupServerLogging,
+    startProcessStats,
+} from "@survev/logger/node.ts";
 import { lt } from "drizzle-orm";
 import { websocket } from "hono/bun";
 import pkgJson from "../../../package.json" with { type: "json" };
