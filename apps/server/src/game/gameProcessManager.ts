@@ -1,51 +1,15 @@
-import { type FindGamePrivateBody, type SpectateGamePrivateBody } from "@survev/contracts";
-import type { GameData, SpectateTokenData } from "@survev/game/game.ts";
-import type { GameMode } from "@survev/game/gameOptions.ts";
-import { type ProcessMsg, ProcessMsgType } from "@survev/game/ipcTypes.ts";
+import { GameHandle, GamePool } from "@survev/game/gamePool.ts";
+import type { ProcessMsg } from "@survev/game/ipcTypes.ts";
 import { getLogger } from "@survev/logger/node.ts";
-import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
-import type { TeamMode } from "@survev/shared/gameConfig.ts";
-import { util } from "@survev/shared/utils/util.ts";
 import { type ChildProcess, fork } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { env } from "../env.ts";
 
 // run the source in dev, the bundled build in production
 const procFile = import.meta.filename.endsWith(".ts") ? "src/game/gameProcess.ts" : "dist/gameProcess.js";
 
-export enum ProcState {
-    Idle,
-    CreatingGame,
-    Running,
-}
-
-export class GameProcess {
-    process: ChildProcess;
-    port: number;
-
-    gameData: GameData = {
-        id: "",
-        teamMode: 0 as TeamMode,
-        mapName: "" as MapDefKey,
-        canJoin: false,
-        aliveCount: 0,
-        startedTime: 0,
-        stopped: false,
-        timeRunning: 0,
-        livingPlayers: [],
-    };
-
-    state = ProcState.Idle;
-
-    createdTime = Date.now();
-
-    stoppedTime = Date.now();
-    lastMsgTime = Date.now();
-
-    manager: GameProcessManager;
-
-    /** find_game requests waiting for the game to be created, called with undefined if the process dies first */
-    onCreatedCbs: Array<(_proc: typeof this | undefined) => void> = [];
+/** a child process running a GameRunner, players connect to it on its own port */
+export class GameProcess extends GameHandle {
+    readonly process: ChildProcess;
 
     /** set once the process exited, `process.killed` only means a signal was sent */
     exited = false;
@@ -53,67 +17,13 @@ export class GameProcess {
     /** set by killProcess, tells an intentional exit from a crash */
     killed = false;
 
-    avaliableSlots = 0;
-
-    reusedCount = 0;
-
-    constructor(
-        manager: GameProcessManager,
-        id: string,
-        config: GameMode,
-        port: number,
-    ) {
-        this.manager = manager;
-        this.port = port;
-
+    constructor(readonly port: number) {
+        super();
         this.process = fork(procFile, [port.toString()], {
             serialization: "advanced",
             // don't inherit the parent's runtime flags
             execArgv: [],
         });
-
-        this.process.on("message", (msg: ProcessMsg) => {
-            this._onProcessMsg(msg);
-        });
-
-        this.create(id, config);
-    }
-
-    private _onProcessMsg(msg: ProcessMsg) {
-        if (msg.type) {
-            this.lastMsgTime = Date.now();
-        }
-
-        switch (msg.type) {
-            case ProcessMsgType.UpdateData:
-                if (this.state === ProcState.CreatingGame && msg.canJoin) {
-                    this.state = ProcState.Running;
-                    for (const cb of this.onCreatedCbs) {
-                        cb(this);
-                    }
-                    this.onCreatedCbs.length = 0;
-                    if (this.reusedCount === 1) {
-                        this.manager.logger.info("game.proc.ready", {
-                            childPid: this.process.pid,
-                            port: this.port,
-                            gameId: this.gameData.id,
-                            ms: Date.now() - this.createdTime,
-                        });
-                    }
-                }
-
-                if (this.gameData.id !== msg.id) {
-                    this.manager.processById.delete(this.gameData.id);
-                    this.gameData.id = msg.id;
-                    this.manager.processById.set(this.gameData.id, this);
-                }
-                this.gameData = msg;
-                if (this.gameData.stopped) {
-                    this.stoppedTime = Date.now();
-                    this.state = ProcState.Idle;
-                }
-                break;
-        }
     }
 
     send(msg: ProcessMsg) {
@@ -121,271 +31,83 @@ export class GameProcess {
         this.process.send(msg);
     }
 
-    create(id: string, config: GameMode) {
-        this.send({
-            type: ProcessMsgType.Create,
-            id,
-            config,
-        });
-        this.gameData.id = id;
-        this.gameData.teamMode = config.teamMode;
-        this.gameData.mapName = config.mapName;
-        this.gameData.stopped = false;
-        this.state = ProcState.CreatingGame;
-
-        const mapDef = MapDefs[this.gameData.mapName as MapDefKey];
-        this.avaliableSlots = mapDef.gameMode.maxPlayers;
-
-        this.reusedCount++;
-    }
-
-    addJoinTokens(tokens: FindGamePrivateBody["playerData"], autoFill: boolean) {
-        this.send({
-            type: ProcessMsgType.AddJoinToken,
-            autoFill,
-            tokens,
-        });
-        this.avaliableSlots--;
-    }
-
-    addSpectateToken(token: string, data: SpectateTokenData) {
-        this.send({
-            type: ProcessMsgType.AddSpectateToken,
-            token,
-            data,
-        });
+    logProps() {
+        return { childPid: this.process.pid, port: this.port };
     }
 }
 
-export class GameProcessManager {
-    readonly processById = new Map<string, GameProcess>();
-    readonly processes: GameProcess[] = [];
-
-    readonly logger = getLogger(["game-server", "manager"]);
-
+export class GameProcessManager extends GamePool<GameProcess> {
     private readonly _freePorts: number[] = [];
 
-    getNextPort() {
-        return this._freePorts.shift();
-    }
-
     constructor() {
+        super(getLogger(["game-server", "manager"]));
+
         for (let i = 0; i < env.maxGames; i++) {
             this._freePorts.push(env.firstGamePort + i);
         }
 
-        // always keep some processes running even if theres no active games on them
-        // creating a new proc is more expensive than reusing one
-        const minIdleProcs = 3;
+        this.start();
+    }
 
-        setInterval(() => {
-            // copy, killProcess removes from the list
-            for (const proc of this.processes.slice()) {
-                proc.send({
-                    type: ProcessMsgType.KeepAlive,
-                });
+    protected spawn(): GameProcess | undefined {
+        const port = this._freePorts.shift();
+        if (port === undefined) return undefined;
 
-                // kill processes that didn't send a keep alive msg in 10 seconds
-                // because this usually means they are frozen in an infinite loop
-                if (Date.now() - proc.lastMsgTime > 10000) {
-                    this.logger.warn("game.proc.unresponsive", {
-                        childPid: proc.process.pid,
-                        port: proc.port,
-                        gameId: proc.gameData.id || undefined,
-                    });
-                    // sigquit can dump a core of the process
-                    // useful for debugging infinite loops
-                    this.killProcess(proc, "SIGQUIT", false);
-                    continue;
-                }
+        const proc = new GameProcess(port);
+
+        proc.process.on("message", (msg: ProcessMsg) => {
+            this.handleMsg(proc, msg);
+        });
+        proc.process.on("exit", (code, signal) => {
+            proc.exited = true;
+            const props = {
+                ...proc.logProps(),
+                code,
+                signal,
+                gameId: proc.gameData.id || undefined,
+            };
+            if (proc.killed) this.logger.info("game.proc.exit", props);
+            else this.logger.error("game.proc.died", props);
+            this.remove(proc);
+            if (!this._freePorts.includes(proc.port)) {
+                this._freePorts.push(proc.port);
             }
-
-            const idleProcs = this.processes.filter(p => {
-                return p.gameData.stopped && (Date.now() - p.stoppedTime) > 60000;
-            });
-
-            // kill stale processes if there's too many
-            if (idleProcs.length > minIdleProcs) {
-                idleProcs.sort((a, b) => a.createdTime - b.createdTime);
-
-                const procsToKill = Math.abs(minIdleProcs - idleProcs.length);
-                for (let i = 0; i < procsToKill; i++) {
-                    const proc = idleProcs[i];
-                    this.logger.info("game.proc.stale_kill", { childPid: proc.process.pid, port: proc.port });
-                    this.killProcess(proc);
-                }
+        });
+        // lost the IPC channel, the process can't be used anymore
+        proc.process.on("disconnect", () => {
+            if (!proc.killed && !proc.exited) {
+                this.logger.warn("game.proc.disconnected", proc.logProps());
             }
-        }, 5000);
-    }
-
-    getPlayerCount(): number {
-        return this.processes.reduce((a, b) => {
-            return a + b.gameData.aliveCount;
-        }, 0);
-    }
-
-    newGame(config: GameMode): GameProcess | undefined {
-        let gameProc: GameProcess | undefined;
-
-        for (let i = 0; i < this.processes.length; i++) {
-            const p = this.processes[i];
-            if (p.gameData.stopped) {
-                gameProc = p;
-                break;
-            }
-        }
-
-        const id = crypto.randomUUID();
-        if (!gameProc) {
-            const port = this.getNextPort();
-            if (port === undefined) {
-                return undefined;
-            }
-            gameProc = new GameProcess(this, id, config, port);
-
-            this.processes.push(gameProc);
-
-            const proc = gameProc;
-            proc.process.on("exit", (code, signal) => {
-                proc.exited = true;
-                const props = {
-                    childPid: proc.process.pid,
-                    port: proc.port,
-                    code,
-                    signal,
-                    gameId: proc.gameData.id || undefined,
-                };
-                if (proc.killed) this.logger.info("game.proc.exit", props);
-                else this.logger.error("game.proc.died", props);
-                this.removeProcess(proc);
-                if (!this._freePorts.includes(proc.port)) {
-                    this._freePorts.push(proc.port);
-                }
-            });
-            // lost the IPC channel, the process can't be used anymore
-            proc.process.on("disconnect", () => {
-                if (!proc.killed && !proc.exited) {
-                    this.logger.warn("game.proc.disconnected", { childPid: proc.process.pid, port: proc.port });
-                }
-                // not an intentional kill: if the process dies on its own it must still log game.proc.died
-                this.killProcess(proc, "SIGTERM", false);
-            });
-            this.logger.info("game.proc.spawn", { childPid: gameProc.process.pid, port: gameProc.port });
-        } else {
-            this.processById.delete(gameProc.gameData.id);
-            gameProc.create(id, config);
-        }
-
-        this.processById.set(id, gameProc);
-
-        return gameProc;
-    }
-
-    /** `intentional` false (lost IPC) cleans up without marking the exit as requested */
-    killProcess(gameProc: GameProcess, signal: NodeJS.Signals = "SIGTERM", intentional = true): void {
-        this.removeProcess(gameProc);
-        if (gameProc.exited) return;
-        if (intentional) gameProc.killed = true;
-
-        // send SIGTERM, if still hasn't terminated after 5 seconds, send SIGKILL >:3
-        gameProc.process.kill(signal);
-        setTimeout(() => {
-            if (!gameProc.exited) {
-                gameProc.process.kill("SIGKILL");
-            }
-        }, 5000);
-    }
-
-    /** stop routing to a process; safe to call more than once */
-    private removeProcess(gameProc: GameProcess) {
-        util.removeFrom(this.processes, gameProc);
-        if (this.processById.get(gameProc.gameData.id) === gameProc) {
-            this.processById.delete(gameProc.gameData.id);
-        }
-        for (const cb of gameProc.onCreatedCbs.splice(0)) {
-            cb(undefined);
-        }
-    }
-
-    getById(id: string): GameProcess | undefined {
-        return this.processById.get(id);
-    }
-
-    async findGame(body: FindGamePrivateBody): Promise<GameProcess | undefined> {
-        let proc: GameProcess | undefined = this.processes
-            .filter((proc) => {
-                const game = proc.gameData;
-                return (
-                    (game.canJoin || proc.state === ProcState.CreatingGame)
-                    && proc.avaliableSlots > 0
-                    && game.teamMode === body.teamMode
-                    && game.mapName === body.mapName
-                );
-            })
-            .sort((a, b) => {
-                return a.gameData.startedTime - b.gameData.startedTime;
-            })[0];
-
-        if (!proc) {
-            proc = this.newGame({
-                teamMode: body.teamMode,
-                mapName: body.mapName as MapDefKey,
-            });
-        }
-
-        if (!proc) {
-            return undefined;
-        }
-
-        // if the game has not finished creating
-        // wait for it to be created to send the find game response
-        if (proc.state !== ProcState.Running) {
-            return await new Promise((resolve) => {
-                proc.onCreatedCbs.push((proc) => {
-                    proc?.addJoinTokens(body.playerData, body.autoFill);
-                    resolve(proc);
-                });
-            });
-        }
-
-        proc.addJoinTokens(body.playerData, body.autoFill);
+            // not an intentional kill: if the process dies on its own it must still log game.proc.died
+            this.killProcess(proc, "SIGTERM", false);
+        });
+        this.logger.info("game.proc.spawn", proc.logProps());
 
         return proc;
     }
 
-    async findGamesWithPlayer(body: SpectateGamePrivateBody): Promise<{ joinToken: string; game: GameProcess }[]> {
-        const filterFn = (p: GameData["livingPlayers"][0]) => {
-            if (body.filter.type === "user_id") {
-                return p.userId === body.filter.value;
-            } else {
-                return p.name === body.filter.value;
-            }
-        };
-
-        const res = [];
-        for (const proc of this.processes) {
-            if (proc.state !== ProcState.Running) continue;
-
-            for (const player of proc.gameData.livingPlayers) {
-                if (player.disconnected) continue;
-                if (!filterFn(player)) continue;
-
-                // use slightly shorter join tokens for this...
-                // since for the discord bot long URLs make the message run out of characters kinda fast
-                const joinToken = randomBytes(16).toString("base64url");
-                proc.addSpectateToken(joinToken, {
-                    playerId: player.id,
-                    specAnon: true,
-                    noSpecCooldown: true,
-                });
-
-                res.push({
-                    joinToken,
-                    game: proc,
-                });
-            }
+    protected kill(proc: GameProcess, reason: "unresponsive" | "stale") {
+        if (reason === "unresponsive") {
+            // sigquit can dump a core of the process
+            // useful for debugging infinite loops
+            this.killProcess(proc, "SIGQUIT", false);
+        } else {
+            this.killProcess(proc);
         }
+    }
 
-        return res;
+    /** `intentional` false (lost IPC) cleans up without marking the exit as requested */
+    killProcess(proc: GameProcess, signal: NodeJS.Signals = "SIGTERM", intentional = true): void {
+        this.remove(proc);
+        if (proc.exited) return;
+        if (intentional) proc.killed = true;
+
+        // send SIGTERM, if still hasn't terminated after 5 seconds, send SIGKILL >:3
+        proc.process.kill(signal);
+        setTimeout(() => {
+            if (!proc.exited) {
+                proc.process.kill("SIGKILL");
+            }
+        }, 5000);
     }
 }
