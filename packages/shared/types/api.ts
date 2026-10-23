@@ -4,7 +4,6 @@ import type { TeamMode } from "../gameConfig.ts";
 
 export const zFindGameBody = z.object({
     region: z.string(),
-    zones: z.array(z.string()),
     version: z.number(),
     playerCount: z.number(),
     autoFill: z.boolean(),

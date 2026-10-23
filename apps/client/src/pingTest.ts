@@ -1,10 +1,8 @@
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
-import { helpers } from "./helpers.ts";
 
 function createTest(region: string, { address, https }: SiteInfoRes["regions"][string]) {
     return {
         region,
-        zone: region,
         url: address,
         https,
         ping: 9999,
@@ -122,14 +120,7 @@ export class PingTest {
             console.log("----------------------------------------");
             for (let i = 0; i < sorted.length; i++) {
                 const test = sorted[i];
-                console.log(
-                    "region",
-                    test.region,
-                    "zone  ",
-                    test.zone,
-                    "ping  ",
-                    test.ping,
-                );
+                console.log("region", test.region, "ping  ", test.ping);
             }
             this.printSummary = false;
         }
@@ -140,46 +131,11 @@ export class PingTest {
     }
 
     getRegionList() {
-        const regions: string[] = [];
-        for (let i = 0; i < this.tests.length; i++) {
-            const region = this.tests[i].region;
-            if (!regions.includes(region)) {
-                regions.push(region);
-            }
-        }
-        return regions;
+        return this.tests.map((test) => test.region);
     }
 
+    /** the region with the lowest ping */
     getRegion() {
-        this.tests.sort((a, b) => {
-            return a.ping - b.ping;
-        });
-        return this.tests[0].region;
-    }
-
-    getZones(region: string) {
-        const sorted = this.tests.sort((a, b) => a.ping - b.ping);
-        const zones = [];
-        for (let i = 0; i < sorted.length; i++) {
-            const s = sorted[i];
-            if (s.region == region) {
-                zones.push(s.zone);
-            }
-        }
-        return zones;
-    }
-
-    /** the region to find a game in and its zones by ping, ?region= and ?zone= override them */
-    getMatchRegion(region: string) {
-        const paramRegion = helpers.getParameterByName("region");
-        if (paramRegion !== undefined && paramRegion.length > 0) {
-            region = paramRegion;
-        }
-        let zones = this.getZones(region);
-        const paramZone = helpers.getParameterByName("zone");
-        if (paramZone !== undefined && paramZone.length > 0) {
-            zones = [paramZone];
-        }
-        return { region, zones };
+        return this.tests.reduce((best, test) => (test.ping < best.ping ? test : best)).region;
     }
 }

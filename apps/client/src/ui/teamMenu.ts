@@ -356,7 +356,7 @@ export class TeamMenu {
         if (this.isLeader && !this.roomData.findingGame) {
             const matchArgs: TeamPlayGameMsg["data"] = {
                 version: GameConfig.protocolVersion,
-                ...this.pingTest.getMatchRegion(this.roomData.region),
+                region: helpers.getParameterByName("region") || this.roomData.region,
             };
 
             helpers.verifyTurnstile(this.roomData.captchaEnabled, (token) => {

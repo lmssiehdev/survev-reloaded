@@ -685,7 +685,8 @@ export class Application {
 
             const matchArgs: FindGameBody = {
                 version: GameConfig.protocolVersion,
-                ...this.pingTest.getMatchRegion(this.config.get("region")!),
+                // ?region= picks the region by hand, for testing a server
+                region: helpers.getParameterByName("region") || this.config.get("region")!,
                 playerCount: 1,
                 autoFill: true,
                 gameModeIdx,
