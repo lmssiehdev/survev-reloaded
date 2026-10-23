@@ -3,6 +3,7 @@ export type SerializedError = {
     message: string;
     stack?: string;
     cause?: SerializedError | unknown;
+    [key: string]: unknown;
 };
 
 const MAX_DEPTH = 6;
@@ -17,6 +18,10 @@ function serializeErrorAt(err: unknown, depth: number, seen: WeakSet<object>): S
     }
     seen.add(err);
     const out: SerializedError = { name: err.name, message: err.message };
+    for (const [k, v] of Object.entries(err)) {
+        if (k === "name" || k === "message" || k === "stack" || k === "cause") continue;
+        out[k] = serializeAt(v, depth + 1, seen);
+    }
     if (err.stack !== undefined) out.stack = err.stack;
     if (err.cause !== undefined) out.cause = serializeAt(err.cause, depth + 1, seen);
     seen.delete(err);
@@ -29,7 +34,7 @@ function serializeAt(value: unknown, depth: number, seen: WeakSet<object>): unkn
     if (seen.has(value)) return "[Circular]";
     if (depth > MAX_DEPTH) return "[MaxDepth]";
     if (value instanceof Error) return serializeErrorAt(value, depth, seen);
-    if (value instanceof Date) return value.toISOString();
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? "Invalid Date" : value.toISOString();
 
     seen.add(value);
     let out: unknown;

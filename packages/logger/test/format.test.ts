@@ -44,3 +44,14 @@ test("recordToJson flattens the record", () => {
     expect(json.err.message).toBe("boom");
     expect(Number.isNaN(new Date(json._time).getTime())).toBe(false);
 });
+
+test("serializeValue does not throw on an invalid Date", () => {
+    expect(serializeValue({ d: new Date("nope") })).toEqual({ d: "Invalid Date" });
+});
+
+test("serializeError keeps own enumerable properties", () => {
+    const s = serializeError(Object.assign(new Error("x"), { code: "23505", detail: "dup" })) as any;
+    expect(s.code).toBe("23505");
+    expect(s.detail).toBe("dup");
+    expect(s.message).toBe("x");
+});
