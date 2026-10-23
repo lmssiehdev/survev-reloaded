@@ -1,0 +1,17 @@
+{
+  "name": "@survev/logger",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./*"
+  },
+  "scripts": {
+    "typecheck": "bun check"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  },
+  "dependencies": {
+    "@logtape/logtape": "^2.4.1"
+  }
+}

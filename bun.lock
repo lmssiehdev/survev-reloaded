@@ -123,6 +123,15 @@
         "@types/bun": "^1.4.3",
       },
     },
+    "packages/logger": {
+      "name": "@survev/logger",
+      "dependencies": {
+        "@logtape/logtape": "^2.4.1",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.3",
+      },
+    },
     "packages/shared": {
       "name": "@survev/shared",
       "dependencies": {
@@ -318,6 +327,8 @@
 
     "@js-temporal/polyfill": ["@js-temporal/polyfill@0.5.1", "", { "dependencies": { "jsbi": "^4.3.0" } }, "sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ=="],
 
+    "@logtape/logtape": ["@logtape/logtape@2.4.1", "", {}, "sha512-faEZkjQf5pI8WsnCXbpBInC9SeWqYUNAtLviTLkCI3JLHFkV1bKrfxbIJc96TVqqVjSUz8LYtX0JWKdiBwEpCg=="],
+
     "@noble/ciphers": ["@noble/ciphers@2.4.0", "", {}, "sha512-AnjFn0Jv92laAkvMrghlFZq4qQCIN/4DxFV/eooqtC2YTjB7kBeLMS2T9KJX4Dn+ZVXLOwK0lSgqDtx9gvxtiw=="],
 
     "@noble/hashes": ["@noble/hashes@2.4.0", "", {}, "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA=="],
@@ -473,6 +484,8 @@
     "@survev/contracts": ["@survev/contracts@workspace:packages/contracts"],
 
     "@survev/game": ["@survev/game@workspace:packages/game"],
+
+    "@survev/logger": ["@survev/logger@workspace:packages/logger"],
 
     "@survev/server": ["@survev/server@workspace:apps/server"],
 
