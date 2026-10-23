@@ -45,7 +45,7 @@ For Discord login also set `DISCORD_CLIENT_ID` / `DISCORD_SECRET_ID` (redirect U
 | `apiServer` / `gameServer` `proxyIPHeader` | `PROXY_IP_HEADER` (set by compose) |
 | `proxies.<host>.apiUrl` | `VITE_API_URL`, logins come from the API |
 | `cachingEnabled` | `REDIS_URL` (set by compose) |
-| `rateLimitsEnabled`, `logging`, `errorLoggingWebhook` | `RATE_LIMITS`, `LOG_LEVEL` / `LOG_DATE`, `ERROR_WEBHOOK_URL` |
+| `rateLimitsEnabled`, `logging` | `RATE_LIMITS`, `LOG_LEVEL` |
 | `discordGuildId` / `discordRoleId` | `DISCORD_GUILD_ID` / `DISCORD_ROLE_ID` |
 | `modes`, `clientTheme`, `captchaEnabled` | the database (`/private`), changes made there before are kept |
 

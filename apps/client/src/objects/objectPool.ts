@@ -1,7 +1,6 @@
 import type { BitStream } from "@survev/shared/net/net.ts";
 import { type ObjectData, type ObjectsPartialData, ObjectType } from "@survev/shared/net/objectSerializeFns.ts";
 import { assert } from "@survev/shared/utils/util.ts";
-import { errorLogManager } from "../errorLogs.ts";
 import type { Ctx } from "../game.ts";
 
 export abstract class AbstractObject {
@@ -90,13 +89,6 @@ export class Creator {
     m_getTypeById(id: number, s: BitStream) {
         const obj = this.m_getObjById(id);
         if (!obj) {
-            const err = {
-                id,
-                ids: Object.keys(this.m_idToObj),
-                stream: [...s.view.view],
-            };
-            errorLogManager.logError("getTypeById", err);
-            errorLogManager.storeGeneric("objectPoolErr", "getTypeById");
             return ObjectType.Invalid;
         }
         return obj.__type;
@@ -127,7 +119,6 @@ export class Creator {
         if (obj) {
             obj.m_updateData(data, false, false, ctx);
         } else {
-            errorLogManager.storeGeneric("objectPoolErr", "updateObjPart");
             console.error("updateObjPart, missing object", id);
         }
     }
@@ -136,7 +127,6 @@ export class Creator {
         const obj = this.m_getObjById(id);
         if (obj === undefined) {
             console.error("deleteObj, missing object", id);
-            errorLogManager.storeGeneric("objectPoolErr", "deleteObj");
         } else {
             this.m_types[obj.__type].m_free(obj);
             delete this.m_idToObj[id];

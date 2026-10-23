@@ -45,15 +45,10 @@ export const sharedEnv = parseEnv({
     AXIOM_TOKEN: z.string().optional(),
     AXIOM_DATASET: z.string().optional(),
     SURVEV_ENV: z.enum(["production", "staging", "dev"]).default("dev"),
-    /** off when the log collector adds its own timestamps (journalctl) */
-    LOG_DATE: bool(true),
-    /** discord webhooks errors are posted to */
-    ERROR_WEBHOOK_URL: z.string().optional(),
-    CLIENT_ERROR_WEBHOOK_URL: z.string().optional(),
     RATE_LIMITS: bool(isProd),
     /** shared by the API, game servers and bot to call each other's private routes */
     SURVEV_API_KEY: secret("dev-api-key"),
-    /** this game server's region id, also shown on error webhooks */
+    /** this game server's region id */
     REGION: z.string().min(1).default("local"),
     /** interval of the process.stats log line in ms, lower it to see them sooner in dev */
     PROCESS_STATS_MS: int(60000),

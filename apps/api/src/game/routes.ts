@@ -1,5 +1,4 @@
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
-import { logErrorToWebhook } from "@survev/config/utils/logger.ts";
 import { HTTPRateLimit } from "@survev/config/utils/rateLimit.ts";
 import { type FindGameResponse, type SiteInfoRes, zFindGameBody } from "@survev/shared/types/api.ts";
 import { Hono } from "hono";
@@ -107,25 +106,4 @@ export const GameRouter = new Hono()
                 urls: data.urls,
             },
         });
-    })
-    .post("/report_error", rateLimitMiddleware(5, 60 * 1000), async (c) => {
-        const content = await c.req.json();
-
-        let stackTrace: string | undefined;
-        if (
-            typeof content.data === "object"
-            && "stacktrace" in content.data
-            && typeof content.data.stacktrace === "string"
-            && content.data.stacktrace
-        ) {
-            stackTrace = `### Stacktrace:\n \`\`\`${content.data.stacktrace.replaceAll("`", "\\`")}\`\`\``;
-            delete content.data.stacktrace;
-        }
-
-        if (stackTrace) {
-            logErrorToWebhook("client", content, stackTrace);
-        } else {
-            logErrorToWebhook("client", content);
-        }
-        return c.json({ success: true }, 200);
     });

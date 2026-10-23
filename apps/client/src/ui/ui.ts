@@ -15,7 +15,6 @@ import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import { device } from "../device.ts";
-import { errorLogManager } from "../errorLogs.ts";
 import type { Game } from "../game.ts";
 import { type Gas, GasRenderer, GasSafeZoneRenderer } from "../gas.ts";
 import { helpers } from "../helpers.ts";
@@ -764,17 +763,6 @@ export class UiManager {
         // Update team UI elements
         const groupId = playerBarn.getPlayerInfo(player.__id).groupId;
         const groupInfo = playerBarn.getGroupInfo(groupId);
-
-        if (!groupInfo) {
-            const err = {
-                playerId: player.__id,
-                groupId,
-                spectating: this.spectating,
-                playing: this.game.m_playingTicker,
-                groupInfo: playerBarn.groupInfo,
-            };
-            errorLogManager.logError("badTeamInfo_1", err);
-        }
 
         const layoutSm = device.uiLayout == device.UiLayout.Sm;
         const groupPlayerCount = groupInfo.playerIds.length;
