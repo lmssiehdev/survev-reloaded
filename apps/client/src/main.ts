@@ -36,6 +36,8 @@ import { loadStaticDomImages } from "./ui/ui2.ts";
 
 export class Application {
     nameInput = $("#player-name-input-solo");
+    /** `?local`, dev only: no API, games run in this page */
+    offline = IS_DEV && new URLSearchParams(window.location.search).has("local");
     serverSelect = $("#server-select-main");
     playMode0Btn = $("#btn-start-mode-0");
     playMode1Btn = $("#btn-start-mode-1");
@@ -155,7 +157,9 @@ export class Application {
                 this.updateLogoBasedOnLanguage(language);
             }
             this.localization.populateLanguageSelect();
-            this.siteInfo.load().then(() => {
+            // offline there's no API to ask, so the page shows only what works without it
+            (this.offline ? Promise.resolve() : this.siteInfo.load()).then(() => {
+                this.siteInfo.updatePageFromInfo();
                 this.pingTest.setRegions(this.siteInfo.info.regions ?? {});
                 this.startPingTest();
                 this.updateLoginSupport();
@@ -694,8 +698,7 @@ export class Application {
 
             const tryQuickStartGameImpl = () => {
                 this.waitOnAccount(() => {
-                    // `?local`, dev only: run the game in this page instead of on a game server
-                    if (IS_DEV && new URLSearchParams(window.location.search).has("local")) {
+                    if (this.offline) {
                         this.joinLocalGame(gameModeIdx);
                         return;
                     }
@@ -782,8 +785,7 @@ export class Application {
     async joinLocalGame(gameModeIdx: number) {
         // loaded on demand, keeps the game code out of the main bundle
         const { connectLocalGame } = await import("./localGame.ts");
-        const modes = this.siteInfo.loaded ? this.siteInfo.info.modes : defaultPlayModes;
-        const { mapName, teamMode } = modes[gameModeIdx];
+        const { mapName, teamMode } = defaultPlayModes[gameModeIdx];
         const joinToken = crypto.randomUUID();
         this.game!.joinWith(
             () => connectLocalGame({ mapName, teamMode }, joinToken),

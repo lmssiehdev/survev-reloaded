@@ -41,8 +41,6 @@ export class SiteInfo {
                 $("<option>", { value: region, text: name, "data-l10n": l10n, "data-label": name }).appendTo(selector);
             }
         }
-
-        this.updatePageFromInfo();
     }
 
     getGameModeStyles() {
@@ -65,7 +63,13 @@ export class SiteInfo {
         return availableModes;
     }
 
+    /** also when site_info isn't there, so what needs the API hides */
     updatePageFromInfo() {
+        const regions = this.loaded ? Object.keys(this.info.regions) : [];
+        $("#server-select-main").toggle(regions.length > 0);
+        const supportsTeam = this.loaded && this.info.modes.some((s) => s.enabled && s.teamMode > 1);
+        $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
+
         if (this.loaded) {
             const getGameModeStyles = this.getGameModeStyles();
             for (let i = 0; i < getGameModeStyles.length; i++) {
@@ -100,9 +104,6 @@ export class SiteInfo {
 
                 btn.toggle(style.enabled);
             }
-            const supportsTeam = this.info.modes.some((s) => s.enabled && s.teamMode > 1);
-            $("#btn-join-team, #btn-create-team").toggle(supportsTeam);
-
             const players = this.localization.translate("index-players");
             for (const [region, { playerCount }] of Object.entries(this.info.regions)) {
                 const sel = $("#server-opts").children(`option[value="${region}"]`);
