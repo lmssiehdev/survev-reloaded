@@ -67,3 +67,5 @@ Temporary Items
 *.vsix
 
 todo.md
+
+.wrangler/
