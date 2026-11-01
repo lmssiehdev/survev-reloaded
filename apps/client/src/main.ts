@@ -34,14 +34,16 @@ import { ProfileUi } from "./ui/profileUi.ts";
 import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 
+/** marks the offline button as pending in `quickPlayPendingModeIdx`, it isn't a mode the server knows */
+const offlineModeIdx = 3;
+
 export class Application {
     nameInput = $("#player-name-input-solo");
-    /** `?local`, dev only: no API, games run in this page */
-    offline = IS_DEV && new URLSearchParams(window.location.search).has("local");
     serverSelect = $("#server-select-main");
     playMode0Btn = $("#btn-start-mode-0");
     playMode1Btn = $("#btn-start-mode-1");
     playMode2Btn = $("#btn-start-mode-2");
+    playOfflineBtn = $("#btn-play-offline");
     muteBtns = $(".btn-sound-toggle");
     aimLineBtn = $("#btn-game-aim-line");
     masterSliders = $<HTMLInputElement>(".sl-master-volume");
@@ -157,8 +159,7 @@ export class Application {
                 this.updateLogoBasedOnLanguage(language);
             }
             this.localization.populateLanguageSelect();
-            // offline there's no API to ask, so the page shows only what works without it
-            (this.offline ? Promise.resolve() : this.siteInfo.load()).then(() => {
+            this.siteInfo.load().then(() => {
                 this.siteInfo.updatePageFromInfo();
                 this.pingTest.setRegions(this.siteInfo.info.regions ?? {});
                 this.startPingTest();
@@ -185,6 +186,9 @@ export class Application {
                 SDK.requestMidGameAd(() => {
                     this.tryQuickStartGame(2);
                 });
+            });
+            this.playOfflineBtn.on("click", () => {
+                this.playOffline();
             });
 
             this.serverSelect.on("change", () => {
@@ -621,6 +625,7 @@ export class Application {
         updateButton(this.playMode0Btn, 0);
         updateButton(this.playMode1Btn, 1);
         updateButton(this.playMode2Btn, 2);
+        updateButton(this.playOfflineBtn, offlineModeIdx);
     }
 
     waitOnAccount(cb: () => void) {
@@ -698,10 +703,6 @@ export class Application {
 
             const tryQuickStartGameImpl = () => {
                 this.waitOnAccount(() => {
-                    if (this.offline) {
-                        this.joinLocalGame(gameModeIdx);
-                        return;
-                    }
                     this.findGame(matchArgs, {
                         error: (err) => {
                             this.onJoinGameError(err);
@@ -782,16 +783,25 @@ export class Application {
         );
     }
 
-    async joinLocalGame(gameModeIdx: number) {
-        // loaded on demand, keeps the game code out of the main bundle
-        const { connectLocalGame } = await import("./localGame.ts");
-        const { mapName, teamMode } = defaultPlayModes[gameModeIdx];
-        const joinToken = crypto.randomUUID();
-        this.game!.joinWith(
-            () => connectLocalGame({ mapName, teamMode }, joinToken),
-            joinToken,
-            () => this.onJoinGameError("join_game_failed"),
-        );
+    /** the game runs in this page, so there's no region or matchmaking to go through */
+    async playOffline() {
+        if (this.quickPlayPendingModeIdx !== -1) return;
+        this.errorMessage = "";
+        this.quickPlayPendingModeIdx = offlineModeIdx;
+        this.setConfigFromDOM();
+        this.refreshUi();
+
+        const onFail = () => this.onJoinGameError("join_game_failed");
+        try {
+            // loaded on demand, keeps the game code out of the main bundle
+            const { connectLocalGame } = await import("./localGame.ts");
+            const { mapName, teamMode } = defaultPlayModes[0];
+            const joinToken = crypto.randomUUID();
+            this.game!.joinWith(() => connectLocalGame({ mapName, teamMode }, joinToken), joinToken, onFail);
+        } catch (err) {
+            console.error("Failed to start offline game", err);
+            onFail();
+        }
     }
 
     joinGame(matchData: FindGameMatchData) {

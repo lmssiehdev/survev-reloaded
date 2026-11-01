@@ -65,6 +65,7 @@ export class SiteInfo {
 
     /** also when site_info isn't there, so what needs the API hides */
     updatePageFromInfo() {
+        $("#btn-start-mode-0, #btns-quick-start").toggle(this.loaded);
         const regions = this.loaded ? Object.keys(this.info.regions) : [];
         $("#server-select-main").toggle(regions.length > 0);
         const supportsTeam = this.loaded && this.info.modes.some((s) => s.enabled && s.teamMode > 1);
