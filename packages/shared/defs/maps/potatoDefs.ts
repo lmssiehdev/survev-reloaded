@@ -46,7 +46,6 @@ const mapDef: PartialMapDef = {
         particles: { camera: "falling_potato" },
     },
     gameMode: { maxPlayers: 80, potatoMode: true },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -235,6 +234,5 @@ const mapDef: PartialMapDef = {
         ],
         importantSpawns: ["club_complex_01"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 export const Potato = util.mergeDeep({}, Main, mapDef) as MapDef;

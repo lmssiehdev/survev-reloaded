@@ -63,7 +63,6 @@ export const Main: MapDef = {
         maxPlayers: 80,
         killLeaderEnabled: true,
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -954,7 +953,6 @@ export const Main: MapDef = {
         spawnReplacements: [{}],
         importantSpawns: ["club_complex_01"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export type PartialMapDef = DeepPartial<MapDef>;

@@ -97,7 +97,6 @@ const mapDef: PartialMapDef = {
         potatoMode: true,
         factions: 2,
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             crates: [
@@ -379,7 +378,6 @@ const mapDef: PartialMapDef = {
             "shilo_01",
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const FactionPotato = util.mergeDeep({}, Faction, mapDef) as MapDef;

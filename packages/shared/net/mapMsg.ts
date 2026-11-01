@@ -105,7 +105,6 @@ export class MapMsg implements AbstractMsg {
     groundPatches: GroundPatch[] = [];
 
     serialize(s: BitStream) {
-        /* STRIP_FROM_PROD_CLIENT:START */
         s.writeString(this.mapName, Constants.MapNameMaxLen);
         s.writeUint32(this.seed);
         s.writeUint16(this.width);
@@ -128,7 +127,6 @@ export class MapMsg implements AbstractMsg {
         s.writeArray(this.groundPatches, 8, (obj) => {
             serializeMapGroundPatch(s, obj);
         });
-        /* STRIP_FROM_PROD_CLIENT:END */
     }
 
     deserialize(s: BitStream) {

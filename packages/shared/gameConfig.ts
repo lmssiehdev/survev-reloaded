@@ -242,7 +242,6 @@ export const GameConfig = {
         minSpawnRad: 25,
         perkModeRoleSelectDuration: 20,
 
-        /* STRIP_FROM_PROD_CLIENT:START */
         defaultItems: {
             weapons: [
                 { type: "", ammo: 0 },
@@ -284,7 +283,6 @@ export const GameConfig = {
                 "15xscope": 0,
             },
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
     },
     defaultEmoteLoadout: [
         "emote_happyface",
