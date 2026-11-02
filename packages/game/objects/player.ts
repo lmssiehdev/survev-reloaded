@@ -2917,6 +2917,7 @@ export class Player extends BaseGameObject {
         // drop loot
         //
 
+        this.weaponManager.setCurWeapIndex(GameConfig.WeaponSlot.Melee);
         for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
             const weap = this.weapons[i];
             if (!weap.type) continue;
@@ -2939,7 +2940,6 @@ export class Player extends BaseGameObject {
                     break;
             }
         }
-        this.weaponManager.setCurWeapIndex(GameConfig.WeaponSlot.Melee);
 
         for (const item of Object.keys(this.invManager.items) as InventoryItem[]) {
             // const def = GameObjectDefs[item] as AmmoDef | HealDef;
