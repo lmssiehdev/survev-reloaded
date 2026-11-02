@@ -354,11 +354,15 @@ export class Bullet {
 
     update(dt: number): void {
         const posOld = v2.copy(this.pos);
-        const distLeft = this.distance - v2.length(v2.sub(this.startPos, this.pos));
+        // inlined v2.length(v2.sub(...)) and v2.add(v2.mul(...)), same float ops without temporaries
+        const dx = this.startPos.x - this.pos.x;
+        const dy = this.startPos.y - this.pos.y;
+        const distLeft = this.distance - Math.sqrt(dx * dx + dy * dy);
         const moveDist = math.min(distLeft, dt * this.speed);
         this.distanceTraveled += moveDist;
 
-        v2.set(this.pos, v2.add(this.pos, v2.mul(this.dir, moveDist)));
+        this.pos.x = this.pos.x + this.dir.x * moveDist;
+        this.pos.y = this.pos.y + this.dir.y * moveDist;
 
         const map = this.bulletManager.game.map;
         if (!coldet.testPointAabb(this.pos, map.bounds.min, map.bounds.max)) {

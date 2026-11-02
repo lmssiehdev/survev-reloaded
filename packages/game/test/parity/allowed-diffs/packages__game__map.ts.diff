@@ -1,11 +1,16 @@
 # Map generation is untouched; only Config/logging plumbing differs.
 # hunk 1 (@@ -7,7 +7,6 @@): imports: Config replaced by game.options (options objects instead of Config)
 # hunk 2 (@@ -20,7 +19,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
-# hunk 3 (@@ -265,8 +263,7 @@): logging via GameLogger: map gen step timing as structured event
-# hunk 4 (@@ -315,7 +312,7 @@): logging via GameLogger: map seed as structured event
-# hunk 5 (@@ -872,9 +869,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
-# hunk 6 (@@ -1234,7 +1229,7 @@): logging via GameLogger: spawn failure message
-# hunk 7 (@@ -2142,8 +2137,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
+# hunk 3 (@@ -207,6 +205,8 @@): perf: shoreCoords field, terrain.shore as flat x,y pairs for the hot shore point-in-polygon checks
+# hunk 4 (@@ -265,8 +265,7 @@): logging via GameLogger: map gen step timing as structured event
+# hunk 5 (@@ -315,7 +314,7 @@): logging via GameLogger: map seed as structured event
+# hunk 6 (@@ -364,6 +363,7 @@): perf: build shoreCoords once right after terrain generation (terrain.shore never changes afterwards)
+# hunk 7 (@@ -872,9 +872,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
+# hunk 8 (@@ -1234,7 +1232,7 @@): logging via GameLogger: spawn failure message
+# hunk 9 (@@ -2142,8 +2140,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
+# hunk 10 (@@ -2275,14 +2274,29 @@): perf: clampToMapBounds inlines math.v2Clamp without temporary vectors, same comparisons and results
+# hunk 11 (@@ -2368,7 +2382,7 @@): perf: shore point-in-polygon check on shoreCoords (math.pointInsidePolygonCoords, same float ops)
+# hunk 12 (@@ -2442,7 +2456,7 @@): perf: shore point-in-polygon check on shoreCoords (math.pointInsidePolygonCoords, same float ops)
 --- upstream/server/src/game/map.ts
 +++ fork/packages/game/map.ts
 @@ -7,7 +7,6 @@ import type { Player } from "server/src/game/objects/player.ts";
@@ -24,7 +29,16 @@
  import { type AABB, coldet, type Collider } from "shared/utils/coldet.ts";
  import { type MapDef, MapDefs } from "shared/defs/mapDefs.ts";
  import { v2, type Vec2 } from "shared/utils/v2.ts";
-@@ -265,8 +263,7 @@ export class GameMap {
+@@ -207,6 +205,8 @@ export class GameMap {
+     seed!: number;
+     msg!: net.MapMsg;
+     terrain!: ReturnType<typeof generateTerrain>;
++    /** terrain.shore as flat x, y pairs for the hot point-in-polygon checks */
++    shoreCoords!: Float64Array;
+     riverDescs!: Array<
+         MapRiverData & {
+             noRiverObjs: boolean;
+@@ -265,8 +265,7 @@ export class GameMap {
          const now = performance.now();
          const old = this.loggingTimes.pop();
  
@@ -34,7 +48,7 @@
      }
  
      constructor(game: Game) {
-@@ -315,7 +312,7 @@ export class GameMap {
+@@ -315,7 +314,7 @@ export class GameMap {
  
      init(seed?: number) {
          this.seed = seed ?? util.randomInt(0, 2 ** 32 - 1);
@@ -43,7 +57,15 @@
  
          this.obstacles = [];
          this.dynamicObstacles = [];
-@@ -872,9 +869,7 @@ export class GameMap {
+@@ -364,6 +363,7 @@ export class GameMap {
+             this.riverDescs,
+             this.seed,
+         );
++        this.shoreCoords = math.flattenPolygon(this.terrain.shore);
+         this.timerEnd("Generating terrain");
+ 
+         this.normalRivers = [];
+@@ -872,9 +872,7 @@ export class GameMap {
                      this.genAuto(bridge.type, bridge.pos, 0, bridge.ori);
                  }
              } else {
@@ -54,7 +76,7 @@
                  this.loggingTimes.length = 0;
                  this.init();
                  return false;
-@@ -1234,7 +1229,7 @@ export class GameMap {
+@@ -1234,7 +1232,7 @@ export class GameMap {
              }
              attempts++;
          }
@@ -63,7 +85,7 @@
          return false;
      }
  
-@@ -2142,8 +2137,9 @@ export class GameMap {
+@@ -2142,8 +2140,9 @@ export class GameMap {
      }
  
      getSpawnPos(group?: Group, team?: Team): Vec2 {
@@ -75,3 +97,59 @@
          }
  
          let getPos: () => Vec2;
+@@ -2275,14 +2274,29 @@ export class GameMap {
+     }
+ 
+     clampToMapBounds(pos: Vec2, rad = 0) {
+-        v2.set(
+-            pos,
+-            math.v2Clamp(
+-                pos,
+-                v2.create(rad, rad),
+-                v2.create(this.width - rad, this.height - rad),
+-            ),
+-        );
++        // inlined math.v2Clamp(pos, (rad, rad), (width - rad, height - rad)) without temporaries
++        const hiX = this.width - rad;
++        const hiY = this.height - rad;
++        let minX: number;
++        let maxX: number;
++        let minY: number;
++        let maxY: number;
++        if (rad > hiX) {
++            minX = hiX;
++            maxX = rad;
++        } else {
++            minX = rad;
++            maxX = hiX;
++        }
++        if (rad > hiY) {
++            minY = hiY;
++            maxY = rad;
++        } else {
++            minY = rad;
++            maxY = hiY;
++        }
++        pos.x = pos.x < maxX ? (pos.x > minX ? pos.x : minX) : maxX;
++        pos.y = pos.y < maxY ? (pos.y > minY ? pos.y : minY) : maxY;
+     }
+ 
+     getGroundSurface(pos: Vec2, layer: number) {
+@@ -2368,7 +2382,7 @@ export class GameMap {
+                 onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
+             );
+         }
+-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
++        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
+             return groundSurface("sand");
+         }
+         return groundSurface("water");
+@@ -2442,7 +2456,7 @@ export class GameMap {
+             }
+         }
+ 
+-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
++        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
+             return false;
+         }
+ 

@@ -18,11 +18,10 @@ export type Collider = Circle | AABB;
 
 export const coldet = {
     circleToAabb(pos: Vec2, rad: number): AABB {
-        const extent = v2.create(rad);
         return {
             type: 1,
-            min: v2.sub(pos, extent),
-            max: v2.add(pos, extent),
+            min: { x: pos.x - rad, y: pos.y - rad },
+            max: { x: pos.x + rad, y: pos.y + rad },
         };
     },
 
@@ -147,11 +146,10 @@ export const coldet = {
     },
 
     testCircleAabb(pos: Vec2, rad: number, min: Vec2, max: Vec2) {
-        const cpt = v2.create(
-            math.clamp(pos.x, min.x, max.x),
-            math.clamp(pos.y, min.y, max.y),
-        );
-        const dstSqr = v2.lengthSqr(v2.sub(pos, cpt));
+        // scalar form of v2.lengthSqr(v2.sub(pos, clamped pos)), same float ops
+        const dx = pos.x - math.clamp(pos.x, min.x, max.x);
+        const dy = pos.y - math.clamp(pos.y, min.y, max.y);
+        const dstSqr = dx * dx + dy * dy;
         return (
             dstSqr < rad * rad
             || (pos.x >= min.x && pos.x <= max.x && pos.y >= min.y && pos.y <= max.y)
@@ -160,7 +158,9 @@ export const coldet = {
 
     testCircleCircle(pos0: Vec2, rad0: number, pos1: Vec2, rad1: number) {
         const rad = rad0 + rad1;
-        return v2.lengthSqr(v2.sub(pos1, pos0)) < rad * rad;
+        const dx = pos1.x - pos0.x;
+        const dy = pos1.y - pos0.y;
+        return dx * dx + dy * dy < rad * rad;
     },
 
     testAabbAabb(min0: Vec2, max0: Vec2, min1: Vec2, max1: Vec2) {
@@ -354,12 +354,14 @@ export const coldet = {
 
     intersectCircleCircle(pos0: Vec2, rad0: number, pos1: Vec2, rad1: number) {
         const r = rad0 + rad1;
-        const toP1 = v2.sub(pos1, pos0);
-        const distSqr = v2.lengthSqr(toP1);
+        // scalar form of v2.sub / v2.lengthSqr / v2.div, same float ops without temporaries
+        const toX = pos1.x - pos0.x;
+        const toY = pos1.y - pos0.y;
+        const distSqr = toX * toX + toY * toY;
         if (distSqr < r * r) {
             const dist = Math.sqrt(distSqr);
             return {
-                dir: dist > 0.00001 ? v2.div(toP1, dist) : v2.create(1.0, 0.0),
+                dir: dist > 0.00001 ? { x: toX / dist, y: toY / dist } : v2.create(1.0, 0.0),
                 pen: r - dist,
             };
         }
@@ -367,34 +369,33 @@ export const coldet = {
     },
 
     intersectAabbCircle(min: Vec2, max: Vec2, pos: Vec2, rad: number) {
+        // scalar form of the v2 math below, same float ops without temporaries
         if (pos.x >= min.x && pos.x <= max.x && pos.y >= min.y && pos.y <= max.y) {
-            const e = v2.mul(v2.sub(max, min), 0.5);
-            const c = v2.add(min, e);
-            const p = v2.sub(pos, c);
-            const xp = Math.abs(p.x) - e.x - rad;
-            const yp = Math.abs(p.y) - e.y - rad;
+            const ex = (max.x - min.x) * 0.5;
+            const ey = (max.y - min.y) * 0.5;
+            const px = pos.x - (min.x + ex);
+            const py = pos.y - (min.y + ey);
+            const xp = Math.abs(px) - ex - rad;
+            const yp = Math.abs(py) - ey - rad;
             if (xp > yp) {
                 return {
-                    dir: v2.create(p.x > 0.0 ? 1.0 : -1.0, 0.0),
+                    dir: v2.create(px > 0.0 ? 1.0 : -1.0, 0.0),
                     pen: -xp,
                 };
             }
             return {
-                dir: v2.create(0.0, p.y > 0.0 ? 1.0 : -1.0),
+                dir: v2.create(0.0, py > 0.0 ? 1.0 : -1.0),
                 pen: -yp,
             };
         }
-        const cpt = v2.create(
-            math.clamp(pos.x, min.x, max.x),
-            math.clamp(pos.y, min.y, max.y),
-        );
-        const dir = v2.sub(pos, cpt);
+        const dirX = pos.x - math.clamp(pos.x, min.x, max.x);
+        const dirY = pos.y - math.clamp(pos.y, min.y, max.y);
 
-        const dstSqr = v2.lengthSqr(dir);
+        const dstSqr = dirX * dirX + dirY * dirY;
         if (dstSqr < rad * rad) {
             const dst = Math.sqrt(dstSqr);
             return {
-                dir: dst > 0.0001 ? v2.div(dir, dst) : v2.create(1.0, 0.0),
+                dir: dst > 0.0001 ? { x: dirX / dst, y: dirY / dst } : v2.create(1.0, 0.0),
                 pen: rad - dst,
             };
         }

@@ -1,0 +1,41 @@
+# hunk 1 (@@ -275,6 +275,37 @@): perf: additive helpers flattenPolygon / pointInsidePolygonCoords (pointInsidePolygon on a Float64Array, same float ops)
+--- upstream/shared/utils/math.ts
++++ fork/packages/shared/utils/math.ts
+@@ -275,6 +275,37 @@ export const math = {
+         return inside;
+     },
+ 
++    /** polygon as flat x, y pairs, for pointInsidePolygonCoords */
++    flattenPolygon(poly: Vec2[]) {
++        const coords = new Float64Array(poly.length * 2);
++        for (let i = 0; i < poly.length; i++) {
++            coords[i * 2] = poly[i].x;
++            coords[i * 2 + 1] = poly[i].y;
++        }
++        return coords;
++    },
++
++    /** pointInsidePolygon on a flattenPolygon result, same float ops */
++    pointInsidePolygonCoords(x: number, y: number, coords: Float64Array) {
++        let inside = false;
++        const n = coords.length;
++        if (n === 0) return inside;
++        let xj = coords[n - 2];
++        let yj = coords[n - 1];
++        for (let i = 0; i < n; i += 2) {
++            const xi = coords[i];
++            const yi = coords[i + 1];
++
++            const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
++            if (intersect) {
++                inside = !inside;
++            }
++            xj = xi;
++            yj = yi;
++        }
++        return inside;
++    },
++
+     distToSegmentSq(p: Vec2, a: Vec2, b: Vec2) {
+         const ab = v2.sub(b, a);
+         const c = v2.dot(v2.sub(p, a), ab) / v2.dot(ab, ab);

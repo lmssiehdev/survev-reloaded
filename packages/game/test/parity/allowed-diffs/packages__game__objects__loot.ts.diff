@@ -1,4 +1,6 @@
 # hunk 1 (@@ -106,7 +106,7 @@): logging via GameLogger: invalid loot type warning
+# hunk 2 (@@ -337,17 +337,25 @@): perf: sleep check and velocity integration inline v2.eq/v2.mul/v2.add without temporaries, same float ops
+# hunk 3 (@@ -381,13 +389,9 @@): perf: collision push inlines v2.add(pos, v2.mul(dir, pen + 0.001)) as scalars, same float ops
 --- upstream/server/src/game/objects/loot.ts
 +++ fork/packages/game/objects/loot.ts
 @@ -106,7 +106,7 @@ export class LootBarn {
@@ -10,3 +12,50 @@
              return;
          }
  
+@@ -337,17 +337,25 @@ export class Loot extends BaseGameObject {
+ 
+         // make loots "sleep" if they are not moving
+         // `forceUpdate` is set when obstacles around the loot change their colliders
++        // inlined v2.eq, without the temporary zero vector
+         const shouldUpdate = this.forceUpdate
+-            || !v2.eq(this.vel, v2.create(0, 0), 0.01)
+-            || !v2.eq(this.lastClientPos, this.pos, 0.01);
++            || !(Math.abs(this.vel.x) <= 0.01 && Math.abs(this.vel.y) <= 0.01)
++            || !(
++                Math.abs(this.lastClientPos.x - this.pos.x) <= 0.01
++                && Math.abs(this.lastClientPos.y - this.pos.y) <= 0.01
++            );
+ 
+         if (!shouldUpdate) {
+             return;
+         }
+         this.forceUpdate = false;
+ 
+-        v2.set(this.vel, v2.mul(this.vel, 1 / (1 + dt * 2.5)));
+-        v2.set(this.pos, v2.add(this.pos, v2.mul(this.vel, dt)));
++        // inlined v2.mul / v2.add, same float ops without temporary vectors
++        const velScale = 1 / (1 + dt * 2.5);
++        this.vel.x = this.vel.x * velScale;
++        this.vel.y = this.vel.y * velScale;
++        this.pos.x = this.pos.x + this.vel.x * dt;
++        this.pos.y = this.pos.y + this.vel.y * dt;
+ 
+         const originalLayer = this.layer;
+ 
+@@ -381,13 +389,9 @@ export class Loot extends BaseGameObject {
+                         this.rad,
+                     );
+                     if (collision) {
+-                        v2.set(
+-                            this.pos,
+-                            v2.add(
+-                                this.pos,
+-                                v2.mul(collision.dir, collision.pen + 0.001),
+-                            ),
+-                        );
++                        const push = collision.pen + 0.001;
++                        this.pos.x = this.pos.x + collision.dir.x * push;
++                        this.pos.y = this.pos.y + collision.dir.y * push;
+                     }
+                     break;
+                 }

@@ -51,8 +51,8 @@ export const collider = {
         if (c.type === collider.Type.Aabb) {
             return collider.createAabb(c.min, c.max);
         }
-        const aabb = coldet.circleToAabb(c.pos, c.rad);
-        return collider.createAabb(aabb.min, aabb.max);
+        // circleToAabb already returns a fresh aabb, no need to copy it
+        return coldet.circleToAabb(c.pos, c.rad);
     },
 
     copy<T extends Collider>(c: T): T {

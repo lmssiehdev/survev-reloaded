@@ -205,6 +205,8 @@ export class GameMap {
     seed!: number;
     msg!: net.MapMsg;
     terrain!: ReturnType<typeof generateTerrain>;
+    /** terrain.shore as flat x, y pairs for the hot point-in-polygon checks */
+    shoreCoords!: Float64Array;
     riverDescs!: Array<
         MapRiverData & {
             noRiverObjs: boolean;
@@ -361,6 +363,7 @@ export class GameMap {
             this.riverDescs,
             this.seed,
         );
+        this.shoreCoords = math.flattenPolygon(this.terrain.shore);
         this.timerEnd("Generating terrain");
 
         this.normalRivers = [];
@@ -2271,14 +2274,29 @@ export class GameMap {
     }
 
     clampToMapBounds(pos: Vec2, rad = 0) {
-        v2.set(
-            pos,
-            math.v2Clamp(
-                pos,
-                v2.create(rad, rad),
-                v2.create(this.width - rad, this.height - rad),
-            ),
-        );
+        // inlined math.v2Clamp(pos, (rad, rad), (width - rad, height - rad)) without temporaries
+        const hiX = this.width - rad;
+        const hiY = this.height - rad;
+        let minX: number;
+        let maxX: number;
+        let minY: number;
+        let maxY: number;
+        if (rad > hiX) {
+            minX = hiX;
+            maxX = rad;
+        } else {
+            minX = rad;
+            maxX = hiX;
+        }
+        if (rad > hiY) {
+            minY = hiY;
+            maxY = rad;
+        } else {
+            minY = rad;
+            maxY = hiY;
+        }
+        pos.x = pos.x < maxX ? (pos.x > minX ? pos.x : minX) : maxX;
+        pos.y = pos.y < maxY ? (pos.y > minY ? pos.y : minY) : maxY;
     }
 
     getGroundSurface(pos: Vec2, layer: number) {
@@ -2364,7 +2382,7 @@ export class GameMap {
                 onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
             );
         }
-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
+        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
             return groundSurface("sand");
         }
         return groundSurface("water");
@@ -2438,7 +2456,7 @@ export class GameMap {
             }
         }
 
-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
+        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
             return false;
         }
 

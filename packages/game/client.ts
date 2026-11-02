@@ -632,12 +632,19 @@ export class Client {
         const extendedRadius = 1.1 * radius;
         const radiusSquared = extendedRadius * extendedRadius;
 
+        // inlined v2.lengthSqr(v2.sub(...)), same float ops without temporary vectors
+        const playerX = player.pos.x;
+        const playerY = player.pos.y;
         const bullets = game.bulletBarn.newBullets;
         for (let i = 0; i < bullets.length; i++) {
             const bullet = bullets[i];
+            const sx = bullet.pos.x - playerX;
+            const sy = bullet.pos.y - playerY;
+            const ex = bullet.clientEndPos.x - playerX;
+            const ey = bullet.clientEndPos.y - playerY;
             if (
-                v2.lengthSqr(v2.sub(bullet.pos, player.pos)) < radiusSquared
-                || v2.lengthSqr(v2.sub(bullet.clientEndPos, player.pos)) < radiusSquared
+                sx * sx + sy * sy < radiusSquared
+                || ex * ex + ey * ey < radiusSquared
                 || coldet.intersectSegmentCircle(
                     bullet.pos,
                     bullet.clientEndPos,
@@ -652,7 +659,9 @@ export class Client {
         for (let i = 0; i < game.explosionBarn.newExplosions.length; i++) {
             const explosion = game.explosionBarn.newExplosions[i];
             const rad = explosion.rad + extendedRadius;
-            if (v2.lengthSqr(v2.sub(explosion.pos, player.pos)) < rad * rad) {
+            const dx = explosion.pos.x - playerX;
+            const dy = explosion.pos.y - playerY;
+            if (dx * dx + dy * dy < rad * rad) {
                 updateMsg.explosions.push(explosion);
             }
         }
