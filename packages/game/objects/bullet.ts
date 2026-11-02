@@ -60,6 +60,9 @@ export interface BulletParams {
     distanceMult?: number;
 }
 
+/** reused result of the per-tick collision query; collisions are resolved after the loop */
+const collisionObjs: GameObject[] = [];
+
 export class BulletBarn {
     bullets: Bullet[] = [];
     newBullets: Bullet[] = [];
@@ -420,6 +423,7 @@ export class Bullet {
         const objects = this.bulletManager.game.grid.intersectLineSegment(
             posOld,
             this.pos,
+            collisionObjs,
         );
 
         for (let i = 0; i < objects.length; i++) {

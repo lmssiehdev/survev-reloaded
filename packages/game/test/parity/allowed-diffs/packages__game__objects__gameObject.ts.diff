@@ -1,9 +1,37 @@
-# hunk 1 (@@ -208,9 +208,7 @@): logging via GameLogger: uninitialized partial serialize warning
-# hunk 2 (@@ -230,9 +228,7 @@): logging via GameLogger: uninitialized full serialize warning
-# hunk 3 (@@ -320,7 +316,7 @@): logging via GameLogger: double destroy warning
+# hunk 1 (@@ -69,6 +69,7 @@): perf: grid resolves cell ids through ObjectRegister.idToObj
+# hunk 2 (@@ -133,6 +134,8 @@): perf: unregister drops an object still on the grid (only if updated after destroy) so freed ids never linger in grid cells
+# hunk 3 (@@ -175,7 +178,6 @@): perf: __gridQueryId replaced by the grid's per-id query stamp
+# hunk 4 (@@ -208,9 +210,7 @@): logging via GameLogger: uninitialized partial serialize warning
+# hunk 5 (@@ -230,9 +230,7 @@): logging via GameLogger: uninitialized full serialize warning
+# hunk 6 (@@ -320,7 +318,7 @@): logging via GameLogger: double destroy warning
 --- upstream/server/src/game/objects/gameObject.ts
 +++ fork/packages/game/objects/gameObject.ts
-@@ -208,9 +208,7 @@ export abstract class BaseGameObject {
+@@ -69,6 +69,7 @@ export class ObjectRegister {
+         for (let i = 0; i < MAX_ID; i++) {
+             this.idToObj[i] = null;
+         }
++        grid.idToObj = this.idToObj;
+ 
+         const preAllocIds = (type: ObjectType, amount: number) => {
+             this.freeLists[type] = new Array(amount);
+@@ -133,6 +134,8 @@ export class ObjectRegister {
+             this.objects[obj.__arrayIdx] = lastObj;
+             lastObj.__arrayIdx = obj.__arrayIdx;
+         }
++        // the grid stores ids; an object updated after destroy() must not leave a stale one behind
++        if (obj.__onGrid) this.grid.remove(obj);
+         this.idToObj[obj.__id] = null;
+ 
+         this.freeId(obj.__type, obj.__id);
+@@ -175,7 +178,6 @@ export abstract class BaseGameObject {
+ 
+     __gridBounds = { min: v2.create(-1, -1), max: v2.create(-1, -1) };
+     __onGrid = false;
+-    __gridQueryId = 0;
+     abstract bounds: AABB;
+ 
+     readonly game: Game;
+@@ -208,9 +210,7 @@ export abstract class BaseGameObject {
  
      serializePartial(): void {
          if (!this.initialized) {
@@ -14,7 +42,7 @@
              return;
          }
          assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
-@@ -230,9 +228,7 @@ export abstract class BaseGameObject {
+@@ -230,9 +230,7 @@ export abstract class BaseGameObject {
  
      serializeFull(): void {
          if (!this.initialized) {
@@ -25,7 +53,7 @@
              return;
          }
          assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
-@@ -320,7 +316,7 @@ export abstract class BaseGameObject {
+@@ -320,7 +318,7 @@ export abstract class BaseGameObject {
      destroyed = false;
      destroy() {
          if (this.destroyed) {

@@ -1,19 +1,29 @@
 # Map generation is untouched; only Config/logging plumbing differs.
-# hunk 1 (@@ -7,7 +7,6 @@): imports: Config replaced by game.options (options objects instead of Config)
-# hunk 2 (@@ -20,7 +19,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
-# hunk 3 (@@ -207,6 +205,8 @@): perf: shoreCoords field, terrain.shore as flat x,y pairs for the hot shore point-in-polygon checks
-# hunk 4 (@@ -265,8 +265,7 @@): logging via GameLogger: map gen step timing as structured event
-# hunk 5 (@@ -315,7 +314,7 @@): logging via GameLogger: map seed as structured event
-# hunk 6 (@@ -364,6 +363,7 @@): perf: build shoreCoords once right after terrain generation (terrain.shore never changes afterwards)
-# hunk 7 (@@ -872,9 +872,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
-# hunk 8 (@@ -1234,7 +1232,7 @@): logging via GameLogger: spawn failure message
-# hunk 9 (@@ -2142,8 +2140,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
-# hunk 10 (@@ -2275,14 +2274,29 @@): perf: clampToMapBounds inlines math.v2Clamp without temporary vectors, same comparisons and results
-# hunk 11 (@@ -2368,7 +2382,7 @@): perf: shore point-in-polygon check on shoreCoords (math.pointInsidePolygonCoords, same float ops)
-# hunk 12 (@@ -2442,7 +2456,7 @@): perf: shore point-in-polygon check on shoreCoords (math.pointInsidePolygonCoords, same float ops)
+# hunk 1 (@@ -1,13 +1,13 @@): imports: Config replaced by game.options (options objects instead of Config); GameObject type for reused grid query arrays
+# hunk 2 (@@ -20,7 +20,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
+# hunk 3 (@@ -176,6 +175,10 @@): perf: reused result arrays for the single-cell surface grid queries
+# hunk 4 (@@ -207,6 +210,8 @@): perf: shore polygon as flat coords for the hot point-in-polygon checks
+# hunk 5 (@@ -265,8 +270,7 @@): logging via GameLogger: map gen step timing as structured event
+# hunk 6 (@@ -315,7 +319,7 @@): logging via GameLogger: map seed as structured event
+# hunk 7 (@@ -364,6 +368,7 @@): perf: shore polygon flattened once after terrain generation
+# hunk 8 (@@ -872,9 +877,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
+# hunk 9 (@@ -1234,7 +1237,7 @@): logging via GameLogger: spawn failure message
+# hunk 10 (@@ -2142,8 +2145,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
+# hunk 11 (@@ -2275,14 +2279,29 @@): perf: clampToMapBounds inlined (same clamp arithmetic as math.v2Clamp)
+# hunk 12 (@@ -2290,7 +2309,7 @@): perf: getGroundSurface grid query fills a reused array; same objects, same order
+# hunk 13 (@@ -2368,7 +2387,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
+# hunk 14 (@@ -2376,7 +2395,7 @@): perf: isOnWater grid query fills a reused array; same objects, same order
+# hunk 15 (@@ -2442,7 +2461,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
 --- upstream/server/src/game/map.ts
 +++ fork/packages/game/map.ts
-@@ -7,7 +7,6 @@ import type { Player } from "server/src/game/objects/player.ts";
+@@ -1,13 +1,13 @@
+ import * as net from "shared/net/net.ts";
+ import type { BuildingDef } from "shared/defs/mapObjects/buildings/buildingDefs.ts";
+ import type { Game } from "server/src/game/game.ts";
++import type { GameObject } from "server/src/game/objects/gameObject.ts";
+ import type { Group, Team } from "server/src/game/group.ts";
+ import type { ObstacleDef } from "shared/defs/mapObjects/obstacles/obstacleDefs.ts";
+ import type { Player } from "server/src/game/objects/player.ts";
  import type { River } from "shared/utils/river.ts";
  import type { StructureDef } from "shared/defs/mapObjects/structureDefs.ts";
  import { Building } from "server/src/game/objects/building.ts";
@@ -21,7 +31,7 @@
  import { GameConfig, MapId, TeamMode } from "shared/gameConfig.ts";
  import { MapObjectDefs } from "shared/defs/register.ts";
  import { MsgStream, MsgType } from "shared/net/net.ts";
-@@ -20,7 +19,6 @@ import { collider } from "shared/utils/collider.ts";
+@@ -20,7 +20,6 @@ import { collider } from "shared/utils/collider.ts";
  import { generateTerrain, type MapRiverData } from "shared/utils/terrainGen.ts";
  import { mapHelpers } from "shared/utils/mapHelpers.ts";
  import { math } from "shared/utils/math.ts";
@@ -29,7 +39,18 @@
  import { type AABB, coldet, type Collider } from "shared/utils/coldet.ts";
  import { type MapDef, MapDefs } from "shared/defs/mapDefs.ts";
  import { v2, type Vec2 } from "shared/utils/v2.ts";
-@@ -207,6 +205,8 @@ export class GameMap {
+@@ -176,6 +175,10 @@ export class MapGrid<T extends GridCollider = GridCollider> {
+     }
+ }
+ 
++/** reused results of the single-cell surface queries; their loops never re-enter */
++const groundSurfaceObjs: GameObject[] = [];
++const onWaterObjs: GameObject[] = [];
++
+ export class GameMap {
+     game: Game;
+ 
+@@ -207,6 +210,8 @@ export class GameMap {
      seed!: number;
      msg!: net.MapMsg;
      terrain!: ReturnType<typeof generateTerrain>;
@@ -38,7 +59,7 @@
      riverDescs!: Array<
          MapRiverData & {
              noRiverObjs: boolean;
-@@ -265,8 +265,7 @@ export class GameMap {
+@@ -265,8 +270,7 @@ export class GameMap {
          const now = performance.now();
          const old = this.loggingTimes.pop();
  
@@ -48,7 +69,7 @@
      }
  
      constructor(game: Game) {
-@@ -315,7 +314,7 @@ export class GameMap {
+@@ -315,7 +319,7 @@ export class GameMap {
  
      init(seed?: number) {
          this.seed = seed ?? util.randomInt(0, 2 ** 32 - 1);
@@ -57,7 +78,7 @@
  
          this.obstacles = [];
          this.dynamicObstacles = [];
-@@ -364,6 +363,7 @@ export class GameMap {
+@@ -364,6 +368,7 @@ export class GameMap {
              this.riverDescs,
              this.seed,
          );
@@ -65,7 +86,7 @@
          this.timerEnd("Generating terrain");
  
          this.normalRivers = [];
-@@ -872,9 +872,7 @@ export class GameMap {
+@@ -872,9 +877,7 @@ export class GameMap {
                      this.genAuto(bridge.type, bridge.pos, 0, bridge.ori);
                  }
              } else {
@@ -76,7 +97,7 @@
                  this.loggingTimes.length = 0;
                  this.init();
                  return false;
-@@ -1234,7 +1232,7 @@ export class GameMap {
+@@ -1234,7 +1237,7 @@ export class GameMap {
              }
              attempts++;
          }
@@ -85,7 +106,7 @@
          return false;
      }
  
-@@ -2142,8 +2140,9 @@ export class GameMap {
+@@ -2142,8 +2145,9 @@ export class GameMap {
      }
  
      getSpawnPos(group?: Group, team?: Team): Vec2 {
@@ -97,7 +118,7 @@
          }
  
          let getPos: () => Vec2;
-@@ -2275,14 +2274,29 @@ export class GameMap {
+@@ -2275,14 +2279,29 @@ export class GameMap {
      }
  
      clampToMapBounds(pos: Vec2, rad = 0) {
@@ -135,7 +156,16 @@
      }
  
      getGroundSurface(pos: Vec2, layer: number) {
-@@ -2368,7 +2382,7 @@ export class GameMap {
+@@ -2290,7 +2309,7 @@ export class GameMap {
+             return { type, river };
+         };
+ 
+-        const objs = this.game.grid.intersectPos(pos);
++        const objs = this.game.grid.intersectPos(pos, groundSurfaceObjs);
+ 
+         // Check decals
+         for (let i = 0; i < objs.length; i++) {
+@@ -2368,7 +2387,7 @@ export class GameMap {
                  onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
              );
          }
@@ -144,7 +174,16 @@
              return groundSurface("sand");
          }
          return groundSurface("water");
-@@ -2442,7 +2456,7 @@ export class GameMap {
+@@ -2376,7 +2395,7 @@ export class GameMap {
+ 
+     // like getGroundSurface but optimized for water
+     isOnWater(pos: Vec2, layer: number) {
+-        const objs = this.game.grid.intersectPos(pos);
++        const objs = this.game.grid.intersectPos(pos, onWaterObjs);
+ 
+         let surface = null;
+         let zIdx = 0;
+@@ -2442,7 +2461,7 @@ export class GameMap {
              }
          }
  

@@ -18,6 +18,7 @@ import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "./game.ts";
 import type { Group, Team } from "./group.ts";
 import { Building } from "./objects/building.ts";
+import type { GameObject } from "./objects/gameObject.ts";
 import { Obstacle } from "./objects/obstacle.ts";
 import type { Player } from "./objects/player.ts";
 import { Structure } from "./objects/structure.ts";
@@ -173,6 +174,10 @@ export class MapGrid<T extends GridCollider = GridCollider> {
         };
     }
 }
+
+/** reused results of the single-cell surface queries; their loops never re-enter */
+const groundSurfaceObjs: GameObject[] = [];
+const onWaterObjs: GameObject[] = [];
 
 export class GameMap {
     game: Game;
@@ -2304,7 +2309,7 @@ export class GameMap {
             return { type, river };
         };
 
-        const objs = this.game.grid.intersectPos(pos);
+        const objs = this.game.grid.intersectPos(pos, groundSurfaceObjs);
 
         // Check decals
         for (let i = 0; i < objs.length; i++) {
@@ -2390,7 +2395,7 @@ export class GameMap {
 
     // like getGroundSurface but optimized for water
     isOnWater(pos: Vec2, layer: number) {
-        const objs = this.game.grid.intersectPos(pos);
+        const objs = this.game.grid.intersectPos(pos, onWaterObjs);
 
         let surface = null;
         let zIdx = 0;

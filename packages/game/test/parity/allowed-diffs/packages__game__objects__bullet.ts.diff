@@ -1,7 +1,19 @@
-# hunk 1 (@@ -354,11 +354,15 @@): perf: bullet step inlines v2.length(v2.sub(...)) and v2.add(v2.mul(...)) as scalars, same float ops
+# hunk 1 (@@ -60,6 +60,9 @@): perf: reused result array for the bullet collision grid query (collisions resolved after the loop)
+# hunk 2 (@@ -354,11 +357,15 @@): perf: bullet distance/move inlined (same float ops as v2.length/v2.sub/v2.add/v2.mul)
+# hunk 3 (@@ -416,6 +423,7 @@): perf: bullet collision grid query fills the reused array; same objects, same order
 --- upstream/server/src/game/objects/bullet.ts
 +++ fork/packages/game/objects/bullet.ts
-@@ -354,11 +354,15 @@ export class Bullet {
+@@ -60,6 +60,9 @@ export interface BulletParams {
+     distanceMult?: number;
+ }
+ 
++/** reused result of the per-tick collision query; collisions are resolved after the loop */
++const collisionObjs: GameObject[] = [];
++
+ export class BulletBarn {
+     bullets: Bullet[] = [];
+     newBullets: Bullet[] = [];
+@@ -354,11 +357,15 @@ export class Bullet {
  
      update(dt: number): void {
          const posOld = v2.copy(this.pos);
@@ -19,3 +31,11 @@
  
          const map = this.bulletManager.game.map;
          if (!coldet.testPointAabb(this.pos, map.bounds.min, map.bounds.max)) {
+@@ -416,6 +423,7 @@ export class Bullet {
+         const objects = this.bulletManager.game.grid.intersectLineSegment(
+             posOld,
+             this.pos,
++            collisionObjs,
+         );
+ 
+         for (let i = 0; i < objects.length; i++) {

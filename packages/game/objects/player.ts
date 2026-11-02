@@ -74,6 +74,9 @@ const moveQueryCircle = collider.createCircle(v2.create(0, 0), 0);
 const moveCollidingObstacles: Obstacle[] = [];
 
 const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
+
+/** reused result of the movement collision query; the loop using it never re-enters */
+const moveCollideObjs: GameObject[] = [];
 {
     const boostBreakPoints = GameConfig.player.boostBreakpoints;
     const max = GameConfig.player.boostBreakpoints.reduce((a, b) => a + b, 0);
@@ -1985,7 +1988,7 @@ export class Player extends BaseGameObject {
         circle.pos.y = this.pos.y;
         circle.rad = GameConfig.player.maxVisualRadius * this.scale + this.speed * dt;
 
-        const objs = this.game.grid.intersectCollider(circle);
+        const objs = this.game.grid.intersectCollider(circle, moveCollideObjs);
 
         // the obstacle filter doesn't change between steps, so run it once (same order)
         const colliding = moveCollidingObstacles;

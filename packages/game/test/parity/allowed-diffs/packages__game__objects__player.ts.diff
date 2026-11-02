@@ -1,14 +1,14 @@
 # hunk 1 (@@ -10,7 +10,6 @@): imports: Config replaced by game.options (options objects instead of Config)
-# hunk 2 (@@ -53,6 +52,11 @@): perf: module scratch circle and obstacle list for the movement query; never stored, list emptied after use
-# hunk 3 (@@ -98,11 +102,7 @@): options objects instead of Config: defaultItems field initializer moves into the constructor (needs this.game.options)
-# hunk 4 (@@ -116,6 +116,11 @@): options objects instead of Config: same pure mergeDeep of GameConfig defaults with game.options.defaultItems, before bagSizes as upstream
-# hunk 5 (@@ -155,7 +160,7 @@): options objects instead of Config: uniqueInGameNames
-# hunk 6 (@@ -215,7 +220,9 @@): logging via GameLogger: join event; playersTotal/playersPeak counters feed the game.end log only
-# hunk 7 (@@ -781,6 +788,7 @@): joinedAt timestamp, only read by the player.leave log
-# hunk 8 (@@ -1365,7 +1373,7 @@): options objects instead of Config: debug.allowBots
-# hunk 9 (@@ -1924,16 +1932,20 @@): perf: velocity integration and zero checks inline v2.eq/v2.mul/v2.add without temporaries, same float ops
-# hunk 10 (@@ -1946,41 +1958,49 @@): perf: movement query uses the scratch circle (grid only reads it); obstacle filter hoisted out of the step loop (invariant, same order); position updates inlined as scalars, same float ops
-# hunk 11 (@@ -4373,7 +4393,7 @@): options objects instead of Config: debug.allowEditMsg
+# hunk 2 (@@ -53,7 +52,15 @@): perf: module-level scratch collider/lists for the movement collision query (never stored, emptied after use)
+# hunk 3 (@@ -98,11 +105,7 @@): options objects instead of Config: defaultItems field initializer moves into the constructor (needs this.game.options)
+# hunk 4 (@@ -116,6 +119,11 @@): options objects instead of Config: same pure mergeDeep of GameConfig defaults with game.options.defaultItems, before bagSizes as upstream
+# hunk 5 (@@ -155,7 +163,7 @@): options objects instead of Config: uniqueInGameNames
+# hunk 6 (@@ -215,7 +223,9 @@): logging via GameLogger: join event; playersTotal/playersPeak counters feed the game.end log only
+# hunk 7 (@@ -781,6 +791,7 @@): joinedAt timestamp, only read by the player.leave log
+# hunk 8 (@@ -1365,7 +1376,7 @@): options objects instead of Config: debug.allowBots
+# hunk 9 (@@ -1924,16 +1935,20 @@): perf: velocity decay inlined (same float ops as v2.eq/v2.mul/v2.add, no temporaries)
+# hunk 10 (@@ -1946,41 +1961,49 @@): perf: movement step inlined, scratch query circle, obstacle filter hoisted out of the step loop (same obstacles, same order) with a reused grid result array
+# hunk 11 (@@ -4373,7 +4396,7 @@): options objects instead of Config: debug.allowEditMsg
 --- upstream/server/src/game/objects/player.ts
 +++ fork/packages/game/objects/player.ts
 @@ -10,7 +10,6 @@ import type { RoleDef } from "shared/defs/gameObjects/roleDefs.ts";
@@ -19,7 +19,7 @@
  import { EmotesDefs } from "shared/defs/gameObjects/emoteDefs.ts";
  import { GameObjectDefs } from "shared/defs/register.ts";
  import { Group, Team } from "server/src/game/group.ts";
-@@ -53,6 +52,11 @@ interface Emote {
+@@ -53,7 +52,15 @@ interface Emote {
  
  type FabricateThrowable = keyof typeof PerkProperties["fabricate"]["weights"];
  
@@ -29,9 +29,13 @@
 +const moveCollidingObstacles: Obstacle[] = [];
 +
  const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
++
++/** reused result of the movement collision query; the loop using it never re-enters */
++const moveCollideObjs: GameObject[] = [];
  {
      const boostBreakPoints = GameConfig.player.boostBreakpoints;
-@@ -98,11 +102,7 @@ export class PlayerBarn {
+     const max = GameConfig.player.boostBreakpoints.reduce((a, b) => a + b, 0);
+@@ -98,11 +105,7 @@ export class PlayerBarn {
      playerStatusTicker = 0;
      playerStatusRate = 0;
  
@@ -44,7 +48,7 @@
  
      bagSizes: (typeof GameConfig)["bagSizes"];
  
-@@ -116,6 +116,11 @@ export class PlayerBarn {
+@@ -116,6 +119,11 @@ export class PlayerBarn {
      factionsMvp?: Player = undefined;
  
      constructor(readonly game: Game) {
@@ -56,7 +60,7 @@
          this.bagSizes = util.mergeDeep<typeof GameConfig["bagSizes"]>(
              {},
              GameConfig.bagSizes,
-@@ -155,7 +160,7 @@ export class PlayerBarn {
+@@ -155,7 +163,7 @@ export class PlayerBarn {
          const originalName = validateUserName(joinMsg.name).validName;
          let finalName = originalName;
  
@@ -65,7 +69,7 @@
              let count = 0;
              const loggedOutPlayers = this.game.playerBarn.players.filter(
                  (p) => !p.client.userId,
-@@ -215,7 +220,9 @@ export class PlayerBarn {
+@@ -215,7 +223,9 @@ export class PlayerBarn {
              player.roleMenuTicker = GameConfig.player.perkModeRoleSelectDuration + 5;
          }
  
@@ -76,7 +80,7 @@
  
          this.newPlayers.push(player);
          this.game.objectRegister.register(player);
-@@ -781,6 +788,7 @@ export class Player extends BaseGameObject {
+@@ -781,6 +791,7 @@ export class Player extends BaseGameObject {
      layer: number;
      aimLayer = 0;
      dead = false;
@@ -84,7 +88,7 @@
      downed = false;
  
      downedCount = 0;
-@@ -1365,7 +1373,7 @@ export class Player extends BaseGameObject {
+@@ -1365,7 +1376,7 @@ export class Player extends BaseGameObject {
          this.name = name;
          this.client = client;
          this.isMobile = isMobile;
@@ -93,7 +97,7 @@
  
          this.questManager.quests = (questIds ?? []).map((id) => ({
              id,
-@@ -1924,16 +1932,20 @@ export class Player extends BaseGameObject {
+@@ -1924,16 +1935,20 @@ export class Player extends BaseGameObject {
  
          v2.set(this.posOld, this.pos);
  
@@ -118,7 +122,7 @@
              this.recalculateSpeed(hasTreeClimbing);
              steps = Math.round(math.max(this.speed * dt + 5, 5));
  
-@@ -1946,41 +1958,49 @@ export class Player extends BaseGameObject {
+@@ -1946,41 +1961,49 @@ export class Player extends BaseGameObject {
              this.speed = 0;
              steps = 1;
          }
@@ -138,7 +142,8 @@
 +        circle.pos.y = this.pos.y;
 +        circle.rad = GameConfig.player.maxVisualRadius * this.scale + this.speed * dt;
  
-         const objs = this.game.grid.intersectCollider(circle);
+-        const objs = this.game.grid.intersectCollider(circle);
++        const objs = this.game.grid.intersectCollider(circle, moveCollideObjs);
  
 -        for (let i = 0; i < steps; i++) {
 -            v2.set(this.pos, v2.add(this.pos, v2.mul(movement, speedToAdd)));
@@ -187,7 +192,7 @@
  
          this.mapIndicator?.updatePosition(this.pos);
  
-@@ -4373,7 +4393,7 @@ export class Player extends BaseGameObject {
+@@ -4373,7 +4396,7 @@ export class Player extends BaseGameObject {
      }
  
      processEditMsg(msg: net.EditMsg) {

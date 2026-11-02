@@ -69,6 +69,7 @@ export class ObjectRegister {
         for (let i = 0; i < MAX_ID; i++) {
             this.idToObj[i] = null;
         }
+        grid.idToObj = this.idToObj;
 
         const preAllocIds = (type: ObjectType, amount: number) => {
             this.freeLists[type] = new Array(amount);
@@ -133,6 +134,8 @@ export class ObjectRegister {
             this.objects[obj.__arrayIdx] = lastObj;
             lastObj.__arrayIdx = obj.__arrayIdx;
         }
+        // the grid stores ids; an object updated after destroy() must not leave a stale one behind
+        if (obj.__onGrid) this.grid.remove(obj);
         this.idToObj[obj.__id] = null;
 
         this.freeId(obj.__type, obj.__id);
@@ -175,7 +178,6 @@ export abstract class BaseGameObject {
 
     __gridBounds = { min: v2.create(-1, -1), max: v2.create(-1, -1) };
     __onGrid = false;
-    __gridQueryId = 0;
     abstract bounds: AABB;
 
     readonly game: Game;
