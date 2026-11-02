@@ -978,3 +978,74 @@ export const directedScenarios: Scenario[] = [
     squadFight(),
     waterLayers(),
 ];
+
+// Visibility bookkeeping stress: ids reused right away, clients that skip syncs while they have no
+// player, and a client watching a destroyed (later unregistered) player.
+function idReuse(base: Scenario, keep: number): Scenario {
+    return {
+        ...base,
+        name: `${base.name}-idreuse`,
+        expect: [...(base.expect ?? []), "stale.sync", "id.reused", "removed.yes", "dead.active"],
+        setup(ctx) {
+            base.setup?.(ctx);
+            const game = ctx.game;
+            const reg = game.objectRegister;
+            let fresh = reg.idNext;
+            reg.idNext = 65535;
+            for (const k of Object.keys(reg.freeLists).filter((t) => t === "9" || t === "7")) {
+                reg.freeLists[k].length = Math.min(reg.freeLists[k].length, keep);
+            }
+            for (let t = 1; t < 16; t++) {
+                if (reg.freeLists[t]) continue;
+                reg.freeLists[t] = [];
+                for (let i = 0; i < 1000; i++) reg.freeLists[t].push(fresh++);
+            }
+            const seen = new Set<number>();
+            const origRegister = reg.register.bind(reg);
+            reg.register = (obj: any) => {
+                origRegister(obj);
+                if (seen.has(obj.__id)) ctx.count("id.reused");
+                seen.add(obj.__id);
+            };
+            const orig = game.netSync.bind(game);
+            let removed: any;
+            game.netSync = () => {
+                // a few clients go without a player for a while, so their visibility goes stale
+                const hidden: any[] = [];
+                if (ctx.tick > 30 && !removed) {
+                    const c = game.clientBarn.clients[13];
+                    removed = c.player;
+                    c.socket.close();
+                    game.clientBarn.handleSocketClose(c.socket);
+                    ctx.count("removed." + (removed.destroyed ? "yes" : "no"));
+                }
+                // client 12 watches the removed (destroyed, later unregistered) player for a while
+                if (removed && ctx.tick < 600) {
+                    const c = game.clientBarn.clients[12];
+                    hidden.push([c, c.player, c.spectating]);
+                    c.player = undefined;
+                    c._spectating = removed;
+                    if (removed.__id === 0) ctx.count("dead.active");
+                    if (ctx.tick % 50 === 0) removed.setDirty();
+                }
+                const phase = ctx.tick % 400;
+                if (phase >= 100 && phase < 250) {
+                    for (const idx of [4, 5, 11]) {
+                        const c = game.clientBarn.clients[idx];
+                        if (!c) continue;
+                        hidden.push([c, c.player, c.spectating]);
+                        c.player = undefined;
+                        c._spectating = undefined;
+                        ctx.count("stale.sync");
+                    }
+                }
+                orig();
+                for (const [c, p, s] of hidden) {
+                    c.player = p;
+                    c._spectating = s;
+                }
+            };
+        },
+    };
+}
+directedScenarios.push(idReuse(throwables(), 100), idReuse(bulletDuels(), 60), idReuse(squadFight(), 100));
