@@ -2,9 +2,9 @@
   "packages/game/gameOptions.ts": "GameOptions/GameMode/GameLogger: options objects instead of Config, passed in by the host",
   "packages/game/gamePool.ts": "GamePool: hosts several games in one process (host side, no gameplay rules)",
   "packages/game/gameRunner.ts": "GameRunner: ticks each game at its options' rates (host side, replaces gameProcess loop)",
+  "packages/game/idBitset.ts": "IdBitset: per-client visibility set of object ids (netSync bookkeeping, no gameplay rules)",
   "packages/game/localConnection.ts": "in-page connection for offline/local games (transport, no gameplay rules)",
   "packages/game/package.json": "workspace package manifest for @survev/game",
   "packages/game/tickStats.ts": "tick/net sync timing stats and log throttle for GameLogger metrics (no gameplay state)",
-  "packages/game/tsconfig.json": "workspace tsconfig for @survev/game",
-  "packages/game/idBitset.ts": "IdBitset: per-client visibility set of object ids (netSync bookkeeping, no gameplay rules)"
+  "packages/game/tsconfig.json": "workspace tsconfig for @survev/game"
 }
