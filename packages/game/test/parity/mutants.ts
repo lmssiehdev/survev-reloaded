@@ -65,6 +65,13 @@ export const mutants: Mutant[] = [
         to: "colliding[colliding.length - 1 - j].collider,",
     },
     {
+        name: "loot-cell-order",
+        why: "loot-vs-loot cells resolved in reverse order",
+        file: "packages/game/grid.ts",
+        from: "touched.sort((a, b) => a - b);",
+        to: "touched.sort((a, b) => b - a);",
+    },
+    {
         name: "visibility-off-by-one",
         why: "client culling rect one unit wider",
         file: "packages/game/client.ts",

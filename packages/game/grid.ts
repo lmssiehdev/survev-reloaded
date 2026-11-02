@@ -362,7 +362,10 @@ export class HashGrid<T extends Loot = Loot> {
 
     rows: number;
     cols: number;
-    grid: Array<Array<Array<T>>>;
+    /** cell (x, y) is cells[y * cols + x]; only cells inside rows x cols, the only ones ever checked */
+    private readonly cells: T[][];
+    /** indices of the cells filled this check, so only those get visited and cleared */
+    private readonly touched: number[] = [];
 
     constructor(width: number, height: number, cellSize: number) {
         this.width = width;
@@ -373,21 +376,15 @@ export class HashGrid<T extends Loot = Loot> {
         this.rows = Math.ceil(this.height / this.cellSize);
         this.cols = Math.ceil(this.width / this.cellSize);
 
-        this.grid = [];
-    }
-
-    /**
-     * Cleans the partitioning grid.
-     */
-    private _resetGrid() {
-        for (let y = 0; y < this.rows; y++) {
-            if (!this.grid[y]) continue;
-            this.grid[y].length = 0;
-        }
+        this.cells = Array.from({ length: this.rows * this.cols }, () => []);
     }
 
     /**
      * Checks for collision using spatial grid hashing.
+     *
+     * Visits only the cells some loot landed in, in the same row-major order and with the same
+     * per-cell insertion order as walking every cell, so the same pairs resolve in the same order.
+     * Cells outside rows x cols were never checked, so loot isn't stored there at all.
      *
      * @param loots thie list of particles to check collisions.
      * @param comparator the function that, given two objects, return if they are colliding or not.
@@ -399,41 +396,34 @@ export class HashGrid<T extends Loot = Loot> {
         resolver: (a: T, b: T) => void,
     ) {
         const length = loots.length;
-
-        this._resetGrid();
+        const { cells, touched, rows, cols, cellSize } = this;
 
         for (let i = 0; i < length; i++) {
             const loot = loots[i];
             if (loot.destroyed) continue;
 
-            const xMin = ((loot.pos.x - loot.lootRad) / this.cellSize) << 0;
-            const xMax = ((loot.pos.x + loot.lootRad) / this.cellSize) << 0;
-            const yMin = ((loot.pos.y - loot.lootRad) / this.cellSize) << 0;
-            const yMax = ((loot.pos.y + loot.lootRad) / this.cellSize) << 0;
+            const xMin = Math.max(((loot.pos.x - loot.lootRad) / cellSize) << 0, 0);
+            const xMax = Math.min(((loot.pos.x + loot.lootRad) / cellSize) << 0, cols - 1);
+            const yMin = Math.max(((loot.pos.y - loot.lootRad) / cellSize) << 0, 0);
+            const yMax = Math.min(((loot.pos.y + loot.lootRad) / cellSize) << 0, rows - 1);
 
             for (let y = yMin; y <= yMax; y++) {
-                let row = this.grid[y];
-                if (!row) row = this.grid[y] = [];
-
                 for (let x = xMin; x <= xMax; x++) {
-                    let col = row[x];
-                    if (!col) col = this.grid[y][x] = [];
-                    col.push(loot);
+                    const idx = y * cols + x;
+                    const cell = cells[idx];
+                    if (cell.length === 0) touched.push(idx);
+                    cell.push(loot);
                 }
             }
         }
 
-        for (let y = 0; y < this.rows; y++) {
-            let row = this.grid[y];
-            if (!row) continue;
-
-            for (let x = 0; x < this.cols; x++) {
-                let col = row[x];
-                if (!col) continue;
-
-                this.bruteForceCheck(col, comparator, resolver);
-            }
+        touched.sort((a, b) => a - b);
+        for (let i = 0; i < touched.length; i++) {
+            const cell = cells[touched[i]];
+            this.bruteForceCheck(cell, comparator, resolver);
+            cell.length = 0;
         }
+        touched.length = 0;
     }
 
     /**

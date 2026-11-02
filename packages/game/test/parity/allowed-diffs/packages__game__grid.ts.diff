@@ -4,6 +4,9 @@
 # hunk 4 (@@ -169,12 +243,17 @@): perf: intersectPos copies the id cell in order, optional reused out array
 # hunk 5 (@@ -196,17 +275,21 @@): perf: intersectLineSegment walks id cells with the query stamp; same cell walk and order, optional reused out array
 # hunk 6 (@@ -234,10 +317,34 @@): perf: rounding shares cellX/cellY (same clamp/floor arithmetic); markAABB sets visibility bits for the ids in the overlapped cells (netSync only)
+# hunk 7 (@@ -255,7 +362,10 @@): perf: loot HashGrid keeps flat preallocated cells for rows x cols plus a list of the cells filled this tick
+# hunk 8 (@@ -266,22 +376,16 @@): perf: loot HashGrid: no full-map reset; cells outside rows x cols (never checked upstream) are not stored, which also stops upstream's never-cleared edge rows from growing
+# hunk 9 (@@ -292,41 +396,34 @@): perf: loot HashGrid visits only filled cells, sorted = upstream's row-major walk, same per-cell insertion order, so the same pairs resolve in the same order
 --- upstream/server/src/game/grid.ts
 +++ fork/packages/game/grid.ts
 @@ -5,39 +5,71 @@ import { math } from "shared/utils/math.ts";
@@ -39,10 +42,10 @@
 +    /** cell (x, y) is cells[x * (height + 1) + y] */
 +    readonly cells: number[][];
 +    private readonly _stride: number;
- 
++
 +    /** set by ObjectRegister; ids in cells always resolve to a live object */
 +    idToObj: Array<T | null> = [];
-+
+ 
 +    private readonly _queryStamp = new Uint32Array(ID_LIMIT);
      private nextQueryId = 1;
  
@@ -65,12 +68,12 @@
 +
 +    cellX(x: number): number {
 +        return math.clamp(Math.floor(x / this.cellSize), 0, this.width);
-     }
- 
-+    cellY(y: number): number {
-+        return math.clamp(Math.floor(y / this.cellSize), 0, this.height);
 +    }
 +
++    cellY(y: number): number {
++        return math.clamp(Math.floor(y / this.cellSize), 0, this.height);
+     }
+ 
 +    /**
 +     * Called by ObjectRegister.register once the object has an id. Objects that called
 +     * updateObject before they had an id (obstacles do in their constructor) get inserted here;
@@ -400,3 +403,100 @@
  }
  
  /**
+@@ -255,7 +362,10 @@ export class HashGrid<T extends Loot = Loot> {
+ 
+     rows: number;
+     cols: number;
+-    grid: Array<Array<Array<T>>>;
++    /** cell (x, y) is cells[y * cols + x]; only cells inside rows x cols, the only ones ever checked */
++    private readonly cells: T[][];
++    /** indices of the cells filled this check, so only those get visited and cleared */
++    private readonly touched: number[] = [];
+ 
+     constructor(width: number, height: number, cellSize: number) {
+         this.width = width;
+@@ -266,22 +376,16 @@ export class HashGrid<T extends Loot = Loot> {
+         this.rows = Math.ceil(this.height / this.cellSize);
+         this.cols = Math.ceil(this.width / this.cellSize);
+ 
+-        this.grid = [];
+-    }
+-
+-    /**
+-     * Cleans the partitioning grid.
+-     */
+-    private _resetGrid() {
+-        for (let y = 0; y < this.rows; y++) {
+-            if (!this.grid[y]) continue;
+-            this.grid[y].length = 0;
+-        }
++        this.cells = Array.from({ length: this.rows * this.cols }, () => []);
+     }
+ 
+     /**
+      * Checks for collision using spatial grid hashing.
+      *
++     * Visits only the cells some loot landed in, in the same row-major order and with the same
++     * per-cell insertion order as walking every cell, so the same pairs resolve in the same order.
++     * Cells outside rows x cols were never checked, so loot isn't stored there at all.
++     *
+      * @param loots thie list of particles to check collisions.
+      * @param comparator the function that, given two objects, return if they are colliding or not.
+      * @param resolver the collision resolver which will receive each collision pair occurrence.
+@@ -292,41 +396,34 @@ export class HashGrid<T extends Loot = Loot> {
+         resolver: (a: T, b: T) => void,
+     ) {
+         const length = loots.length;
+-
+-        this._resetGrid();
++        const { cells, touched, rows, cols, cellSize } = this;
+ 
+         for (let i = 0; i < length; i++) {
+             const loot = loots[i];
+             if (loot.destroyed) continue;
+ 
+-            const xMin = ((loot.pos.x - loot.lootRad) / this.cellSize) << 0;
+-            const xMax = ((loot.pos.x + loot.lootRad) / this.cellSize) << 0;
+-            const yMin = ((loot.pos.y - loot.lootRad) / this.cellSize) << 0;
+-            const yMax = ((loot.pos.y + loot.lootRad) / this.cellSize) << 0;
++            const xMin = Math.max(((loot.pos.x - loot.lootRad) / cellSize) << 0, 0);
++            const xMax = Math.min(((loot.pos.x + loot.lootRad) / cellSize) << 0, cols - 1);
++            const yMin = Math.max(((loot.pos.y - loot.lootRad) / cellSize) << 0, 0);
++            const yMax = Math.min(((loot.pos.y + loot.lootRad) / cellSize) << 0, rows - 1);
+ 
+             for (let y = yMin; y <= yMax; y++) {
+-                let row = this.grid[y];
+-                if (!row) row = this.grid[y] = [];
+-
+                 for (let x = xMin; x <= xMax; x++) {
+-                    let col = row[x];
+-                    if (!col) col = this.grid[y][x] = [];
+-                    col.push(loot);
++                    const idx = y * cols + x;
++                    const cell = cells[idx];
++                    if (cell.length === 0) touched.push(idx);
++                    cell.push(loot);
+                 }
+             }
+         }
+ 
+-        for (let y = 0; y < this.rows; y++) {
+-            let row = this.grid[y];
+-            if (!row) continue;
+-
+-            for (let x = 0; x < this.cols; x++) {
+-                let col = row[x];
+-                if (!col) continue;
+-
+-                this.bruteForceCheck(col, comparator, resolver);
+-            }
++        touched.sort((a, b) => a - b);
++        for (let i = 0; i < touched.length; i++) {
++            const cell = cells[touched[i]];
++            this.bruteForceCheck(cell, comparator, resolver);
++            cell.length = 0;
+         }
++        touched.length = 0;
+     }
+ 
+     /**
