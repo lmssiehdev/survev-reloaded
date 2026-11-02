@@ -44,6 +44,14 @@ export class ClientBarn {
             if (client.socket.closed()) continue;
             client.sendMsgs();
         }
+
+        // ObjectRegister.flush frees the ids of this tick's deleted objects right after this sync,
+        // and a freed id can be reused by a new object; drop them from every visibility bitset first
+        const deletedObjs = this.game.objectRegister.deletedObjs;
+        if (deletedObjs.length === 0) return;
+        for (let i = 0; i < this.clients.length; i++) {
+            this.clients[i].forgetDeletedObjs(deletedObjs);
+        }
     }
 
     flush() {
@@ -329,7 +337,15 @@ export class Client {
     spectateNewPlayerTicker = 0;
 
     private _firstUpdate = true;
-    visibleObjects = new Set<GameObject>();
+    /** objects visible at the last sync, as a bitset over object ids */
+    visibleObjects: Uint32Array;
+    /** all zero between syncs, swapped with visibleObjects after each diff */
+    private _visibleScratch: Uint32Array;
+    /**
+     * visible objects that got unregistered (__id is now 0) before this client synced again,
+     * only possible when sendMsgs returned early or for a destroyed active player
+     */
+    private _deadVisibleObjs: GameObject[] = [];
     visibleMapIndicators = new Set<MapIndicator>();
 
     // zoom used for the area in which the server will send objects to the client
@@ -354,6 +370,9 @@ export class Client {
         this.ip = socket.ip();
         this.findGameIp = findGameIp;
         this.game = game;
+        const words = (game.objectRegister.idToType.length + 31) >>> 5;
+        this.visibleObjects = new Uint32Array(words);
+        this._visibleScratch = new Uint32Array(words);
         socket.setUserData(this);
         this.socket = socket as ClientSocket<Client>;
     }
@@ -492,29 +511,75 @@ export class Client {
         }
         const rect = collider.createAabbExtents(player.pos, v2.create(width, height));
 
-        const newVisibleObjects = game.grid.intersectAABBSet(rect);
+        const objectRegister = game.objectRegister;
+        const { idToObj, dirtyFull, dirtyPart } = objectRegister;
+        const { delObjIds, fullObjects, partObjects } = updateMsg;
+
+        const oldVisible = this.visibleObjects;
+        const newVisible = this._visibleScratch;
+        game.grid.markAABB(rect, newVisible);
+        // only an unregistered object can have id 0, those are tracked in _deadVisibleObjs
+        newVisible[0] &= ~1;
         // client crashes if active player is not visible
         // so make sure its always added to visible objects
-        newVisibleObjects.add(player);
+        const playerId = player.__id;
+        if (playerId !== 0) newVisible[playerId >>> 5] |= 1 << (playerId & 31);
 
-        for (const obj of this.visibleObjects) {
-            if (!newVisibleObjects.has(obj)) {
-                updateMsg.delObjIds.push(obj.__id);
+        const deadVisible = this._deadVisibleObjs;
+        if (deadVisible.length > 0 || playerId === 0) {
+            let playerWasVisible = false;
+            for (let i = 0; i < deadVisible.length; i++) {
+                const obj = deadVisible[i];
+                if (obj === player) {
+                    playerWasVisible = true;
+                    if (dirtyFull[0]) {
+                        fullObjects.push(obj);
+                    } else if (dirtyPart[0]) {
+                        partObjects.push(obj);
+                    }
+                } else {
+                    delObjIds.push(obj.__id);
+                }
+            }
+            deadVisible.length = 0;
+            if (playerId === 0) {
+                if (!playerWasVisible) fullObjects.push(player);
+                deadVisible.push(player);
             }
         }
 
-        for (const obj of newVisibleObjects) {
-            if (
-                !this.visibleObjects.has(obj)
-                || game.objectRegister.dirtyFull[obj.__id]
-            ) {
-                updateMsg.fullObjects.push(obj);
-            } else if (game.objectRegister.dirtyPart[obj.__id]) {
-                updateMsg.partObjects.push(obj);
+        // ids only go up to idNext, so the words past it are zero in both bitsets
+        const words = Math.min((objectRegister.idNext + 31) >>> 5, newVisible.length);
+        for (let w = 0; w < words; w++) {
+            const oldBits = oldVisible[w];
+            const newBits = newVisible[w];
+            if ((oldBits | newBits) === 0) continue;
+            // leaves oldVisible all zero, ready to be the next scratch
+            oldVisible[w] = 0;
+
+            const base = w << 5;
+            let removed = oldBits & ~newBits;
+            while (removed !== 0) {
+                const bit = removed & -removed;
+                removed ^= bit;
+                delObjIds.push(base | (31 - Math.clz32(bit)));
+            }
+
+            let visible = newBits;
+            while (visible !== 0) {
+                const bit = visible & -visible;
+                visible ^= bit;
+                const id = base | (31 - Math.clz32(bit));
+                if ((oldBits & bit) === 0 || dirtyFull[id]) {
+                    fullObjects.push(idToObj[id]!);
+                } else if (dirtyPart[id]) {
+                    partObjects.push(idToObj[id]!);
+                }
             }
         }
 
-        this.visibleObjects = newVisibleObjects;
+        this.visibleObjects = newVisible;
+        this._visibleScratch = oldVisible;
 
         updateMsg.activePlayerId = player.__id;
         if (this.startedSpectating) {
@@ -584,7 +649,10 @@ export class Client {
             const emoteDef = GameObjectDefs.typeToDef(emote.type);
 
             if (emotePlayer) {
-                if (!emote.isPing && !this.visibleObjects.has(emotePlayer)) {
+                const emotePlayerId = emotePlayer.__id;
+                const emotePlayerVisible = this.visibleObjects[emotePlayerId >>> 5]
+                    & (1 << (emotePlayerId & 31));
+                if (!emote.isPing && !emotePlayerVisible) {
                     return false;
                 }
 
@@ -718,6 +786,19 @@ export class Client {
 
         this.sendData(msgStream.getBuffer());
         this._firstUpdate = false;
+    }
+
+    /** objs are about to be unregistered and their ids freed */
+    forgetDeletedObjs(objs: GameObject[]) {
+        const visible = this.visibleObjects;
+        for (let i = 0; i < objs.length; i++) {
+            const id = objs[i].__id;
+            const bit = 1 << (id & 31);
+            if (visible[id >>> 5] & bit) {
+                visible[id >>> 5] &= ~bit;
+                this._deadVisibleObjs.push(objs[i]);
+            }
+        }
     }
 
     handleMsg(type: net.MsgType, msg: net.Msg) {

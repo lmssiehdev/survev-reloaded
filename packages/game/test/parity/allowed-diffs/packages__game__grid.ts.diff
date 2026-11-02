@@ -1,0 +1,30 @@
+# hunk 1 (@@ -238,6 +238,26 @@): perf: new markAABB sets visibility bits over the same cells as intersectAABBSet; existing methods untouched
+--- upstream/server/src/game/grid.ts
++++ fork/packages/game/grid.ts
+@@ -238,6 +238,26 @@ export class Grid<T extends GameObject = GameObject> {
+             y: math.clamp(Math.floor(vector.y / this.cellSize), 0, this.height),
+         };
+     }
++
++    /**
++     * Sets the bit of every object id in the cells overlapping this AABB.
++     * Covers the same cells as intersectAABBSet, without building a Set
++     */
++    markAABB(this: Grid<T & { __id: number }>, aabb: AABB, bits: Uint32Array): void {
++        const min = this._roundToCells(aabb.min);
++        const max = this._roundToCells(aabb.max);
++
++        for (let x = min.x; x <= max.x; x++) {
++            const xRow = this._grid[x];
++            for (let y = min.y; y <= max.y; y++) {
++                const cell = xRow[y];
++                for (const object of cell) {
++                    const id = object.__id;
++                    bits[id >>> 5] |= 1 << (id & 31);
++                }
++            }
++        }
++    }
+ }
+ 
+ /**
