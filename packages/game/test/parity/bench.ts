@@ -1,13 +1,11 @@
-// Paired JIT/AOT replay benchmark of two fork-layout trees (a base and a candidate).
-// usage: ~/aot-exploration/bin/bun-aot bench.ts --base <root> --cand <root> [--pairs 3] [--rt jit,aot]
-//        [--scenario bench-solo] [--cores 8-11] [--json out.json]
-// Run it with an AOT-capable Bun (PARITY_AOT_BUN, default ~/aot-exploration/bin/bun-aot).
+// Paired replay benchmark of two fork-layout trees (a base and a candidate) on Bun's JIT.
+// usage: bun bench.ts --base <root> --cand <root> [--pairs 3] [--scenario bench-solo]
+//        [--cores 8-11] [--json out.json]
 // Builds each tree the way production does (bundled, STRIP_FROM_PROD_SERVER removed,
-// NODE_ENV=production): a JIT bundle run by Bun, and a `--compile --aot` binary. Runs alternate
+// NODE_ENV=production) and runs the bundle with the Bun running this script. Runs alternate
 // base/candidate per pair, pinned to the given cores, holding a lock so parallel benches never
-// share cores. Every timing run is a replay with hashing off; the same scenario is used by the gate.
+// share cores. Every timing run is a replay with hashing off.
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { extname, join } from "node:path";
 import { CACHE_DIR } from "./upstream.ts";
 
@@ -18,13 +16,11 @@ const cand = arg("--cand");
 const pairs = Number(arg("--pairs", "3"));
 const scenario = arg("--scenario", "bench-solo")!;
 const cores = arg("--cores", "8-11")!;
-const runtimes = (arg("--rt", "jit,aot") as string).split(",");
-/** the Bun running this script compiles the AOT binaries and runs the JIT bundles */
 const BUN = process.execPath;
-const LOCK = join(homedir(), "aot-exploration/bench.lock");
+const LOCK = join(CACHE_DIR, "bench.lock");
 
 if (!base || !cand) {
-    console.error("usage: bun bench.ts --base <root> --cand <root> [--pairs 3] [--rt jit,aot]");
+    console.error("usage: bun bench.ts --base <root> --cand <root> [--pairs 3]");
     process.exit(2);
 }
 
@@ -39,7 +35,7 @@ const stripPlugin = {
     },
 };
 
-/** entry with static imports, so the bundler and the AOT compiler see the whole game */
+/** entry with static imports, so the bundler sees the whole game */
 function writeEntry(root: string, dir: string) {
     const p = (f: string) => JSON.stringify(join(root, f));
     const h = (f: string) => JSON.stringify(join(import.meta.dir, f));
@@ -77,15 +73,9 @@ async function build(root: string, tag: string) {
         plugins: [stripPlugin],
         entrypoints: [entry],
     };
-    for (
-        const extra of [{ outdir: join(dir, "jit"), naming: "[name].[ext]" }, {
-            compile: { outfile: join(dir, "aot"), aot: true },
-        }]
-    ) {
-        const r = await Bun.build({ ...o, ...(extra as object) } as Parameters<typeof Bun.build>[0]);
-        if (!r.success) throw new AggregateError(r.logs, `bench: build of ${root} failed`);
-    }
-    return { jit: [BUN, join(dir, "jit/entry.js")], aot: [join(dir, "aot")] } as Record<string, string[]>;
+    const r = await Bun.build({ ...o, outdir: join(dir, "out"), naming: "[name].[ext]" });
+    if (!r.success) throw new AggregateError(r.logs, `bench: build of ${root} failed`);
+    return [BUN, join(dir, "out/entry.js")];
 }
 
 interface Timing {
@@ -111,22 +101,17 @@ function run(cmd: string[]): Timing {
 const median = (xs: number[]) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 const builds = { base: await build(base, "base"), cand: await build(cand, "cand") };
-const out: Record<string, unknown> = {};
-for (const rt of runtimes) {
-    const A: Timing[] = [];
-    const B: Timing[] = [];
-    for (let i = 0; i < pairs; i++) {
-        A.push(run(builds.base[rt]));
-        B.push(run(builds.cand[rt]));
-    }
-    const row: Record<string, string> = {};
-    for (const k of ["steadyUpd", "steadySync", "p50", "p99", "max", "rssMb"] as const) {
-        const a = median(A.map((x) => x[k]));
-        const b = median(B.map((x) => x[k]));
-        row[k] = `${a.toFixed(3)} -> ${b.toFixed(3)} (${((b / a - 1) * 100).toFixed(1)}%)`;
-    }
-    out[rt] = row;
-    console.log(rt, JSON.stringify(row));
-    out[`${rt}.raw`] = { base: A, cand: B };
+const A: Timing[] = [];
+const B: Timing[] = [];
+for (let i = 0; i < pairs; i++) {
+    A.push(run(builds.base));
+    B.push(run(builds.cand));
 }
-if (arg("--json")) writeFileSync(arg("--json")!, JSON.stringify(out, null, 2));
+const row: Record<string, string> = {};
+for (const k of ["steadyUpd", "steadySync", "p50", "p99", "max", "rssMb"] as const) {
+    const a = median(A.map((x) => x[k]));
+    const b = median(B.map((x) => x[k]));
+    row[k] = `${a.toFixed(3)} -> ${b.toFixed(3)} (${((b / a - 1) * 100).toFixed(1)}%)`;
+}
+console.log(JSON.stringify(row));
+if (arg("--json")) writeFileSync(arg("--json")!, JSON.stringify({ summary: row, base: A, cand: B }, null, 2));

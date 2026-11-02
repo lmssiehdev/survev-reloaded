@@ -27,7 +27,7 @@ the fork side replays.
 bun packages/game/test/parity/gate.ts                  # replay tiers, all scenarios
 bun packages/game/test/parity/gate.ts --only solo-main # one scenario
 bun packages/game/test/parity/mutants.ts               # prove the gate catches known bugs
-~/aot-exploration/bin/bun-aot packages/game/test/parity/bench.ts --base <tree> --cand <tree>
+bun packages/game/test/parity/bench.ts --base <tree> --cand <tree>   # paired JIT timings
 ```
 
 `PARITY_JOBS` caps parallel replays. To debug a STRICT failure, rerun both sides with
