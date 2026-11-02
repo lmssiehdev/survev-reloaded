@@ -60,8 +60,8 @@ export interface BulletParams {
     distanceMult?: number;
 }
 
-/** reused result of the per-tick collision query; collisions are resolved after the loop */
-const collisionObjs: GameObject[] = [];
+/** scratch result of the per-tick collision query; collisions are resolved after the loop */
+const SCRATCH_BULLET_NEARBY: GameObject[] = [];
 
 export class BulletBarn {
     bullets: Bullet[] = [];
@@ -357,15 +357,11 @@ export class Bullet {
 
     update(dt: number): void {
         const posOld = v2.copy(this.pos);
-        // inlined v2.length(v2.sub(...)) and v2.add(v2.mul(...)), same float ops without temporaries
-        const dx = this.startPos.x - this.pos.x;
-        const dy = this.startPos.y - this.pos.y;
-        const distLeft = this.distance - Math.sqrt(dx * dx + dy * dy);
+        const distLeft = this.distance - v2.length(v2.sub(this.startPos, this.pos));
         const moveDist = math.min(distLeft, dt * this.speed);
         this.distanceTraveled += moveDist;
 
-        this.pos.x = this.pos.x + this.dir.x * moveDist;
-        this.pos.y = this.pos.y + this.dir.y * moveDist;
+        v2.set(this.pos, v2.add(this.pos, v2.mul(this.dir, moveDist)));
 
         const map = this.bulletManager.game.map;
         if (!coldet.testPointAabb(this.pos, map.bounds.min, map.bounds.max)) {
@@ -423,7 +419,7 @@ export class Bullet {
         const objects = this.bulletManager.game.grid.intersectLineSegment(
             posOld,
             this.pos,
-            collisionObjs,
+            SCRATCH_BULLET_NEARBY,
         );
 
         for (let i = 0; i < objects.length; i++) {

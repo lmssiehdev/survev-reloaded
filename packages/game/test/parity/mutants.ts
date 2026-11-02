@@ -68,8 +68,8 @@ export const mutants: Mutant[] = [
         name: "loot-cell-order",
         why: "loot-vs-loot cells resolved in reverse order",
         file: "packages/game/grid.ts",
-        from: "touched.sort((a, b) => a - b);",
-        to: "touched.sort((a, b) => b - a);",
+        from: "for (let w = 0; w < touched.length; w++) {",
+        to: "for (let w = touched.length - 1; w >= 0; w--) {",
     },
     {
         name: "visibility-off-by-one",

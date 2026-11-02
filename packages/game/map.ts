@@ -175,9 +175,9 @@ export class MapGrid<T extends GridCollider = GridCollider> {
     }
 }
 
-/** reused results of the single-cell surface queries; their loops never re-enter */
-const groundSurfaceObjs: GameObject[] = [];
-const onWaterObjs: GameObject[] = [];
+/** scratch results of the single-cell surface queries; their loops only read, never re-enter */
+const SCRATCH_SURFACE_OBJS: GameObject[] = [];
+const SCRATCH_WATER_OBJS: GameObject[] = [];
 
 export class GameMap {
     game: Game;
@@ -2279,29 +2279,14 @@ export class GameMap {
     }
 
     clampToMapBounds(pos: Vec2, rad = 0) {
-        // inlined math.v2Clamp(pos, (rad, rad), (width - rad, height - rad)) without temporaries
-        const hiX = this.width - rad;
-        const hiY = this.height - rad;
-        let minX: number;
-        let maxX: number;
-        let minY: number;
-        let maxY: number;
-        if (rad > hiX) {
-            minX = hiX;
-            maxX = rad;
-        } else {
-            minX = rad;
-            maxX = hiX;
-        }
-        if (rad > hiY) {
-            minY = hiY;
-            maxY = rad;
-        } else {
-            minY = rad;
-            maxY = hiY;
-        }
-        pos.x = pos.x < maxX ? (pos.x > minX ? pos.x : minX) : maxX;
-        pos.y = pos.y < maxY ? (pos.y > minY ? pos.y : minY) : maxY;
+        v2.set(
+            pos,
+            math.v2Clamp(
+                pos,
+                v2.create(rad, rad),
+                v2.create(this.width - rad, this.height - rad),
+            ),
+        );
     }
 
     getGroundSurface(pos: Vec2, layer: number) {
@@ -2309,7 +2294,7 @@ export class GameMap {
             return { type, river };
         };
 
-        const objs = this.game.grid.intersectPos(pos, groundSurfaceObjs);
+        const objs = this.game.grid.intersectPos(pos, SCRATCH_SURFACE_OBJS);
 
         // Check decals
         for (let i = 0; i < objs.length; i++) {
@@ -2395,7 +2380,7 @@ export class GameMap {
 
     // like getGroundSurface but optimized for water
     isOnWater(pos: Vec2, layer: number) {
-        const objs = this.game.grid.intersectPos(pos, onWaterObjs);
+        const objs = this.game.grid.intersectPos(pos, SCRATCH_WATER_OBJS);
 
         let surface = null;
         let zIdx = 0;

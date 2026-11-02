@@ -1,12 +1,23 @@
-# hunk 1 (@@ -69,6 +69,7 @@): perf: grid resolves cell ids through ObjectRegister.idToObj
-# hunk 2 (@@ -133,6 +134,8 @@): perf: unregister drops an object still on the grid (only if updated after destroy) so freed ids never linger in grid cells
-# hunk 3 (@@ -175,7 +178,6 @@): perf: __gridQueryId replaced by the grid's per-id query stamp
-# hunk 4 (@@ -208,9 +210,7 @@): logging via GameLogger: uninitialized partial serialize warning
-# hunk 5 (@@ -230,9 +230,7 @@): logging via GameLogger: uninitialized full serialize warning
-# hunk 6 (@@ -320,7 +318,7 @@): logging via GameLogger: double destroy warning
+# hunk 1 (@@ -61,6 +61,8 @@): dev-build check: ClientBarn records how many deleted objects it dropped from the visibility bitsets
+# hunk 2 (@@ -69,6 +71,7 @@): perf: grid resolves cell ids through ObjectRegister.idToObj
+# hunk 3 (@@ -133,6 +136,8 @@): perf: unregister drops an object still on the grid (only if updated after destroy) so freed ids never linger in grid cells
+# hunk 4 (@@ -159,6 +164,14 @@): dev-build check: flush asserts no object was deleted after the visibility purge (stripped from prod)
+# hunk 5 (@@ -175,7 +188,6 @@): perf: __gridQueryId replaced by the grid's per-id query stamp
+# hunk 6 (@@ -208,9 +220,7 @@): logging via GameLogger: uninitialized partial serialize warning
+# hunk 7 (@@ -230,9 +240,7 @@): logging via GameLogger: uninitialized full serialize warning
+# hunk 8 (@@ -320,7 +328,7 @@): logging via GameLogger: double destroy warning
 --- upstream/server/src/game/objects/gameObject.ts
 +++ fork/packages/game/objects/gameObject.ts
-@@ -69,6 +69,7 @@ export class ObjectRegister {
+@@ -61,6 +61,8 @@ export class ObjectRegister {
+     dirtyFull = new Uint8Array(MAX_ID);
+ 
+     deletedObjs: GameObject[] = [];
++    /** dev builds: how many deletedObjs ClientBarn dropped from the visibility bitsets this sync */
++    visibilityPurgedCount = 0;
+ 
+     idNext = 1;
+     freeLists = {} as Record<ObjectType, number[]>;
+@@ -69,6 +71,7 @@ export class ObjectRegister {
          for (let i = 0; i < MAX_ID; i++) {
              this.idToObj[i] = null;
          }
@@ -14,7 +25,7 @@
  
          const preAllocIds = (type: ObjectType, amount: number) => {
              this.freeLists[type] = new Array(amount);
-@@ -133,6 +134,8 @@ export class ObjectRegister {
+@@ -133,6 +136,8 @@ export class ObjectRegister {
              this.objects[obj.__arrayIdx] = lastObj;
              lastObj.__arrayIdx = obj.__arrayIdx;
          }
@@ -23,7 +34,22 @@
          this.idToObj[obj.__id] = null;
  
          this.freeId(obj.__type, obj.__id);
-@@ -175,7 +178,6 @@ export abstract class BaseGameObject {
+@@ -159,6 +164,14 @@ export class ObjectRegister {
+     }
+ 
+     flush() {
++        /* STRIP_FROM_PROD_SERVER:START */
++        // freeing an id a client still has a visibility bit for would let a new object inherit it
++        assert(
++            this.deletedObjs.length === this.visibilityPurgedCount,
++            "objects were deleted after ClientBarn dropped them from the visibility bitsets",
++        );
++        this.visibilityPurgedCount = 0;
++        /* STRIP_FROM_PROD_SERVER:END */
+         for (let i = 0; i < this.deletedObjs.length; i++) {
+             this.unregister(this.deletedObjs[i]);
+         }
+@@ -175,7 +188,6 @@ export abstract class BaseGameObject {
  
      __gridBounds = { min: v2.create(-1, -1), max: v2.create(-1, -1) };
      __onGrid = false;
@@ -31,7 +57,7 @@
      abstract bounds: AABB;
  
      readonly game: Game;
-@@ -208,9 +210,7 @@ export abstract class BaseGameObject {
+@@ -208,9 +220,7 @@ export abstract class BaseGameObject {
  
      serializePartial(): void {
          if (!this.initialized) {
@@ -42,7 +68,7 @@
              return;
          }
          assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
-@@ -230,9 +230,7 @@ export abstract class BaseGameObject {
+@@ -230,9 +240,7 @@ export abstract class BaseGameObject {
  
      serializeFull(): void {
          if (!this.initialized) {
@@ -53,7 +79,7 @@
              return;
          }
          assert(this.__id !== 0 && this.__type !== 0, "Object not registered");
-@@ -320,7 +318,7 @@ export abstract class BaseGameObject {
+@@ -320,7 +328,7 @@ export abstract class BaseGameObject {
      destroyed = false;
      destroy() {
          if (this.destroyed) {

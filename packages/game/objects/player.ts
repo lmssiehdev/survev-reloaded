@@ -68,15 +68,15 @@ interface Emote {
 
 type FabricateThrowable = keyof typeof PerkProperties["fabricate"]["weights"];
 
-/** scratch collider for the per-tick movement grid query; never stored */
-const moveQueryCircle = collider.createCircle(v2.create(0, 0), 0);
-/** scratch list of the obstacles the movement steps collide against; emptied after use */
-const moveCollidingObstacles: Obstacle[] = [];
+// Scratch objects for Player.update movement, reused every call. Safe because movement never
+// re-enters itself; SCRATCH_MOVE_IN_USE catches that in dev builds.
+const SCRATCH_MOVE_CIRCLE = collider.createCircle(v2.create(0, 0), 0);
+const SCRATCH_MOVE_NEARBY: GameObject[] = [];
+const SCRATCH_MOVE_COLLIDING: Obstacle[] = [];
+let SCRATCH_MOVE_IN_USE = false;
+const ZERO = v2.create(0, 0);
 
 const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
-
-/** reused result of the movement collision query; the loop using it never re-enters */
-const moveCollideObjs: GameObject[] = [];
 {
     const boostBreakPoints = GameConfig.player.boostBreakpoints;
     const max = GameConfig.player.boostBreakpoints.reduce((a, b) => a + b, 0);
@@ -1951,20 +1951,16 @@ export class Player extends BaseGameObject {
 
         v2.set(this.posOld, this.pos);
 
-        // inlined v2.eq / v2.mul / v2.add, same float ops without temporary vectors
-        if (!(Math.abs(this.vel.x) <= 0.01 && Math.abs(this.vel.y) <= 0.01)) {
-            const velScale = 1 / (1 + dt * 4);
-            this.vel.x = this.vel.x * velScale;
-            this.vel.y = this.vel.y * velScale;
-            this.pos.x = this.pos.x + this.vel.x * dt;
-            this.pos.y = this.pos.y + this.vel.y * dt;
+        if (!v2.eq(this.vel, ZERO, 0.01)) {
+            v2.scaleInPlace(this.vel, 1 / (1 + dt * 4));
+            v2.addScaledInPlace(this.pos, this.vel, dt);
         }
 
         const hasTreeClimbing = this.hasPerk("tree_climbing");
 
         let steps: number;
 
-        if (!(Math.abs(movement.x) <= 0.0001 && Math.abs(movement.y) <= 0.0001)) {
+        if (!v2.eq(movement, ZERO)) {
             this.recalculateSpeed(hasTreeClimbing);
             steps = Math.round(math.max(this.speed * dt + 5, 5));
 
@@ -1977,21 +1973,22 @@ export class Player extends BaseGameObject {
             this.speed = 0;
             steps = 1;
         }
-        this.moveVel.x = movement.x * this.speed;
-        this.moveVel.y = movement.y * this.speed;
+        v2.set(this.moveVel, v2.mul(movement, this.speed));
 
         const speedToAdd = (this.speed / steps) * dt;
 
-        // the query only reads the collider, so a scratch circle is enough
-        const circle = moveQueryCircle;
-        circle.pos.x = this.pos.x;
-        circle.pos.y = this.pos.y;
+        /* STRIP_FROM_PROD_SERVER:START */
+        assert(!SCRATCH_MOVE_IN_USE, "Player movement re-entered its scratch objects");
+        SCRATCH_MOVE_IN_USE = true;
+        /* STRIP_FROM_PROD_SERVER:END */
+
+        const circle = SCRATCH_MOVE_CIRCLE;
+        v2.set(circle.pos, this.pos);
         circle.rad = GameConfig.player.maxVisualRadius * this.scale + this.speed * dt;
+        const objs = this.game.grid.intersectCollider(circle, SCRATCH_MOVE_NEARBY);
 
-        const objs = this.game.grid.intersectCollider(circle, moveCollideObjs);
-
-        // the obstacle filter doesn't change between steps, so run it once (same order)
-        const colliding = moveCollidingObstacles;
+        // the obstacle filter can't change between steps, so it runs once (same obstacles, same order)
+        const colliding = SCRATCH_MOVE_COLLIDING;
         for (let j = 0; j < objs.length && !this.debug.noClip; j++) {
             const obj = objs[j];
             if (obj.__type !== ObjectType.Obstacle) continue;
@@ -2003,23 +2000,20 @@ export class Player extends BaseGameObject {
         }
 
         for (let i = 0; i < steps; i++) {
-            this.pos.x = this.pos.x + movement.x * speedToAdd;
-            this.pos.y = this.pos.y + movement.y * speedToAdd;
+            v2.addScaledInPlace(this.pos, movement, speedToAdd);
 
             for (let j = 0; j < colliding.length; j++) {
-                const collision = collider.intersectCircle(
-                    colliding[j].collider,
-                    this.pos,
-                    this.rad,
-                );
+                const collision = collider.intersectCircle(colliding[j].collider, this.pos, this.rad);
                 if (collision) {
-                    const push = collision.pen + 0.001;
-                    this.pos.x = this.pos.x + collision.dir.x * push;
-                    this.pos.y = this.pos.y + collision.dir.y * push;
+                    v2.addScaledInPlace(this.pos, collision.dir, collision.pen + 0.001);
                 }
             }
         }
         colliding.length = 0;
+
+        /* STRIP_FROM_PROD_SERVER:START */
+        SCRATCH_MOVE_IN_USE = false;
+        /* STRIP_FROM_PROD_SERVER:END */
 
         this.mapIndicator?.updatePosition(this.pos);
 

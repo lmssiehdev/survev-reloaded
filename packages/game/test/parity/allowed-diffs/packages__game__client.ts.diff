@@ -1,23 +1,21 @@
-# hunk 1 (@@ -7,7 +7,6 @@): imports: Config replaced by game.options (options objects instead of Config)
-# hunk 2 (@@ -44,6 +43,14 @@): perf: visibility bitsets: before ObjectRegister.flush frees ids, drop deleted objects from every client's bits so a reused id is never mistaken for the old object
-# hunk 3 (@@ -51,7 +58,7 @@): options objects instead of Config: rateLimitsEnabled
-# hunk 4 (@@ -157,7 +164,7 @@): options objects instead of Config: debug.allowEditMsg
-# hunk 5 (@@ -169,9 +176,7 @@): transport: the fork's Bun host sets binaryType=arraybuffer (apps/server gameProcess.ts), so handleMsg only takes ArrayBuffer and the uWS Buffer guard is dropped
-# hunk 6 (@@ -184,21 +189,17 @@): logging via GameLogger: deserialize failure (socket still closed with invalid_packet)
-# hunk 7 (@@ -210,7 +211,7 @@): logging via GameLogger: invalid/expired join token, logged at info (socket still closed with invalid_token)
-# hunk 8 (@@ -231,7 +232,7 @@): logging via GameLogger: no client and no JoinMsg (socket still closed)
-# hunk 9 (@@ -251,7 +252,12 @@): logging via GameLogger: player.leave event
-# hunk 10 (@@ -285,7 +291,7 @@): comment only: schema path moved to apps/api
-# hunk 11 (@@ -330,7 +336,15 @@): perf: per-client visibility is a bitset over object ids diffed word by word (only fullObjects/partObjects/delObjIds order changes, to id order): fields
-# hunk 12 (@@ -355,6 +369,9 @@): perf: per-client visibility is a bitset over object ids diffed word by word (only fullObjects/partObjects/delObjIds order changes, to id order): both bitsets allocated once per client
-# hunk 13 (@@ -493,29 +510,75 @@): perf: per-client visibility is a bitset over object ids diffed word by word (only fullObjects/partObjects/delObjIds order changes, to id order): same del/full/part rules as the Set diff; unregistered objects (id 0) handled exactly like upstream
-# hunk 14 (@@ -585,7 +648,10 @@): perf: per-client visibility is a bitset over object ids diffed word by word (only fullObjects/partObjects/delObjIds order changes, to id order): emote visibility check reads the bitset
-# hunk 15 (@@ -633,12 +699,19 @@): perf: bullet culling loop inlined (same float ops, no temporary vectors)
-# hunk 16 (@@ -653,7 +726,9 @@): perf: explosion culling loop inlined (same float ops, no temporary vectors)
-# hunk 17 (@@ -712,6 +787,19 @@): perf: per-client visibility is a bitset over object ids diffed word by word (only fullObjects/partObjects/delObjIds order changes, to id order): forgetDeletedObjs
+# hunk 1 (@@ -7,11 +7,11 @@): imports: Config replaced by game.options; IdBitset for visibility
+# hunk 2 (@@ -44,6 +44,17 @@): perf: visibility bitsets: before ObjectRegister.flush frees ids, drop deleted objects from every client's bits so a reused id is never mistaken for the old object (dev builds record the count for a flush-time check)
+# hunk 3 (@@ -51,7 +62,7 @@): options objects instead of Config: rateLimitsEnabled
+# hunk 4 (@@ -157,7 +168,7 @@): options objects instead of Config: debug.allowEditMsg
+# hunk 5 (@@ -169,9 +180,7 @@): transport: the fork's Bun host sets binaryType=arraybuffer (apps/server gameProcess.ts), so handleMsg only takes ArrayBuffer and the uWS Buffer guard is dropped
+# hunk 6 (@@ -184,21 +193,17 @@): logging via GameLogger: deserialize failure (socket still closed with invalid_packet)
+# hunk 7 (@@ -210,7 +215,7 @@): logging via GameLogger: invalid/expired join token, logged at info (socket still closed with invalid_token)
+# hunk 8 (@@ -231,7 +236,7 @@): logging via GameLogger: no client and no JoinMsg (socket still closed)
+# hunk 9 (@@ -251,7 +256,12 @@): logging via GameLogger: player.leave event
+# hunk 10 (@@ -285,7 +295,7 @@): comment only: schema path moved to apps/api
+# hunk 11 (@@ -330,7 +340,15 @@): perf: per-client visibility is an IdBitset diffed 32 ids at a time (only fullObjects/partObjects/delObjIds order changes, to id order): fields
+# hunk 12 (@@ -355,6 +373,8 @@): perf: per-client visibility is an IdBitset diffed 32 ids at a time (only fullObjects/partObjects/delObjIds order changes, to id order): both bitsets allocated once per client
+# hunk 13 (@@ -493,29 +513,81 @@): perf: per-client visibility is an IdBitset diffed 32 ids at a time (only fullObjects/partObjects/delObjIds order changes, to id order): same del/full/part rules as the Set diff; unregistered objects (id 0) handled exactly like upstream
+# hunk 14 (@@ -585,7 +657,7 @@): perf: per-client visibility is an IdBitset diffed 32 ids at a time (only fullObjects/partObjects/delObjIds order changes, to id order): emote visibility check reads the bitset
+# hunk 15 (@@ -712,6 +784,18 @@): perf: per-client visibility is an IdBitset diffed 32 ids at a time (only fullObjects/partObjects/delObjIds order changes, to id order): forgetDeletedObjs
 --- upstream/server/src/game/client.ts
 +++ fork/packages/game/client.ts
-@@ -7,7 +7,6 @@ import type { GameObject } from "server/src/game/objects/gameObject.ts";
+@@ -7,11 +7,11 @@ import type { GameObject } from "server/src/game/objects/gameObject.ts";
  import type { GameWsDisconnectReason } from "shared/types/api.ts";
  import type { MapIndicator } from "server/src/game/objects/mapIndicator.ts";
  import type { Player } from "server/src/game/objects/player.ts";
@@ -25,7 +23,12 @@
  import { GameConfig } from "shared/gameConfig.ts";
  import { GameObjectDefs } from "shared/defs/register.ts";
  import { ObjectType } from "shared/net/objectSerializeFns.ts";
-@@ -44,6 +43,14 @@ export class ClientBarn {
+ import { SpectateAction } from "shared/net/spectateMsg.ts";
++import { bitIndex, IdBitset } from "server/src/game/idBitset.ts";
+ import { coldet } from "shared/utils/coldet.ts";
+ import { collider } from "shared/utils/collider.ts";
+ import { math } from "shared/utils/math.ts";
+@@ -44,6 +44,17 @@ export class ClientBarn {
              if (client.socket.closed()) continue;
              client.sendMsgs();
          }
@@ -33,6 +36,9 @@
 +        // ObjectRegister.flush frees the ids of this tick's deleted objects right after this sync,
 +        // and a freed id can be reused by a new object; drop them from every visibility bitset first
 +        const deletedObjs = this.game.objectRegister.deletedObjs;
++        /* STRIP_FROM_PROD_SERVER:START */
++        this.game.objectRegister.visibilityPurgedCount = deletedObjs.length;
++        /* STRIP_FROM_PROD_SERVER:END */
 +        if (deletedObjs.length === 0) return;
 +        for (let i = 0; i < this.clients.length; i++) {
 +            this.clients[i].forgetDeletedObjs(deletedObjs);
@@ -40,7 +46,7 @@
      }
  
      flush() {
-@@ -51,7 +58,7 @@ export class ClientBarn {
+@@ -51,7 +62,7 @@ export class ClientBarn {
      }
  
      addClientWithPlayer(socket: ClientSocket<Client>, joinData: JoinTokenData, joinMsg: net.JoinMsg) {
@@ -49,7 +55,7 @@
              const count = this.clients.filter(
                  (c) => {
                      return c.ip === socket.ip()
-@@ -157,7 +164,7 @@ export class ClientBarn {
+@@ -157,7 +168,7 @@ export class ClientBarn {
                  msg.deserialize(stream);
                  break;
              case net.MsgType.Edit:
@@ -58,7 +64,7 @@
                  msg = new net.EditMsg();
                  msg.deserialize(stream);
                  break;
-@@ -169,9 +176,7 @@ export class ClientBarn {
+@@ -169,9 +180,7 @@ export class ClientBarn {
          };
      }
  
@@ -69,7 +75,7 @@
          let client = socket.getUserData();
  
          let msg: net.AbstractMsg | undefined = undefined;
-@@ -184,21 +189,17 @@ export class ClientBarn {
+@@ -184,21 +193,17 @@ export class ClientBarn {
              type = deserialized.type;
              error = deserialized.error;
          } catch (err) {
@@ -96,7 +102,7 @@
              socket.close(error);
              return;
          }
-@@ -210,7 +211,7 @@ export class ClientBarn {
+@@ -210,7 +215,7 @@ export class ClientBarn {
  
              const joinData = this.game.joinTokens.get(joinMsg.joinToken);
              if (!joinData || joinData.expiresAt < Date.now()) {
@@ -105,7 +111,7 @@
                  socket.close("invalid_token");
                  if (joinData) {
                      this.game.joinTokens.delete(joinMsg.joinToken);
-@@ -231,7 +232,7 @@ export class ClientBarn {
+@@ -231,7 +236,7 @@ export class ClientBarn {
          }
  
          if (!client) {
@@ -114,7 +120,7 @@
              socket.close("invalid_packet");
              return;
          }
-@@ -251,7 +252,12 @@ export class ClientBarn {
+@@ -251,7 +256,12 @@ export class ClientBarn {
  
          if (!client.player) return;
          const player = client.player;
@@ -128,7 +134,7 @@
  
          // reset direction and movement
          player.dirNew = v2.create(1, 0);
-@@ -285,7 +291,7 @@ export class Client {
+@@ -285,7 +295,7 @@ export class Client {
  
      userId: string | null = null;
      ip: string;
@@ -137,15 +143,15 @@
      // about logging find_game IP's
      findGameIp: string;
  
-@@ -330,7 +336,15 @@ export class Client {
+@@ -330,7 +340,15 @@ export class Client {
      spectateNewPlayerTicker = 0;
  
      private _firstUpdate = true;
 -    visibleObjects = new Set<GameObject>();
 +    /** objects visible at the last sync, as a bitset over object ids */
-+    visibleObjects: Uint32Array;
++    visibleObjects: IdBitset;
 +    /** all zero between syncs, swapped with visibleObjects after each diff */
-+    private _visibleScratch: Uint32Array;
++    private _visibleScratch: IdBitset;
 +    /**
 +     * visible objects that got unregistered (__id is now 0) before this client synced again,
 +     * only possible when sendMsgs returned early or for a destroyed active player
@@ -154,17 +160,16 @@
      visibleMapIndicators = new Set<MapIndicator>();
  
      // zoom used for the area in which the server will send objects to the client
-@@ -355,6 +369,9 @@ export class Client {
+@@ -355,6 +373,8 @@ export class Client {
          this.ip = socket.ip();
          this.findGameIp = findGameIp;
          this.game = game;
-+        const words = (game.objectRegister.idToType.length + 31) >>> 5;
-+        this.visibleObjects = new Uint32Array(words);
-+        this._visibleScratch = new Uint32Array(words);
++        this.visibleObjects = new IdBitset(game.objectRegister.idToType.length);
++        this._visibleScratch = new IdBitset(game.objectRegister.idToType.length);
          socket.setUserData(this);
          this.socket = socket as ClientSocket<Client>;
      }
-@@ -493,29 +510,75 @@ export class Client {
+@@ -493,29 +513,81 @@ export class Client {
          }
          const rect = collider.createAabbExtents(player.pos, v2.create(width, height));
  
@@ -177,7 +182,7 @@
 +        const newVisible = this._visibleScratch;
 +        game.grid.markAABB(rect, newVisible);
 +        // only an unregistered object can have id 0, those are tracked in _deadVisibleObjs
-+        newVisible[0] &= ~1;
++        newVisible.delete(0);
          // client crashes if active player is not visible
          // so make sure its always added to visible objects
 -        newVisibleObjects.add(player);
@@ -186,9 +191,11 @@
 -            if (!newVisibleObjects.has(obj)) {
 -                updateMsg.delObjIds.push(obj.__id);
 +        const playerId = player.__id;
-+        if (playerId !== 0) newVisible[playerId >>> 5] |= 1 << (playerId & 31);
++        if (playerId !== 0) newVisible.add(playerId);
 +
 +        const deadVisible = this._deadVisibleObjs;
++        // objects this client saw that got unregistered (id now 0) before it synced again: sent the
++        // way upstream's Set diff sends them (delete id 0, or full/part if it's the active player)
 +        if (deadVisible.length > 0 || playerId === 0) {
 +            let playerWasVisible = false;
 +            for (let i = 0; i < deadVisible.length; i++) {
@@ -219,28 +226,32 @@
 -                updateMsg.fullObjects.push(obj);
 -            } else if (game.objectRegister.dirtyPart[obj.__id]) {
 -                updateMsg.partObjects.push(obj);
-+        // ids only go up to idNext, so the words past it are zero in both bitsets
-+        const words = Math.min((objectRegister.idNext + 31) >>> 5, newVisible.length);
++        // diff 32 ids at a time; ids only go up to idNext, so later words are zero in both
++        const oldWords = oldVisible.words;
++        const newWords = newVisible.words;
++        const words = Math.min((objectRegister.idNext + 31) >>> 5, newWords.length);
 +        for (let w = 0; w < words; w++) {
-+            const oldBits = oldVisible[w];
-+            const newBits = newVisible[w];
++            const oldBits = oldWords[w];
++            const newBits = newWords[w];
 +            if ((oldBits | newBits) === 0) continue;
 +            // leaves oldVisible all zero, ready to be the next scratch
-+            oldVisible[w] = 0;
-+
++            oldWords[w] = 0;
 +            const base = w << 5;
++
++            // visible before, not now
 +            let removed = oldBits & ~newBits;
 +            while (removed !== 0) {
 +                const bit = removed & -removed;
 +                removed ^= bit;
-+                delObjIds.push(base | (31 - Math.clz32(bit)));
++                delObjIds.push(base | bitIndex(bit));
 +            }
 +
++            // visible now: new ones and fully dirty ones in full, partially dirty ones in part
 +            let visible = newBits;
 +            while (visible !== 0) {
 +                const bit = visible & -visible;
 +                visible ^= bit;
-+                const id = base | (31 - Math.clz32(bit));
++                const id = base | bitIndex(bit);
 +                if ((oldBits & bit) === 0 || dirtyFull[id]) {
 +                    fullObjects.push(idToObj[id]!);
 +                } else if (dirtyPart[id]) {
@@ -255,52 +266,16 @@
  
          updateMsg.activePlayerId = player.__id;
          if (this.startedSpectating) {
-@@ -585,7 +648,10 @@ export class Client {
+@@ -585,7 +657,7 @@ export class Client {
              const emoteDef = GameObjectDefs.typeToDef(emote.type);
  
              if (emotePlayer) {
 -                if (!emote.isPing && !this.visibleObjects.has(emotePlayer)) {
-+                const emotePlayerId = emotePlayer.__id;
-+                const emotePlayerVisible = this.visibleObjects[emotePlayerId >>> 5]
-+                    & (1 << (emotePlayerId & 31));
-+                if (!emote.isPing && !emotePlayerVisible) {
++                if (!emote.isPing && !this.visibleObjects.has(emotePlayer.__id)) {
                      return false;
                  }
  
-@@ -633,12 +699,19 @@ export class Client {
-         const extendedRadius = 1.1 * radius;
-         const radiusSquared = extendedRadius * extendedRadius;
- 
-+        // inlined v2.lengthSqr(v2.sub(...)), same float ops without temporary vectors
-+        const playerX = player.pos.x;
-+        const playerY = player.pos.y;
-         const bullets = game.bulletBarn.newBullets;
-         for (let i = 0; i < bullets.length; i++) {
-             const bullet = bullets[i];
-+            const sx = bullet.pos.x - playerX;
-+            const sy = bullet.pos.y - playerY;
-+            const ex = bullet.clientEndPos.x - playerX;
-+            const ey = bullet.clientEndPos.y - playerY;
-             if (
--                v2.lengthSqr(v2.sub(bullet.pos, player.pos)) < radiusSquared
--                || v2.lengthSqr(v2.sub(bullet.clientEndPos, player.pos)) < radiusSquared
-+                sx * sx + sy * sy < radiusSquared
-+                || ex * ex + ey * ey < radiusSquared
-                 || coldet.intersectSegmentCircle(
-                     bullet.pos,
-                     bullet.clientEndPos,
-@@ -653,7 +726,9 @@ export class Client {
-         for (let i = 0; i < game.explosionBarn.newExplosions.length; i++) {
-             const explosion = game.explosionBarn.newExplosions[i];
-             const rad = explosion.rad + extendedRadius;
--            if (v2.lengthSqr(v2.sub(explosion.pos, player.pos)) < rad * rad) {
-+            const dx = explosion.pos.x - playerX;
-+            const dy = explosion.pos.y - playerY;
-+            if (dx * dx + dy * dy < rad * rad) {
-                 updateMsg.explosions.push(explosion);
-             }
-         }
-@@ -712,6 +787,19 @@ export class Client {
+@@ -712,6 +784,18 @@ export class Client {
          this._firstUpdate = false;
      }
  
@@ -309,9 +284,8 @@
 +        const visible = this.visibleObjects;
 +        for (let i = 0; i < objs.length; i++) {
 +            const id = objs[i].__id;
-+            const bit = 1 << (id & 31);
-+            if (visible[id >>> 5] & bit) {
-+                visible[id >>> 5] &= ~bit;
++            if (visible.has(id)) {
++                visible.delete(id);
 +                this._deadVisibleObjs.push(objs[i]);
 +            }
 +        }

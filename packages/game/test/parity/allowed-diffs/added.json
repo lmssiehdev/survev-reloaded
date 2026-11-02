@@ -5,5 +5,6 @@
   "packages/game/localConnection.ts": "in-page connection for offline/local games (transport, no gameplay rules)",
   "packages/game/package.json": "workspace package manifest for @survev/game",
   "packages/game/tickStats.ts": "tick/net sync timing stats and log throttle for GameLogger metrics (no gameplay state)",
-  "packages/game/tsconfig.json": "workspace tsconfig for @survev/game"
+  "packages/game/tsconfig.json": "workspace tsconfig for @survev/game",
+  "packages/game/idBitset.ts": "IdBitset: per-client visibility set of object ids (netSync bookkeeping, no gameplay rules)"
 }

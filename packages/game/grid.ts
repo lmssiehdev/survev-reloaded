@@ -2,6 +2,7 @@ import type { AABB, Collider } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { bitIndex, type IdBitset } from "./idBitset.ts";
 import type { Loot } from "./objects/loot.ts";
 
 interface GameObject {
@@ -326,7 +327,7 @@ export class Grid<T extends GameObject = GameObject> {
      * Sets the bit of every object id in the cells overlapping this AABB.
      * Covers the same cells as intersectAABBSet, without building a Set
      */
-    markAABB(aabb: AABB, bits: Uint32Array): void {
+    markAABB(aabb: AABB, bits: IdBitset): void {
         const minX = this.cellX(aabb.min.x);
         const minY = this.cellY(aabb.min.y);
         const maxX = this.cellX(aabb.max.x);
@@ -338,10 +339,7 @@ export class Grid<T extends GameObject = GameObject> {
             const row = x * stride;
             for (let y = minY; y <= maxY; y++) {
                 const cell = cells[row + y];
-                for (let i = 0; i < cell.length; i++) {
-                    const id = cell[i];
-                    bits[id >>> 5] |= 1 << (id & 31);
-                }
+                for (let i = 0; i < cell.length; i++) bits.add(cell[i]);
             }
         }
     }
@@ -364,8 +362,8 @@ export class HashGrid<T extends Loot = Loot> {
     cols: number;
     /** cell (x, y) is cells[y * cols + x]; only cells inside rows x cols, the only ones ever checked */
     private readonly cells: T[][];
-    /** indices of the cells filled this check, so only those get visited and cleared */
-    private readonly touched: number[] = [];
+    /** one bit per cell filled this check; walking the words in order visits filled cells row-major */
+    private readonly touched: Uint32Array;
 
     constructor(width: number, height: number, cellSize: number) {
         this.width = width;
@@ -377,6 +375,7 @@ export class HashGrid<T extends Loot = Loot> {
         this.cols = Math.ceil(this.width / this.cellSize);
 
         this.cells = Array.from({ length: this.rows * this.cols }, () => []);
+        this.touched = new Uint32Array((this.rows * this.cols + 31) >>> 5);
     }
 
     /**
@@ -411,19 +410,24 @@ export class HashGrid<T extends Loot = Loot> {
                 for (let x = xMin; x <= xMax; x++) {
                     const idx = y * cols + x;
                     const cell = cells[idx];
-                    if (cell.length === 0) touched.push(idx);
+                    touched[idx >>> 5] |= 1 << (idx & 31);
                     cell.push(loot);
                 }
             }
         }
 
-        touched.sort((a, b) => a - b);
-        for (let i = 0; i < touched.length; i++) {
-            const cell = cells[touched[i]];
-            this.bruteForceCheck(cell, comparator, resolver);
-            cell.length = 0;
+        for (let w = 0; w < touched.length; w++) {
+            let bits = touched[w];
+            if (bits === 0) continue;
+            touched[w] = 0;
+            while (bits !== 0) {
+                const bit = bits & -bits;
+                bits ^= bit;
+                const cell = cells[(w << 5) | bitIndex(bit)];
+                this.bruteForceCheck(cell, comparator, resolver);
+                cell.length = 0;
+            }
         }
-        touched.length = 0;
     }
 
     /**

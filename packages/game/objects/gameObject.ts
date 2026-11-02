@@ -61,6 +61,8 @@ export class ObjectRegister {
     dirtyFull = new Uint8Array(MAX_ID);
 
     deletedObjs: GameObject[] = [];
+    /** dev builds: how many deletedObjs ClientBarn dropped from the visibility bitsets this sync */
+    visibilityPurgedCount = 0;
 
     idNext = 1;
     freeLists = {} as Record<ObjectType, number[]>;
@@ -162,6 +164,14 @@ export class ObjectRegister {
     }
 
     flush() {
+        /* STRIP_FROM_PROD_SERVER:START */
+        // freeing an id a client still has a visibility bit for would let a new object inherit it
+        assert(
+            this.deletedObjs.length === this.visibilityPurgedCount,
+            "objects were deleted after ClientBarn dropped them from the visibility bitsets",
+        );
+        this.visibilityPurgedCount = 0;
+        /* STRIP_FROM_PROD_SERVER:END */
         for (let i = 0; i < this.deletedObjs.length; i++) {
             this.unregister(this.deletedObjs[i]);
         }

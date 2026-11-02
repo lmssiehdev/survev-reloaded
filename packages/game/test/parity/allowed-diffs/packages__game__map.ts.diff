@@ -1,7 +1,7 @@
 # Map generation is untouched; only Config/logging plumbing differs.
 # hunk 1 (@@ -1,13 +1,13 @@): imports: Config replaced by game.options (options objects instead of Config); GameObject type for reused grid query arrays
 # hunk 2 (@@ -20,7 +20,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
-# hunk 3 (@@ -176,6 +175,10 @@): perf: reused result arrays for the single-cell surface grid queries
+# hunk 3 (@@ -176,6 +175,10 @@): perf: scratch result arrays for the single-cell surface queries (read-only loops, never re-entered)
 # hunk 4 (@@ -207,6 +210,8 @@): perf: shore polygon as flat coords for the hot point-in-polygon checks
 # hunk 5 (@@ -265,8 +270,7 @@): logging via GameLogger: map gen step timing as structured event
 # hunk 6 (@@ -315,7 +319,7 @@): logging via GameLogger: map seed as structured event
@@ -9,11 +9,10 @@
 # hunk 8 (@@ -872,9 +877,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
 # hunk 9 (@@ -1234,7 +1237,7 @@): logging via GameLogger: spawn failure message
 # hunk 10 (@@ -2142,8 +2145,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
-# hunk 11 (@@ -2275,14 +2279,29 @@): perf: clampToMapBounds inlined (same clamp arithmetic as math.v2Clamp)
-# hunk 12 (@@ -2290,7 +2309,7 @@): perf: getGroundSurface grid query fills a reused array; same objects, same order
-# hunk 13 (@@ -2368,7 +2387,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
-# hunk 14 (@@ -2376,7 +2395,7 @@): perf: isOnWater grid query fills a reused array; same objects, same order
-# hunk 15 (@@ -2442,7 +2461,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
+# hunk 11 (@@ -2290,7 +2294,7 @@): perf: getGroundSurface reuses its scratch result array (same objects, same order)
+# hunk 12 (@@ -2368,7 +2372,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
+# hunk 13 (@@ -2376,7 +2380,7 @@): perf: isOnWater reuses its scratch result array (same objects, same order)
+# hunk 14 (@@ -2442,7 +2446,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
 --- upstream/server/src/game/map.ts
 +++ fork/packages/game/map.ts
 @@ -1,13 +1,13 @@
@@ -43,9 +42,9 @@
      }
  }
  
-+/** reused results of the single-cell surface queries; their loops never re-enter */
-+const groundSurfaceObjs: GameObject[] = [];
-+const onWaterObjs: GameObject[] = [];
++/** scratch results of the single-cell surface queries; their loops only read, never re-enter */
++const SCRATCH_SURFACE_OBJS: GameObject[] = [];
++const SCRATCH_WATER_OBJS: GameObject[] = [];
 +
  export class GameMap {
      game: Game;
@@ -118,54 +117,16 @@
          }
  
          let getPos: () => Vec2;
-@@ -2275,14 +2279,29 @@ export class GameMap {
-     }
- 
-     clampToMapBounds(pos: Vec2, rad = 0) {
--        v2.set(
--            pos,
--            math.v2Clamp(
--                pos,
--                v2.create(rad, rad),
--                v2.create(this.width - rad, this.height - rad),
--            ),
--        );
-+        // inlined math.v2Clamp(pos, (rad, rad), (width - rad, height - rad)) without temporaries
-+        const hiX = this.width - rad;
-+        const hiY = this.height - rad;
-+        let minX: number;
-+        let maxX: number;
-+        let minY: number;
-+        let maxY: number;
-+        if (rad > hiX) {
-+            minX = hiX;
-+            maxX = rad;
-+        } else {
-+            minX = rad;
-+            maxX = hiX;
-+        }
-+        if (rad > hiY) {
-+            minY = hiY;
-+            maxY = rad;
-+        } else {
-+            minY = rad;
-+            maxY = hiY;
-+        }
-+        pos.x = pos.x < maxX ? (pos.x > minX ? pos.x : minX) : maxX;
-+        pos.y = pos.y < maxY ? (pos.y > minY ? pos.y : minY) : maxY;
-     }
- 
-     getGroundSurface(pos: Vec2, layer: number) {
-@@ -2290,7 +2309,7 @@ export class GameMap {
+@@ -2290,7 +2294,7 @@ export class GameMap {
              return { type, river };
          };
  
 -        const objs = this.game.grid.intersectPos(pos);
-+        const objs = this.game.grid.intersectPos(pos, groundSurfaceObjs);
++        const objs = this.game.grid.intersectPos(pos, SCRATCH_SURFACE_OBJS);
  
          // Check decals
          for (let i = 0; i < objs.length; i++) {
-@@ -2368,7 +2387,7 @@ export class GameMap {
+@@ -2368,7 +2372,7 @@ export class GameMap {
                  onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
              );
          }
@@ -174,16 +135,16 @@
              return groundSurface("sand");
          }
          return groundSurface("water");
-@@ -2376,7 +2395,7 @@ export class GameMap {
+@@ -2376,7 +2380,7 @@ export class GameMap {
  
      // like getGroundSurface but optimized for water
      isOnWater(pos: Vec2, layer: number) {
 -        const objs = this.game.grid.intersectPos(pos);
-+        const objs = this.game.grid.intersectPos(pos, onWaterObjs);
++        const objs = this.game.grid.intersectPos(pos, SCRATCH_WATER_OBJS);
  
          let surface = null;
          let zIdx = 0;
-@@ -2442,7 +2461,7 @@ export class GameMap {
+@@ -2442,7 +2446,7 @@ export class GameMap {
              }
          }
  
