@@ -61,9 +61,8 @@ export const mutants: Mutant[] = [
         name: "collision-order",
         why: "player vs obstacle collisions resolved in reverse grid order",
         file: "packages/game/objects/player.ts",
-        from:
-            "            for (let j = 0; j < objs.length && !this.debug.noClip; j++) {\n                const obj = objs[j];",
-        to: "            for (let j = 0; j < objs.length && !this.debug.noClip; j++) {\n                const obj = objs[objs.length - 1 - j];",
+        from: "colliding[j].collider,",
+        to: "colliding[colliding.length - 1 - j].collider,",
     },
     {
         name: "visibility-off-by-one",
