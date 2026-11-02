@@ -1,0 +1,6 @@
+{
+  "server/src/game/gameProcess.ts": "process host moved to apps/server/src/game/gameProcess.ts (Bun host, out of gameplay scope)",
+  "server/src/game/gameProcessManager.ts": "process manager moved to apps/server (out of gameplay scope)",
+  "shared/utils/logger.ts": "upstream logger not ported; logging via GameLogger / @survev/logger",
+  "shared/utils/stripBlockPlugin.ts": "upstream rolldown build plugin not ported (fork builds with Bun)"
+}

@@ -1,0 +1,11 @@
+# hunk 1 (@@ -159,7 +159,6 @@): API types (not gameplay): zones removed from team play message (fork has no zones)
+--- upstream/shared/types/team.ts
++++ fork/packages/shared/types/team.ts
+@@ -159,7 +159,6 @@ export const zTeamPlayGameMsg = z.object({
+     data: z.object({
+         version: z.number(),
+         region: z.string(),
+-        zones: z.array(z.string()),
+         turnstileToken: z.string().optional(),
+     }),
+ });

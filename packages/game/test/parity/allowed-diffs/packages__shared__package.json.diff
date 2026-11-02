@@ -1,0 +1,23 @@
+# hunk 1 (@@ -2,10 +2,17 @@): workspace package: exports map, typecheck script, @types/bun; obscenity for badWords moved into shared; zod pinned by the fork; no rolldown (stripBlockPlugin not ported)
+--- upstream/shared/package.json
++++ fork/packages/shared/package.json
+@@ -2,10 +2,17 @@
+   "name": "@survev/shared",
+   "private": true,
+   "type": "module",
++  "exports": {
++    "./*": "./*"
++  },
++  "scripts": {
++    "typecheck": "bun check && bun check -p test"
++  },
+   "dependencies": {
+-    "zod": "^4.6.7"
++    "obscenity": "^0.4.6",
++    "zod": "^4.6.5"
+   },
+   "devDependencies": {
+-    "rolldown": "^1.2.14"
++    "@types/bun": "^1.4.3"
+   }
+ }

@@ -1,0 +1,116 @@
+# hunk 1 (@@ -7,7 +7,6 @@): imports: Config replaced by game.options (options objects instead of Config)
+# hunk 2 (@@ -51,7 +50,7 @@): options objects instead of Config: rateLimitsEnabled
+# hunk 3 (@@ -157,7 +156,7 @@): options objects instead of Config: debug.allowEditMsg
+# hunk 4 (@@ -169,9 +168,7 @@): transport: the fork's Bun host sets binaryType=arraybuffer (apps/server gameProcess.ts), so handleMsg only takes ArrayBuffer and the uWS Buffer guard is dropped
+# hunk 5 (@@ -184,21 +181,17 @@): logging via GameLogger: deserialize failure (socket still closed with invalid_packet)
+# hunk 6 (@@ -210,7 +203,7 @@): logging via GameLogger: invalid/expired join token, logged at info (socket still closed with invalid_token)
+# hunk 7 (@@ -231,7 +224,7 @@): logging via GameLogger: no client and no JoinMsg (socket still closed)
+# hunk 8 (@@ -251,7 +244,12 @@): logging via GameLogger: player.leave event
+# hunk 9 (@@ -285,7 +283,7 @@): comment only: schema path moved to apps/api
+--- upstream/server/src/game/client.ts
++++ fork/packages/game/client.ts
+@@ -7,7 +7,6 @@ import type { GameObject } from "server/src/game/objects/gameObject.ts";
+ import type { GameWsDisconnectReason } from "shared/types/api.ts";
+ import type { MapIndicator } from "server/src/game/objects/mapIndicator.ts";
+ import type { Player } from "server/src/game/objects/player.ts";
+-import { Config } from "server/src/config.ts";
+ import { GameConfig } from "shared/gameConfig.ts";
+ import { GameObjectDefs } from "shared/defs/register.ts";
+ import { ObjectType } from "shared/net/objectSerializeFns.ts";
+@@ -51,7 +50,7 @@ export class ClientBarn {
+     }
+ 
+     addClientWithPlayer(socket: ClientSocket<Client>, joinData: JoinTokenData, joinMsg: net.JoinMsg) {
+-        if (Config.rateLimitsEnabled) {
++        if (this.game.options.rateLimitsEnabled) {
+             const count = this.clients.filter(
+                 (c) => {
+                     return c.ip === socket.ip()
+@@ -157,7 +156,7 @@ export class ClientBarn {
+                 msg.deserialize(stream);
+                 break;
+             case net.MsgType.Edit:
+-                if (!Config.debug.allowEditMsg) break;
++                if (!this.game.options.debug.allowEditMsg) break;
+                 msg = new net.EditMsg();
+                 msg.deserialize(stream);
+                 break;
+@@ -169,9 +168,7 @@ export class ClientBarn {
+         };
+     }
+ 
+-    handleMsg(buff: ArrayBuffer | Buffer, socket: ClientSocket<Client>) {
+-        if (!(buff instanceof ArrayBuffer)) return;
+-
++    handleMsg(buff: ArrayBuffer, socket: ClientSocket<Client>) {
+         let client = socket.getUserData();
+ 
+         let msg: net.AbstractMsg | undefined = undefined;
+@@ -184,21 +181,17 @@ export class ClientBarn {
+             type = deserialized.type;
+             error = deserialized.error;
+         } catch (err) {
+-            this.game.logger.error(
+-                "Failed to deserialize msg: ",
++            this.game.logger.error("ws.deserialize_failed", {
+                 err,
+-                "msg buffer: ",
+-                // JSON.stringify doesn't work on buffers, so need to convert to an Uint8Array first
+-                // and then to a regular array... 😭
+-                // the slice is to make sure it doesn't overflow the error webhook
+-                JSON.stringify([...new Uint8Array(buff.slice(0, 255))]),
+-            );
++                // first bytes only, enough to identify the message
++                buffer: [...new Uint8Array(buff.slice(0, 255))],
++            });
+             socket.close("invalid_packet");
+             return;
+         }
+ 
+         if (error) {
+-            this.game.logger.warn("Disconnecting socket because of packet error:", error);
++            this.game.logger.warn("ws.packet_error", { error });
+             socket.close(error);
+             return;
+         }
+@@ -210,7 +203,7 @@ export class ClientBarn {
+ 
+             const joinData = this.game.joinTokens.get(joinMsg.joinToken);
+             if (!joinData || joinData.expiresAt < Date.now()) {
+-                this.game.logger.warn("Client tried to join without or with expired join token");
++                this.game.logger.info("ws.join_token_invalid");
+                 socket.close("invalid_token");
+                 if (joinData) {
+                     this.game.joinTokens.delete(joinMsg.joinToken);
+@@ -231,7 +224,7 @@ export class ClientBarn {
+         }
+ 
+         if (!client) {
+-            this.game.logger.warn("No client found and we didn't receive a JoinMsg, closing socket");
++            this.game.logger.warn("ws.no_client_no_join");
+             socket.close("invalid_packet");
+             return;
+         }
+@@ -251,7 +244,12 @@ export class ClientBarn {
+ 
+         if (!client.player) return;
+         const player = client.player;
+-        this.game.logger.info(`"${player.name}" left`);
++        this.game.logger.info("player.leave", {
++            playerId: player.__id,
++            durationMs: Date.now() - player.joinedAt,
++            dead: player.dead,
++            kills: player.kills,
++        });
+ 
+         // reset direction and movement
+         player.dirNew = v2.create(1, 0);
+@@ -285,7 +283,7 @@ export class Client {
+ 
+     userId: string | null = null;
+     ip: string;
+-    // see comment on server/src/api/schema.ts
++    // see comment on apps/api/src/db/schema.ts
+     // about logging find_game IP's
+     findGameIp: string;
+ 

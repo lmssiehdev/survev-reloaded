@@ -1,0 +1,42 @@
+# hunk 1 (@@ -1,25 +1,6 @@): IPC types: GameData moved to game.ts, contracts types
+# hunk 2 (@@ -31,7 +12,7 @@): IPC types: GameMode instead of ServerGameConfig
+--- upstream/server/src/game/ipcTypes.ts
++++ fork/packages/game/ipcTypes.ts
+@@ -1,25 +1,6 @@
+-import type { FindGamePrivateBody, ServerGameConfig } from "server/src/utils/types.ts";
+-import type { MapDefKey } from "shared/defs/mapDefs.ts";
+-import type { SpectateTokenData } from "server/src/game/game.ts";
+-import type { TeamMode } from "shared/gameConfig.ts";
+-
+-export interface GameData {
+-    id: string;
+-    teamMode: TeamMode;
+-    mapName: MapDefKey;
+-    canJoin: boolean;
+-    aliveCount: number;
+-    startedTime: number;
+-    stopped: boolean;
+-    timeRunning: number;
+-
+-    livingPlayers: Array<{
+-        id: number;
+-        userId: string | null;
+-        name: string;
+-        disconnected: boolean;
+-    }>;
+-}
++import type { FindGamePrivateBody } from "@survev/contracts";
++import type { GameData, SpectateTokenData } from "server/src/game/game.ts";
++import type { GameMode } from "server/src/game/gameOptions.ts";
+ 
+ export enum ProcessMsgType {
+     Create,
+@@ -31,7 +12,7 @@ export enum ProcessMsgType {
+ 
+ export interface CreateGameMsg {
+     type: ProcessMsgType.Create;
+-    config: ServerGameConfig;
++    config: GameMode;
+     id: string;
+ }
+ 

@@ -1,0 +1,12 @@
+# hunk 1 (@@ -89,7 +89,7 @@): quest progress sent through hooks instead of a Game method implemented in gameProcess
+--- upstream/server/src/game/questManager.ts
++++ fork/packages/game/questManager.ts
+@@ -89,7 +89,7 @@ export class QuestManager {
+             this.player.client.sendInstantMsg(MsgType.UpdatePass, new UpdatePassMsg());
+         }
+ 
+-        this.game.sendQuestProgress(this.player.userId, progress);
++        this.game.hooks.sendQuestProgress?.(this.player.userId, progress);
+ 
+         // reset the deltas in case they get flushed again
+         for (const quest of this.quests) {

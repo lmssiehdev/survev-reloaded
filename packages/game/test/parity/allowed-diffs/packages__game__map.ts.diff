@@ -1,0 +1,77 @@
+# Map generation is untouched; only Config/logging plumbing differs.
+# hunk 1 (@@ -7,7 +7,6 @@): imports: Config replaced by game.options (options objects instead of Config)
+# hunk 2 (@@ -20,7 +19,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
+# hunk 3 (@@ -265,8 +263,7 @@): logging via GameLogger: map gen step timing as structured event
+# hunk 4 (@@ -315,7 +312,7 @@): logging via GameLogger: map seed as structured event
+# hunk 5 (@@ -872,9 +869,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
+# hunk 6 (@@ -1234,7 +1229,7 @@): logging via GameLogger: spawn failure message
+# hunk 7 (@@ -2142,8 +2137,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
+--- upstream/server/src/game/map.ts
++++ fork/packages/game/map.ts
+@@ -7,7 +7,6 @@ import type { Player } from "server/src/game/objects/player.ts";
+ import type { River } from "shared/utils/river.ts";
+ import type { StructureDef } from "shared/defs/mapObjects/structureDefs.ts";
+ import { Building } from "server/src/game/objects/building.ts";
+-import { Config } from "server/src/config.ts";
+ import { GameConfig, MapId, TeamMode } from "shared/gameConfig.ts";
+ import { MapObjectDefs } from "shared/defs/register.ts";
+ import { MsgStream, MsgType } from "shared/net/net.ts";
+@@ -20,7 +19,6 @@ import { collider } from "shared/utils/collider.ts";
+ import { generateTerrain, type MapRiverData } from "shared/utils/terrainGen.ts";
+ import { mapHelpers } from "shared/utils/mapHelpers.ts";
+ import { math } from "shared/utils/math.ts";
+-import { styleText } from "node:util";
+ import { type AABB, coldet, type Collider } from "shared/utils/coldet.ts";
+ import { type MapDef, MapDefs } from "shared/defs/mapDefs.ts";
+ import { v2, type Vec2 } from "shared/utils/v2.ts";
+@@ -265,8 +263,7 @@ export class GameMap {
+         const now = performance.now();
+         const old = this.loggingTimes.pop();
+ 
+-        const time = `${Math.round(now - old!)}ms`.padEnd(6);
+-        this.game.logger.debug(styleText(["green"], time), msg);
++        this.game.logger.debug("map.timing", { step: msg, ms: Math.round(now - old!) });
+     }
+ 
+     constructor(game: Game) {
+@@ -315,7 +312,7 @@ export class GameMap {
+ 
+     init(seed?: number) {
+         this.seed = seed ?? util.randomInt(0, 2 ** 32 - 1);
+-        this.game.logger.debug("Generating map with seed", this.seed);
++        this.game.logger.debug("map.generating", { seed: this.seed });
+ 
+         this.obstacles = [];
+         this.dynamicObstacles = [];
+@@ -872,9 +869,7 @@ export class GameMap {
+                     this.genAuto(bridge.type, bridge.pos, 0, bridge.ori);
+                 }
+             } else {
+-                this.game.logger.warn(
+-                    "Failed to generate faction bridges, restarting map gen",
+-                );
++                this.game.logger.warn("map.faction_bridges_failed");
+                 this.loggingTimes.length = 0;
+                 this.init();
+                 return false;
+@@ -1234,7 +1229,7 @@ export class GameMap {
+             }
+             attempts++;
+         }
+-        if (logOnFailure) this.game.logger.warn("Failed to spawn", type);
++        if (logOnFailure) this.game.logger.warn("map.spawn_failed", { type });
+         return false;
+     }
+ 
+@@ -2142,8 +2137,9 @@ export class GameMap {
+     }
+ 
+     getSpawnPos(group?: Group, team?: Team): Vec2 {
+-        if (Config.debug.spawnMode === "fixed") {
+-            return v2.copy(Config.debug.spawnPos ?? this.center);
++        const { debug } = this.game.options;
++        if (debug.spawnMode === "fixed") {
++            return v2.copy(debug.spawnPos ?? this.center);
+         }
+ 
+         let getPos: () => Vec2;

@@ -1,0 +1,31 @@
+# hunk 1 (@@ -1,4 +1,5 @@): imports: MapDefKey for the PlayMode type
+# hunk 2 (@@ -136,6 +137,20 @@): PlayMode type and default play modes for the menu (not read by game code)
+--- upstream/shared/gameConfig.ts
++++ fork/packages/shared/gameConfig.ts
+@@ -1,4 +1,5 @@
+ import type { LootDef } from "shared/defs/gameObjectDefs.ts";
++import type { MapDefKey } from "shared/defs/mapDefs.ts";
+ 
+ export enum Action {
+     None,
+@@ -136,6 +137,20 @@ export enum TeamMode {
+     Squad = 4,
+ }
+ 
++/** a play button on the main menu */
++export interface PlayMode {
++    mapName: MapDefKey;
++    teamMode: TeamMode;
++    enabled: boolean;
++}
++
++/** the play buttons until an admin changes them, and when playing without the API */
++export const defaultPlayModes: readonly PlayMode[] = [
++    { mapName: "main", teamMode: TeamMode.Solo, enabled: true },
++    { mapName: "main", teamMode: TeamMode.Duo, enabled: true },
++    { mapName: "main", teamMode: TeamMode.Squad, enabled: true },
++];
++
+ export enum FactionTeam {
+     Red = 1,
+     Blue = 2,

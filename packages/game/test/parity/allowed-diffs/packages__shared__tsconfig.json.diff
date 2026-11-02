@@ -1,0 +1,16 @@
+# hunk 1 (@@ -1,8 +1,10 @@): workspace tsconfig: monorepo base path, test excluded, browser-safe lib/types
+--- upstream/shared/tsconfig.json
++++ fork/packages/shared/tsconfig.json
+@@ -1,8 +1,10 @@
+ {
+   "$schema": "https://www.schemastore.org/tsconfig.json",
+-  "extends": "../tsconfig.base.json",
++  "extends": "../../tsconfig.base.json",
+   "include": ["./"],
++  "exclude": ["./test"],
+   "compilerOptions": {
+-    "types": ["node"]
++    "lib": ["ESNext", "WebWorker"],
++    "types": []
+   }
+ }

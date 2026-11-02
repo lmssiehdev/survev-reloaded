@@ -1,0 +1,13 @@
+# hunk 1 (@@ -7,6 +7,9 @@): activePassType: shared constant for the pass the API awards xp in (not read by game code)
+--- upstream/shared/defs/gameObjects/passDefs.ts
++++ fork/packages/shared/defs/gameObjects/passDefs.ts
+@@ -7,6 +7,9 @@ export interface PassDef {
+     }>;
+ }
+ 
++/** the pass players earn xp and rewards in */
++export const activePassType = "pass_survivr2";
++
+ export const PassDefs: Record<string, PassDef> = {
+     pass_survivr1: {
+         type: "pass",

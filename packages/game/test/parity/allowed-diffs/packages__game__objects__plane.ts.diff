@@ -1,0 +1,22 @@
+# hunk 1 (@@ -308,7 +308,7 @@): logging via GameLogger: plane ID exhaustion warning (airdrop planes)
+# hunk 2 (@@ -451,7 +451,7 @@): logging via GameLogger: plane ID exhaustion warning (airstrike planes)
+--- upstream/server/src/game/objects/plane.ts
++++ fork/packages/game/objects/plane.ts
+@@ -308,7 +308,7 @@ export class PlaneBarn {
+         }
+ 
+         if (!id) {
+-            this.game.logger.warn("Plane Barn: ran out of IDs");
++            this.game.logger.warn("plane.ids_exhausted");
+             return;
+         }
+ 
+@@ -451,7 +451,7 @@ export class PlaneBarn {
+         }
+ 
+         if (!id) {
+-            this.game.logger.warn("Plane Barn: ran out of IDs");
++            this.game.logger.warn("plane.ids_exhausted");
+             return;
+         }
+ 

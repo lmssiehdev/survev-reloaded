@@ -1,0 +1,89 @@
+# hunk 1 (@@ -10,7 +10,6 @@): imports: Config replaced by game.options (options objects instead of Config)
+# hunk 2 (@@ -98,11 +97,7 @@): options objects instead of Config: defaultItems field initializer moves into the constructor (needs this.game.options)
+# hunk 3 (@@ -116,6 +111,11 @@): options objects instead of Config: same pure mergeDeep of GameConfig defaults with game.options.defaultItems, before bagSizes as upstream
+# hunk 4 (@@ -155,7 +155,7 @@): options objects instead of Config: uniqueInGameNames
+# hunk 5 (@@ -215,7 +215,9 @@): logging via GameLogger: join event; playersTotal/playersPeak counters feed the game.end log only
+# hunk 6 (@@ -781,6 +783,7 @@): joinedAt timestamp, only read by the player.leave log
+# hunk 7 (@@ -1365,7 +1368,7 @@): options objects instead of Config: debug.allowBots
+# hunk 8 (@@ -4373,7 +4376,7 @@): options objects instead of Config: debug.allowEditMsg
+--- upstream/server/src/game/objects/player.ts
++++ fork/packages/game/objects/player.ts
+@@ -10,7 +10,6 @@ import type { RoleDef } from "shared/defs/gameObjects/roleDefs.ts";
+ import type { ThrowableDef } from "shared/defs/gameObjects/throwableDefs.ts";
+ import { BaseGameObject, type DamageParams, type GameObject } from "server/src/game/objects/gameObject.ts";
+ import { Client } from "server/src/game/client.ts";
+-import { Config } from "server/src/config.ts";
+ import { EmotesDefs } from "shared/defs/gameObjects/emoteDefs.ts";
+ import { GameObjectDefs } from "shared/defs/register.ts";
+ import { Group, Team } from "server/src/game/group.ts";
+@@ -98,11 +97,7 @@ export class PlayerBarn {
+     playerStatusTicker = 0;
+     playerStatusRate = 0;
+ 
+-    defaultItems = util.mergeDeep<typeof GameConfig["player"]["defaultItems"]>(
+-        {},
+-        GameConfig.player.defaultItems,
+-        Config.defaultItems,
+-    );
++    defaultItems: (typeof GameConfig)["player"]["defaultItems"];
+ 
+     bagSizes: (typeof GameConfig)["bagSizes"];
+ 
+@@ -116,6 +111,11 @@ export class PlayerBarn {
+     factionsMvp?: Player = undefined;
+ 
+     constructor(readonly game: Game) {
++        this.defaultItems = util.mergeDeep<typeof GameConfig["player"]["defaultItems"]>(
++            {},
++            GameConfig.player.defaultItems,
++            this.game.options.defaultItems,
++        );
+         this.bagSizes = util.mergeDeep<typeof GameConfig["bagSizes"]>(
+             {},
+             GameConfig.bagSizes,
+@@ -155,7 +155,7 @@ export class PlayerBarn {
+         const originalName = validateUserName(joinMsg.name).validName;
+         let finalName = originalName;
+ 
+-        if (Config.uniqueInGameNames) {
++        if (this.game.options.uniqueInGameNames) {
+             let count = 0;
+             const loggedOutPlayers = this.game.playerBarn.players.filter(
+                 (p) => !p.client.userId,
+@@ -215,7 +215,9 @@ export class PlayerBarn {
+             player.roleMenuTicker = GameConfig.player.perkModeRoleSelectDuration + 5;
+         }
+ 
+-        this.game.logger.info(`Player ${player.name} joined`);
++        this.game.playersTotal++;
++        this.game.playersPeak = Math.max(this.game.playersPeak, this.livingPlayers.length + 1);
++        this.game.logger.debug("player.join", { playerId: player.__id });
+ 
+         this.newPlayers.push(player);
+         this.game.objectRegister.register(player);
+@@ -781,6 +783,7 @@ export class Player extends BaseGameObject {
+     layer: number;
+     aimLayer = 0;
+     dead = false;
++    joinedAt = Date.now();
+     downed = false;
+ 
+     downedCount = 0;
+@@ -1365,7 +1368,7 @@ export class Player extends BaseGameObject {
+         this.name = name;
+         this.client = client;
+         this.isMobile = isMobile;
+-        this.bot = Config.debug.allowBots && isBot;
++        this.bot = this.game.options.debug.allowBots && isBot;
+ 
+         this.questManager.quests = (questIds ?? []).map((id) => ({
+             id,
+@@ -4373,7 +4376,7 @@ export class Player extends BaseGameObject {
+     }
+ 
+     processEditMsg(msg: net.EditMsg) {
+-        if (!Config.debug.allowEditMsg) return;
++        if (!this.game.options.debug.allowEditMsg) return;
+ 
+         if (msg.loadNewMap) {
+             this.game.map.regenerate(msg.newMapSeed);

@@ -1,0 +1,69 @@
+# hunk 1 (@@ -1,10 +1,9 @@): API types (not gameplay): PlayMode import, no zones in find game body
+# hunk 2 (@@ -78,27 +77,31 @@): API types (not gameplay): ban expiry, regions with addresses, turnstile key, logins in site info
+# hunk 3 (@@ -110,11 +113,3 @@): API types (not gameplay): ProxyDef removed (fork has no proxy config)
+--- upstream/shared/types/api.ts
++++ fork/packages/shared/types/api.ts
+@@ -1,10 +1,9 @@
+ import type { MapDefKey } from "shared/defs/mapDefs.ts";
+-import type { TeamMode } from "shared/gameConfig.ts";
++import type { PlayMode, TeamMode } from "shared/gameConfig.ts";
+ import { z } from "zod";
+ 
+ export const zFindGameBody = z.object({
+     region: z.string(),
+-    zones: z.array(z.string()),
+     version: z.number(),
+     playerCount: z.number(),
+     autoFill: z.boolean(),
+@@ -78,27 +77,31 @@ export type FindGameResponse =
+     | {
+         type: "banned";
+         reason: string;
+-        permanent: boolean;
+-        expiresIn: Date | string;
++        /** null: permanent */
++        expiresAt: Date | string | null;
+     };
+ 
+ export interface SiteInfoRes {
+     country: string;
+     gitRevision: string;
+     captchaEnabled: boolean;
+-    modes: Array<{
+-        mapName: string;
+-        teamMode: TeamMode;
+-        enabled: boolean;
+-    }>;
++    modes: PlayMode[];
+     clientTheme: MapDefKey;
+-    pops: Record<
++    /** the game servers currently up */
++    regions: Record<
+         string,
+         {
+             playerCount: number;
+             l10n: string;
++            /** host[:port] of the game server */
++            address: string;
++            https: boolean;
+         }
+     >;
++    /** captcha site key, set when the API verifies captchas */
++    turnstileSiteKey?: string;
++    /** login methods the API has set up */
++    logins: { discord: boolean; mock: boolean };
+     youtube: {
+         name: string;
+         link: string;
+@@ -110,11 +113,3 @@ export interface SiteInfoRes {
+         img: string;
+     }>;
+ }
+-
+-export interface ProxyDef {
+-    apiUrl?: string;
+-    google?: boolean;
+-    discord?: boolean;
+-    mock?: boolean;
+-    all?: boolean;
+-}

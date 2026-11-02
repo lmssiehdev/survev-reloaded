@@ -1,0 +1,12 @@
+# hunk 1 (@@ -106,7 +106,7 @@): logging via GameLogger: invalid loot type warning
+--- upstream/server/src/game/objects/loot.ts
++++ fork/packages/game/objects/loot.ts
+@@ -106,7 +106,7 @@ export class LootBarn {
+         const def = GameObjectDefs.typeToDef(type);
+ 
+         if (!("lootImg" in def)) {
+-            this.game.logger.warn("Invalid loot type:", type);
++            this.game.logger.warn("loot.invalid_type", { type });
+             return;
+         }
+ 

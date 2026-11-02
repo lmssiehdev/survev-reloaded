@@ -1,0 +1,342 @@
+# hunk 1 (@@ -1,9 +1,10 @@): imports: GameOptions/GameLogger and contracts types instead of Config
+# hunk 2 (@@ -17,11 +18,10 @@): imports: ServerLogger and server utils/types dropped, tickStats added (logging via GameLogger)
+# hunk 3 (@@ -42,6 +42,43 @@): host interfaces moved here from ipcTypes/gameProcess (GameData, MatchDataRow, QuestProgress, GameHooks); types only
+# hunk 4 (@@ -67,19 +104,24 @@): options object instead of Config; perf warning fields replaced by TickStats metrics (no gameplay state)
+# hunk 5 (@@ -105,17 +147,21 @@): constructor takes options + hooks instead of reading Config; logger from options
+# hunk 6 (@@ -152,7 +198,7 @@): logging via GameLogger: creation time
+# hunk 7 (@@ -261,40 +307,17 @@): logging via GameLogger: slow tick metrics/warnings replace the threshold-doubling warn logic and debugLogs perf log (no gameplay state)
+# hunk 8 (@@ -322,21 +345,16 @@): logging via GameLogger: slow net sync metrics/warnings replace the threshold-doubling warn logic
+# hunk 9 (@@ -352,7 +370,8 @@): minPlayers option: game over when alive < minPlayers; default 2 is identical to upstream "<= 1"
+# hunk 10 (@@ -411,18 +430,90 @@): game end: structured log + saveGame/updateData via hooks instead of gameProcess database calls (no gameplay state)
+--- upstream/server/src/game/game.ts
++++ fork/packages/game/game.ts
+@@ -1,9 +1,10 @@
++import type { FindGamePrivateBody, SaveGameBody } from "@survev/contracts";
++import type { GameLogger, GameMode, GameOptions } from "server/src/game/gameOptions.ts";
+ import type { Loadout } from "shared/utils/loadout.ts";
+ import type { MapDefKey } from "shared/defs/mapDefs.ts";
+ import { AirdropBarn } from "server/src/game/objects/airdrop.ts";
+ import { BulletBarn } from "server/src/game/objects/bullet.ts";
+ import { ClientBarn } from "server/src/game/client.ts";
+-import { Config } from "server/src/config.ts";
+ import { DeadBodyBarn } from "server/src/game/objects/deadBody.ts";
+ import { DecalBarn } from "server/src/game/objects/decal.ts";
+ import { ExplosionBarn } from "server/src/game/objects/explosion.ts";
+@@ -17,11 +18,10 @@ import { PlaneBarn } from "server/src/game/objects/plane.ts";
+ import { PlayerBarn } from "server/src/game/objects/player.ts";
+ import { Profiler } from "server/src/game/profiler.ts";
+ import { ProjectileBarn } from "server/src/game/objects/projectile.ts";
+-import { ServerLogger } from "server/src/utils/logger.ts";
+ import { SmokeBarn } from "server/src/game/objects/smoke.ts";
+ import { TeamMode } from "shared/gameConfig.ts";
++import { flatStats, Throttle, TickStats } from "server/src/game/tickStats.ts";
+ import { math } from "shared/utils/math.ts";
+-import { type FindGamePrivateBody, type ServerGameConfig } from "server/src/utils/types.ts";
+ import { type GameObject, ObjectRegister } from "server/src/game/objects/gameObject.ts";
+ 
+ export interface JoinTokenData {
+@@ -42,6 +42,43 @@ export interface SpectateTokenData {
+     noSpecCooldown: boolean;
+ }
+ 
++/** what the game server's process manager knows about a game, sent on every change */
++export interface GameData {
++    id: string;
++    teamMode: TeamMode;
++    mapName: MapDefKey;
++    canJoin: boolean;
++    aliveCount: number;
++    startedTime: number;
++    stopped: boolean;
++    timeRunning: number;
++
++    livingPlayers: Array<{
++        id: number;
++        userId: string | null;
++        name: string;
++        disconnected: boolean;
++    }>;
++}
++
++/** a match stats row per player, the host adds where the game ran */
++export type MatchDataRow = Omit<SaveGameBody["matchData"][number], "region">;
++
++export type QuestProgress = Array<{ id: string; delta: number }>;
++
++/**
++ * The game's I/O, implemented by whoever hosts it (see GameRunner).
++ * This keeps the game free of nodejs imports and network requests,
++ * which keeps offline mode and unit tests easy to maintain
++ */
++export interface GameHooks {
++    /** getData() changed: created, a player joined or left, game over, stopped */
++    updateData?(game: Game): void;
++    /** the game stopped, save its matchData() */
++    saveGame?(game: Game): void;
++    sendQuestProgress?(userId: string, progress: QuestProgress): void;
++}
++
+ type JoinToken = {
+     type: "join";
+     expiresAt: number;
+@@ -67,19 +104,24 @@ export class Game {
+     teamMode: TeamMode;
+     mapName: MapDefKey;
+     isTeamMode: boolean;
+-    config: ServerGameConfig;
++    config: GameMode;
+     modeManager: GameModeManager;
+ 
+     now!: number;
+     profiler = new Profiler();
+-    perfTicker = 0;
+-    tickTimes: number[] = [];
+-
+-    tickTimeWarnThreshold = (1000 / Config.gameTps) * 4;
+-    gameTickWarnings = 0;
+ 
+-    netSyncWarnThreshold = (1000 / Config.netSyncTps) * 4;
+-    netSyncWarnings = 0;
++    tickStats = new TickStats();
++    netSyncStats = new TickStats();
++    /** per-minute windows for process.stats, reset by the reader; the lifetime stats above are for game.end */
++    tickWindow = new TickStats();
++    netSyncWindow = new TickStats();
++    startedAt = Date.now();
++    playersPeak = 0;
++    playersTotal = 0;
++    slowTickCount = 0;
++    slowNetSyncCount = 0;
++    private slowTickThrottle = new Throttle(10000);
++    private slowNetSyncThrottle = new Throttle(10000);
+ 
+     joinTokens = new Map<string, JoinToken>();
+ 
+@@ -105,17 +147,21 @@ export class Game {
+     planeBarn: PlaneBarn;
+     mapIndicatorBarn: MapIndicatorBarn;
+ 
+-    logger: ServerLogger;
++    readonly options: GameOptions;
++    readonly hooks: GameHooks;
++    logger: GameLogger;
+ 
+     // for debug
+     preventStart = false;
+     debugSpeedMulti = 1;
+ 
+-    constructor(id: string, config: ServerGameConfig) {
++    constructor(id: string, config: GameMode, options: GameOptions, hooks: GameHooks = {}) {
+         const start = Date.now();
+         this.id = id;
+-        this.logger = new ServerLogger(`Game #${this.id.substring(0, 4)}`);
+-        this.logger.info("Creating");
++        this.options = options;
++        this.hooks = hooks;
++        this.logger = options.logger;
++        this.logger.debug("game.creating");
+ 
+         this.config = config;
+ 
+@@ -152,7 +198,7 @@ export class Game {
+ 
+         this.map.init();
+ 
+-        this.logger.info(`Created in ${Date.now() - start} ms`);
++        this.logger.debug("game.created", { durationMs: Date.now() - start });
+ 
+         this.updateData();
+     }
+@@ -261,40 +307,17 @@ export class Game {
+ 
+         const tickTime = performance.now() - this.now;
+ 
+-        if (tickTime > 1000) {
+-            let errString = `Tick took over 1 second! ${tickTime.toFixed(2)}ms\n`;
+-            errString += "Profiler stats:\n";
+-            errString += this.profiler.getStats();
+-            this.logger.error(errString);
+-        } else if (tickTime > this.tickTimeWarnThreshold) {
+-            this.logger.warn(
+-                `Tick took over ${this.tickTimeWarnThreshold}ms! ${tickTime.toFixed(2)}ms`,
+-            );
+-            this.gameTickWarnings++;
+-
+-            if (this.gameTickWarnings > 20) {
+-                let errString = `Server is overloaded! Increasing tickTimeWarnThreshold.\n`;
+-                errString += "Profiler stats:\n";
+-                errString += this.profiler.getStats();
+-                this.logger.warn(errString);
+-
+-                this.gameTickWarnings = 0;
+-                this.tickTimeWarnThreshold *= 2;
+-            }
+-        }
+-
+-        if (Config.logging.debugLogs) {
+-            this.tickTimes.push(tickTime);
+-
+-            this.perfTicker += dt;
+-            if (this.perfTicker >= 15) {
+-                this.perfTicker = 0;
+-                const mspt = this.tickTimes.reduce((a, b) => a + b) / this.tickTimes.length;
+-
+-                this.logger.debug(
+-                    `Avg ms/tick: ${mspt.toFixed(2)} | Load: ${((mspt / (1000 / Config.gameTps)) * 100).toFixed(1)}%`,
+-                );
+-                this.tickTimes = [];
++        this.tickStats.add(tickTime);
++        this.tickWindow.add(tickTime);
++        if (tickTime > (1000 / this.options.gameTps) * 2) {
++            this.slowTickCount++;
++            const suppressed = this.slowTickThrottle.hit(Date.now());
++            if (suppressed !== undefined) {
++                this.logger[tickTime > 1000 ? "error" : "warn"]("game.slow_tick", {
++                    ms: Math.round(tickTime * 100) / 100,
++                    suppressed,
++                    profile: this.profiler.getStats(),
++                });
+             }
+         }
+     }
+@@ -322,21 +345,16 @@ export class Game {
+         this.mapIndicatorBarn.flush();
+ 
+         const syncTime = performance.now() - start;
+-        if (syncTime > 1000) {
+-            this.logger.error(`Tick took over 1 second! ${syncTime.toFixed(2)}ms`);
+-        } else if (syncTime > this.netSyncWarnThreshold) {
+-            this.logger.warn(
+-                `Tick took over ${this.netSyncWarnThreshold}ms! ${syncTime.toFixed(2)}ms`,
+-            );
+-            this.netSyncWarnings++;
+-
+-            if (this.netSyncWarnings > 20) {
+-                this.logger.warn(
+-                    `Server is overloaded! Increasing netSyncWarnThreshold.`,
+-                );
+-
+-                this.netSyncWarnings = 0;
+-                this.netSyncWarnThreshold *= 2;
++        this.netSyncStats.add(syncTime);
++        this.netSyncWindow.add(syncTime);
++        if (syncTime > (1000 / this.options.netSyncTps) * 2) {
++            this.slowNetSyncCount++;
++            const suppressed = this.slowNetSyncThrottle.hit(Date.now());
++            if (suppressed !== undefined) {
++                this.logger[syncTime > 1000 ? "error" : "warn"]("game.slow_netsync", {
++                    ms: Math.round(syncTime * 100) / 100,
++                    suppressed,
++                });
+             }
+         }
+     }
+@@ -352,7 +370,8 @@ export class Game {
+     checkGameOver() {
+         if (this.over) return;
+ 
+-        const didGameEnd = this.started && this.modeManager.aliveCount() <= 1;
++        const didGameEnd = this.started
++            && this.modeManager.aliveCount() < this.options.minPlayers;
+ 
+         if (didGameEnd) {
+             this.over = true;
+@@ -411,18 +430,90 @@ export class Game {
+         for (const client of this.clientBarn.clients) {
+             client.disconnect();
+         }
+-        this.logger.info("Game Ended");
+-        this._saveGameToDatabase();
++        this.logger.info("game.end", {
++            durationMs: Date.now() - this.startedAt,
++            playersPeak: this.playersPeak,
++            playersTotal: this.playersTotal,
++            ...flatStats("tick", this.tickStats),
++            ...flatStats("netSync", this.netSyncStats),
++            slowTicks: this.slowTickCount,
++            slowNetSyncs: this.slowNetSyncCount,
++            reason: this.started && this.over ? "finished" : "stopped",
++        });
++        this.hooks.saveGame?.(this);
+         this.updateData();
+     }
+ 
+-    // implementation of those is on gameProcess.ts
+-    // this keeps the base Game class free of nodejs imports and the ability to make network requests
+-    // to make offline mode and unit tests easier to maintain
++    updateData() {
++        this.hooks.updateData?.(this);
++    }
+ 
+-    updateData() {}
+-    protected _saveGameToDatabase() {}
+-    sendQuestProgress(_userId: string, _progress: Array<{ id: string; delta: number }>) {}
++    getData(): GameData {
++        return {
++            id: this.id,
++            teamMode: this.teamMode,
++            mapName: this.mapName,
++            canJoin: this.canJoin,
++            aliveCount: this.aliveCount,
++            startedTime: this.startedTime,
++            stopped: this.stopped,
++            timeRunning: this.timeRunning,
++            livingPlayers: this.playerBarn.livingPlayers.map(p => {
++                return {
++                    id: p.__id,
++                    userId: p.userId,
++                    name: p.name,
++                    disconnected: p.disconnected,
++                };
++            }),
++        };
++    }
++
++    matchData(): MatchDataRow[] {
++        const players = this.modeManager.getPlayersSortedByRank();
++        /**
++         * teamTotal is for total teams that started the match, i hope?
++         *
++         * it also seems to be unused by the client so we could also remove it?
++         */
++        const teamTotal = new Set(players.map(({ player }) => player.teamId)).size;
++
++        const teamKills = players.reduce(
++            (acc, curr) => {
++                acc[curr.player.teamId] = (acc[curr.player.teamId] ?? 0) + curr.player.kills;
++                return acc;
++            },
++            {} as Record<string, number>,
++        );
++
++        return players.map(({ player, rank }) => {
++            return {
++                // *NOTE: userId is optional; we save the game stats for non logged users too
++                userId: player.userId,
++                username: player.name,
++                playerId: player.matchDataId,
++                teamMode: this.teamMode,
++                teamCount: player.group?.players.length ?? 1,
++                teamTotal: teamTotal,
++                teamId: player.teamId,
++                timeAlive: Math.round(player.timeAlive),
++                died: player.dead,
++                kills: player.kills,
++                teamKills: teamKills[player.teamId] ?? 0,
++                damageDealt: Math.round(player.damageDealt),
++                damageTaken: Math.round(player.damageTaken),
++                killerId: player.killedBy?.matchDataId || 0,
++                gameId: this.id,
++                mapId: this.map.mapId,
++                mapSeed: this.map.seed,
++                killedIds: player.killedIds,
++                rank: rank,
++                ip: player.client.ip,
++                findGameIp: player.client.findGameIp,
++                role: player.role,
++            };
++        });
++    }
+ 
+     /**
+      * Steps the game X seconds in the future
