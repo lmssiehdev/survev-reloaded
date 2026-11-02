@@ -1,21 +1,22 @@
 # Map generation is untouched; only Config/logging plumbing differs.
-# hunk 1 (@@ -1,13 +1,13 @@): imports: Config replaced by game.options (options objects instead of Config); GameObject type for reused grid query arrays
-# hunk 2 (@@ -20,7 +20,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
-# hunk 3 (@@ -176,6 +175,10 @@): perf: scratch result arrays for the single-cell surface queries (read-only loops, never re-entered)
-# hunk 4 (@@ -207,6 +210,8 @@): perf: shore polygon as flat coords for the hot point-in-polygon checks
-# hunk 5 (@@ -265,8 +270,7 @@): logging via GameLogger: map gen step timing as structured event
-# hunk 6 (@@ -315,7 +319,7 @@): logging via GameLogger: map seed as structured event
-# hunk 7 (@@ -364,6 +368,7 @@): perf: shore polygon flattened once after terrain generation
-# hunk 8 (@@ -872,9 +877,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
-# hunk 9 (@@ -1234,7 +1237,7 @@): logging via GameLogger: spawn failure message
-# hunk 10 (@@ -2142,8 +2145,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
-# hunk 11 (@@ -2290,7 +2294,7 @@): perf: getGroundSurface reuses its scratch result array (same objects, same order)
-# hunk 12 (@@ -2368,7 +2372,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
-# hunk 13 (@@ -2376,7 +2380,7 @@): perf: isOnWater reuses its scratch result array (same objects, same order)
-# hunk 14 (@@ -2442,7 +2446,7 @@): perf: shore test on flat coords (same point-in-polygon arithmetic)
+# hunk 1 (@@ -1,18 +1,19 @@): imports: PolygonBands for the indexed shore/river water checks (plus the fork's import set)
+# hunk 2 (@@ -20,7 +21,6 @@): imports: node:util styleText dropped, logging via GameLogger (structured, no terminal colours)
+# hunk 3 (@@ -176,6 +176,10 @@): perf: scratch result arrays for the single-cell surface queries (read-only loops, never re-entered)
+# hunk 4 (@@ -207,6 +211,9 @@): perf: shore and river water polygons indexed for the per-tick point-in-polygon checks
+# hunk 5 (@@ -265,8 +272,7 @@): logging via GameLogger: map gen step timing as structured event
+# hunk 6 (@@ -315,7 +321,7 @@): logging via GameLogger: map seed as structured event
+# hunk 7 (@@ -364,6 +370,8 @@): perf: shore and river water indexes built once after terrain generation
+# hunk 8 (@@ -872,9 +880,7 @@): logging via GameLogger: faction bridge retry message (control flow unchanged)
+# hunk 9 (@@ -1234,7 +1240,7 @@): logging via GameLogger: spawn failure message
+# hunk 10 (@@ -2142,8 +2148,9 @@): options objects instead of Config: debug spawnMode/spawnPos read from game.options.debug
+# hunk 11 (@@ -2290,7 +2297,7 @@): perf: getGroundSurface reuses its scratch result array (same objects, same order)
+# hunk 12 (@@ -2354,7 +2361,7 @@): perf: river water test through PolygonBands (identical result to pointInsidePolygon)
+# hunk 13 (@@ -2368,7 +2375,7 @@): perf: shore test through PolygonBands (identical result to pointInsidePolygon)
+# hunk 14 (@@ -2376,7 +2383,7 @@): perf: isOnWater reuses its scratch result array (same objects, same order)
+# hunk 15 (@@ -2435,14 +2442,14 @@): perf: isOnWater river water and shore tests through PolygonBands (identical results to pointInsidePolygon)
 --- upstream/server/src/game/map.ts
 +++ fork/packages/game/map.ts
-@@ -1,13 +1,13 @@
+@@ -1,18 +1,19 @@
  import * as net from "shared/net/net.ts";
  import type { BuildingDef } from "shared/defs/mapObjects/buildings/buildingDefs.ts";
  import type { Game } from "server/src/game/game.ts";
@@ -30,7 +31,13 @@
  import { GameConfig, MapId, TeamMode } from "shared/gameConfig.ts";
  import { MapObjectDefs } from "shared/defs/register.ts";
  import { MsgStream, MsgType } from "shared/net/net.ts";
-@@ -20,7 +20,6 @@ import { collider } from "shared/utils/collider.ts";
+ import { ObjectType } from "shared/net/objectSerializeFns.ts";
+ import { Obstacle } from "server/src/game/objects/obstacle.ts";
++import { PolygonBands } from "server/src/game/polygonBands.ts";
+ import { RiverCreator } from "server/src/game/riverCreator.ts";
+ import { Structure } from "server/src/game/objects/structure.ts";
+ import { assert, util } from "shared/utils/util.ts";
+@@ -20,7 +21,6 @@ import { collider } from "shared/utils/collider.ts";
  import { generateTerrain, type MapRiverData } from "shared/utils/terrainGen.ts";
  import { mapHelpers } from "shared/utils/mapHelpers.ts";
  import { math } from "shared/utils/math.ts";
@@ -38,7 +45,7 @@
  import { type AABB, coldet, type Collider } from "shared/utils/coldet.ts";
  import { type MapDef, MapDefs } from "shared/defs/mapDefs.ts";
  import { v2, type Vec2 } from "shared/utils/v2.ts";
-@@ -176,6 +175,10 @@ export class MapGrid<T extends GridCollider = GridCollider> {
+@@ -176,6 +176,10 @@ export class MapGrid<T extends GridCollider = GridCollider> {
      }
  }
  
@@ -49,16 +56,17 @@
  export class GameMap {
      game: Game;
  
-@@ -207,6 +210,8 @@ export class GameMap {
+@@ -207,6 +211,9 @@ export class GameMap {
      seed!: number;
      msg!: net.MapMsg;
      terrain!: ReturnType<typeof generateTerrain>;
-+    /** terrain.shore as flat x, y pairs for the hot point-in-polygon checks */
-+    shoreCoords!: Float64Array;
++    /** shore and river water polygons indexed for the per-tick point-in-polygon checks */
++    shoreBands!: PolygonBands;
++    riverWaterBands: PolygonBands[] = [];
      riverDescs!: Array<
          MapRiverData & {
              noRiverObjs: boolean;
-@@ -265,8 +270,7 @@ export class GameMap {
+@@ -265,8 +272,7 @@ export class GameMap {
          const now = performance.now();
          const old = this.loggingTimes.pop();
  
@@ -68,7 +76,7 @@
      }
  
      constructor(game: Game) {
-@@ -315,7 +319,7 @@ export class GameMap {
+@@ -315,7 +321,7 @@ export class GameMap {
  
      init(seed?: number) {
          this.seed = seed ?? util.randomInt(0, 2 ** 32 - 1);
@@ -77,15 +85,16 @@
  
          this.obstacles = [];
          this.dynamicObstacles = [];
-@@ -364,6 +368,7 @@ export class GameMap {
+@@ -364,6 +370,8 @@ export class GameMap {
              this.riverDescs,
              this.seed,
          );
-+        this.shoreCoords = math.flattenPolygon(this.terrain.shore);
++        this.shoreBands = new PolygonBands(this.terrain.shore);
++        this.riverWaterBands = this.terrain.rivers.map((river) => new PolygonBands(river.waterPoly));
          this.timerEnd("Generating terrain");
  
          this.normalRivers = [];
-@@ -872,9 +877,7 @@ export class GameMap {
+@@ -872,9 +880,7 @@ export class GameMap {
                      this.genAuto(bridge.type, bridge.pos, 0, bridge.ori);
                  }
              } else {
@@ -96,7 +105,7 @@
                  this.loggingTimes.length = 0;
                  this.init();
                  return false;
-@@ -1234,7 +1237,7 @@ export class GameMap {
+@@ -1234,7 +1240,7 @@ export class GameMap {
              }
              attempts++;
          }
@@ -105,7 +114,7 @@
          return false;
      }
  
-@@ -2142,8 +2145,9 @@ export class GameMap {
+@@ -2142,8 +2148,9 @@ export class GameMap {
      }
  
      getSpawnPos(group?: Group, team?: Team): Vec2 {
@@ -117,7 +126,7 @@
          }
  
          let getPos: () => Vec2;
-@@ -2290,7 +2294,7 @@ export class GameMap {
+@@ -2290,7 +2297,7 @@ export class GameMap {
              return { type, river };
          };
  
@@ -126,16 +135,25 @@
  
          // Check decals
          for (let i = 0; i < objs.length; i++) {
-@@ -2368,7 +2372,7 @@ export class GameMap {
+@@ -2354,7 +2361,7 @@ export class GameMap {
+                     && math.pointInsidePolygon(pos, river.shorePoly)
+                 ) {
+                     onRiverShore = true;
+-                    if (math.pointInsidePolygon(pos, river.waterPoly)) {
++                    if (this.riverWaterBands[i].contains(pos.x, pos.y)) {
+                         return groundSurface("water", river);
+                     }
+                 }
+@@ -2368,7 +2375,7 @@ export class GameMap {
                  onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
              );
          }
 -        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
-+        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
++        if (this.shoreBands.contains(pos.x, pos.y)) {
              return groundSurface("sand");
          }
          return groundSurface("water");
-@@ -2376,7 +2380,7 @@ export class GameMap {
+@@ -2376,7 +2383,7 @@ export class GameMap {
  
      // like getGroundSurface but optimized for water
      isOnWater(pos: Vec2, layer: number) {
@@ -144,12 +162,20 @@
  
          let surface = null;
          let zIdx = 0;
-@@ -2442,7 +2446,7 @@ export class GameMap {
+@@ -2435,14 +2442,14 @@ export class GameMap {
+                 const river = rivers[i];
+                 if (
+                     coldet.testPointAabb(pos, river.aabb.min, river.aabb.max)
+-                    && math.pointInsidePolygon(pos, river.waterPoly)
++                    && this.riverWaterBands[i].contains(pos.x, pos.y)
+                 ) {
+                     return true;
+                 }
              }
          }
  
 -        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
-+        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
++        if (this.shoreBands.contains(pos.x, pos.y)) {
              return false;
          }
  

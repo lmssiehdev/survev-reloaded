@@ -22,6 +22,7 @@ import type { GameObject } from "./objects/gameObject.ts";
 import { Obstacle } from "./objects/obstacle.ts";
 import type { Player } from "./objects/player.ts";
 import { Structure } from "./objects/structure.ts";
+import { PolygonBands } from "./polygonBands.ts";
 import { RiverCreator } from "./riverCreator.ts";
 
 // most of this logic is based on the `renderMapBuildingBounds` from client debugHelpers
@@ -210,8 +211,9 @@ export class GameMap {
     seed!: number;
     msg!: net.MapMsg;
     terrain!: ReturnType<typeof generateTerrain>;
-    /** terrain.shore as flat x, y pairs for the hot point-in-polygon checks */
-    shoreCoords!: Float64Array;
+    /** shore and river water polygons indexed for the per-tick point-in-polygon checks */
+    shoreBands!: PolygonBands;
+    riverWaterBands: PolygonBands[] = [];
     riverDescs!: Array<
         MapRiverData & {
             noRiverObjs: boolean;
@@ -368,7 +370,8 @@ export class GameMap {
             this.riverDescs,
             this.seed,
         );
-        this.shoreCoords = math.flattenPolygon(this.terrain.shore);
+        this.shoreBands = new PolygonBands(this.terrain.shore);
+        this.riverWaterBands = this.terrain.rivers.map((river) => new PolygonBands(river.waterPoly));
         this.timerEnd("Generating terrain");
 
         this.normalRivers = [];
@@ -2358,7 +2361,7 @@ export class GameMap {
                     && math.pointInsidePolygon(pos, river.shorePoly)
                 ) {
                     onRiverShore = true;
-                    if (math.pointInsidePolygon(pos, river.waterPoly)) {
+                    if (this.riverWaterBands[i].contains(pos.x, pos.y)) {
                         return groundSurface("water", river);
                     }
                 }
@@ -2372,7 +2375,7 @@ export class GameMap {
                 onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
             );
         }
-        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
+        if (this.shoreBands.contains(pos.x, pos.y)) {
             return groundSurface("sand");
         }
         return groundSurface("water");
@@ -2439,14 +2442,14 @@ export class GameMap {
                 const river = rivers[i];
                 if (
                     coldet.testPointAabb(pos, river.aabb.min, river.aabb.max)
-                    && math.pointInsidePolygon(pos, river.waterPoly)
+                    && this.riverWaterBands[i].contains(pos.x, pos.y)
                 ) {
                     return true;
                 }
             }
         }
 
-        if (math.pointInsidePolygonCoords(pos.x, pos.y, this.shoreCoords)) {
+        if (this.shoreBands.contains(pos.x, pos.y)) {
             return false;
         }
 
