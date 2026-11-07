@@ -52,11 +52,12 @@ export class Localization {
             }
         });
 
-        $(".language-select").val(this.getLocale());
+        $("#start-bottom-right .language-select").val(this.getLocale());
     }
 
     populateLanguageSelect() {
-        const el = $(".language-select");
+        // the start menu's; the settings modal's is TSX
+        const el = $("#start-bottom-right .language-select");
         el.empty();
         for (const loc of locales) {
             el.append($("<option>", { value: loc, text: Locales[loc] }));

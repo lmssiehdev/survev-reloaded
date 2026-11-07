@@ -2,6 +2,7 @@ import { GameConfig } from "@survev/shared/gameConfig.ts";
 import loadout from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
+import { createStore, reconcile } from "solid-js";
 
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import type { Locale } from "./ui/i18n.ts";
@@ -149,7 +150,18 @@ export class ConfigManager {
 
     config = {} as ConfigType;
 
+    /**
+     * Reactive copy of `config` for TSX views. get() keeps reading the plain object: a store
+     * read right after a write returns the old value until Solid flushes.
+     */
+    readonly state: ConfigType;
+    private readonly setState: (fn: (state: ConfigType) => void) => void;
+
     onModifiedListeners: Array<(key?: ConfigKey) => void> = [];
+
+    constructor() {
+        [this.state, this.setState] = createStore<ConfigType>({ ...defaultConfig });
+    }
 
     load(cb?: () => void) {
         const onLoaded = (configStr: string) => {
@@ -163,6 +175,7 @@ export class ConfigManager {
             this.config = util.mergeDeep<ConfigType>({}, defaultConfig, data);
 
             this.checkUpgradeConfig();
+            this.syncState();
             this.onModified();
 
             this.loaded = true;
@@ -196,6 +209,7 @@ export class ConfigManager {
         if (!key) return;
 
         this.config[key] = value;
+        this.syncState();
 
         this.store();
         this.onModified(key);
@@ -205,6 +219,13 @@ export class ConfigManager {
         if (!key) return undefined;
 
         return this.config[key];
+    }
+
+    /** copies `config` into the reactive state; only the leaves that changed notify */
+    private syncState() {
+        this.setState((state) => {
+            reconcile(this.config)(state);
+        });
     }
 
     addModifiedListener(e: (key?: ConfigKey) => void) {

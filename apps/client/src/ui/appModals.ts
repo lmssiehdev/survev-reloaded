@@ -43,3 +43,6 @@ export function showIpBan(ban: FindGameResponse & { type: "banned" }) {
     });
     ipBanModal.show(true);
 }
+
+export const settingsModal = new MenuModal();
+export const hamburgerModal = new MenuModal();

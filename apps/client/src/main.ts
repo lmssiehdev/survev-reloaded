@@ -13,8 +13,9 @@ import * as PIXI from "pixi.js-legacy";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
 import { api } from "./api.ts";
+import { config as appConfig } from "./appConfig.ts";
 import { AudioManager } from "./audioManager.ts";
-import { type ConfigKey, ConfigManager, type ConfigType } from "./config.ts";
+import type { ConfigKey, ConfigType } from "./config.ts";
 import { device } from "./device.ts";
 import { Game } from "./game.ts";
 import { helpers } from "./helpers.ts";
@@ -43,16 +44,18 @@ export class Application {
     playMode2Btn = $("#btn-start-mode-2");
     muteBtns = $(".btn-sound-toggle");
     aimLineBtn = $("#btn-game-aim-line");
-    masterSliders = $<HTMLInputElement>(".sl-master-volume");
-    soundSliders = $<HTMLInputElement>(".sl-sound-volume");
-    musicSliders = $<HTMLInputElement>(".sl-music-volume");
+    // the in-game menu's sliders; the settings modal's are TSX
+    masterSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-master-volume");
+    soundSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-sound-volume");
+    musicSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-music-volume");
     serverWarning = $("#server-warning");
-    languageSelect = $<HTMLSelectElement>(".language-select");
+    // the start menu's; the settings modal's is TSX
+    languageSelect = $<HTMLSelectElement>("#start-bottom-right .language-select");
     startMenuWrapper = $("#start-menu-wrapper");
     gameAreaWrapper = $("#game-area-wrapper");
     playButtons = $(".play-button-container");
     playLoading = $(".play-loading-outer");
-    config = new ConfigManager();
+    config = appConfig;
     localization = new Localization();
 
     account!: Account;
@@ -200,16 +203,6 @@ export class Application {
                 const r = Number($(t.target).val()) / 100;
                 this.audioManager.setMusicVolume(r);
                 this.config.set("musicVolume", r);
-            });
-            $(".modal-settings-item")
-                .children("input")
-                .each((_t, r) => {
-                    const a = $(r);
-                    a.prop("checked", this.config.get(a.prop("id")));
-                });
-            $(".modal-settings-item > input:checkbox").on("change", (t) => {
-                const r = $(t.target);
-                this.config.set(r.prop("id"), r.is(":checked"));
             });
             $(".btn-fullscreen-toggle").on("click", () => {
                 helpers.toggleFullScreen();

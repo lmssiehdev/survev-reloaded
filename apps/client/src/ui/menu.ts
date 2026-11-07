@@ -2,6 +2,7 @@ import $ from "jquery";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import type { InputBinds, InputBindUi } from "../inputBinds.ts";
+import { hamburgerModal, settingsModal } from "./appModals.ts";
 import { MenuModal } from "./menuModal.ts";
 
 function createToast(
@@ -170,7 +171,7 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
     });
 
     // Settings Modal
-    const modalSettings = new MenuModal($("#modal-settings"));
+    const modalSettings = settingsModal;
     modalSettings.onShow(() => {
         startBottomRight.fadeOut(200);
         startTopRight.fadeOut(200);
@@ -183,14 +184,9 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         modalSettings.show();
         return false;
     });
-    $(".modal-settings-text").on("click", function(_e) {
-        const checkbox = $(this).siblings("input:checkbox");
-        checkbox.prop("checked", !checkbox.is(":checked"));
-        checkbox.trigger("change");
-    });
 
     // Hamburger Modal
-    const modalHamburger = new MenuModal($("#modal-hamburger"));
+    const modalHamburger = hamburgerModal;
     modalHamburger.onShow(() => {
         startTopLeft.fadeOut(200);
     });
@@ -200,11 +196,6 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
     $("#btn-hamburger").on("click", () => {
         modalHamburger.show();
         return false;
-    });
-    $(".modal-body-text").on("click", function() {
-        const checkbox = $(this).siblings("input:checkbox");
-        checkbox.prop("checked", !checkbox.is(":checked"));
-        checkbox.trigger("change");
     });
 }
 function onResize() {
