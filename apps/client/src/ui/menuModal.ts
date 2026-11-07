@@ -1,19 +1,5 @@
 import { type Accessor, createSignal } from "solid-js";
-
-const FADE_MS = 200;
-
-/** jQuery's fadeOut(): animate to transparent, then display: none */
-function fadeOut(el: HTMLElement) {
-    const anim = el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], {
-        duration: FADE_MS,
-        // jQuery's default "swing"
-        easing: "ease-in-out",
-    });
-    anim.onfinish = () => {
-        el.style.display = "none";
-    };
-    return anim;
-}
+import { cancelFade, fadeOut } from "./fade.ts";
 
 /**
  * Open/close state for one modal and the "click outside closes it" rule.
@@ -34,7 +20,6 @@ export class MenuModal {
     private readonly setOpen: (open: boolean) => void;
 
     private elements: HTMLElement[] = [];
-    private fades: Animation[] = [];
 
     constructor(elements: Iterable<HTMLElement> = []) {
         [this.isOpen, this.setOpen] = createSignal(false);
@@ -85,9 +70,10 @@ export class MenuModal {
         if (this.visible) return;
         this.visible = true;
         this.setOpen(true);
-        for (const fade of this.fades) fade.cancel();
-        this.fades = [];
-        for (const el of this.elements) el.style.display = "block";
+        for (const el of this.elements) {
+            cancelFade(el);
+            el.style.display = "block";
+        }
         this.onShowFn();
         if (!isModal) {
             document.addEventListener("click", this.modalCloseListener);
@@ -103,7 +89,7 @@ export class MenuModal {
             if (this.skipFade) {
                 el.style.display = "none";
             } else {
-                this.fades.push(fadeOut(el));
+                fadeOut(el, 200);
             }
         }
         this.onHideFn(e);

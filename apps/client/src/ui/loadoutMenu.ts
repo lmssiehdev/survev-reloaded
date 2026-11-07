@@ -13,6 +13,7 @@ import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
 import { mountLoadout } from "./components/Loadout.tsx";
+import { fadeIn, fadeOut, showElem } from "./fade.ts";
 import { translate } from "./i18n.ts";
 import { EMOTE_SLOT_COUNT, type LoadoutItemView, setLoadoutView, SORT_TYPES, type SortType } from "./loadoutView.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -151,52 +152,8 @@ export interface LoadoutDom {
 const RARITY_NAMES = ["stock", "common", "uncommon", "rare", "epic", "mythic"];
 const RARITY_COLORS = ["#c5c5c5", "#c5c5c5", "#12ff00", "#00deff", "#f600ff", "#d96100"];
 
-const fades = new WeakMap<HTMLElement, { anim: Animation; hiding: boolean }>();
-
-function isHidden(el: HTMLElement) {
-    return getComputedStyle(el).display === "none";
-}
-
-/** jQuery's show(): undo display: none */
-function showElem(el: HTMLElement) {
-    if (el.style.display === "none") el.style.display = "";
-    if (isHidden(el)) el.style.display = "block";
-}
-
-/** jQuery's fadeIn() */
-function fadeIn(el: HTMLElement | null | undefined, ms: number) {
-    if (!el) return;
-    const running = fades.get(el);
-    if (!isHidden(el) && !running?.hiding) return;
-    running?.anim.cancel();
-    showElem(el);
-    const anim = el.animate([{ opacity: 0 }, { opacity: getComputedStyle(el).opacity }], {
-        duration: ms,
-        easing: "ease-in-out",
-    });
-    fades.set(el, { anim, hiding: false });
-}
-
-/** jQuery's fadeOut(): animate to transparent, then display: none */
-function fadeOut(el: HTMLElement | null | undefined, ms: number) {
-    if (!el) return;
-    const running = fades.get(el);
-    if (isHidden(el) && !(running && !running.hiding)) return;
-    running?.anim.cancel();
-    const anim = el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], {
-        duration: ms,
-        easing: "ease-in-out",
-    });
-    anim.onfinish = () => {
-        el.style.display = "none";
-    };
-    fades.set(el, { anim, hiding: true });
-}
-
-/** the start menu parts the loadout modal replaces while it is open */
-function startMenuElems() {
-    return [document.getElementById("start-bottom-right"), document.getElementById("start-main")];
-}
+/** the start menu, which the loadout modal replaces while it is open */
+const startMain = () => document.getElementById("start-main");
 
 /**
  * The loadout / customize modal's logic. It keeps the working loadout and item state, and writes
@@ -356,7 +313,7 @@ export class LoadoutMenu {
         }
         this.selectCat(0);
         this.tryBeginConfirmingItems();
-        for (const el of startMenuElems()) fadeOut(el, 200);
+        fadeOut(startMain(), 200);
         const background = document.getElementById("background");
         if (background) background.style.display = "none";
     }
@@ -370,7 +327,7 @@ export class LoadoutMenu {
         setLoadoutView((s) => {
             s.cursorReset = true;
         });
-        for (const el of startMenuElems()) fadeIn(el, 200);
+        fadeIn(startMain(), 200);
         const background = document.getElementById("background");
         if (background) showElem(background);
     }
