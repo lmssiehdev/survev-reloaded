@@ -107,7 +107,7 @@ export class Application {
     constructor() {
         this.account = new Account(this.config);
         this.loadoutMenu = new LoadoutMenu(this.account, this.localization);
-        this.pass = new Pass(this.account, this.loadoutMenu, this.localization);
+        this.pass = new Pass(this.account, this.loadoutMenu);
         this.profileUi = new ProfileUi(this.account, this.loadoutMenu);
         this.siteInfo = new SiteInfo(this.config, this.localization);
 

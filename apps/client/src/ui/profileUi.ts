@@ -39,13 +39,9 @@ export class ProfileUi {
 
         createAccountModal.onHide(() => this.loadoutMenu.hide());
 
-        // outside the account views
+        // the start menu's loadout button, outside the account views
         $("#btn-customize").on("click", () => {
             this.openLoadout();
-            return false;
-        });
-        $("#btn-pass-locked").on("click", () => {
-            this.showLoginMenu({ modal: true });
             return false;
         });
 
