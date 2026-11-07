@@ -1,4 +1,3 @@
-import $ from "jquery";
 import { type FolderApi, Pane, type TabPageApi } from "tweakpane";
 
 import { RoleDefs } from "@survev/shared/defs/gameObjects/roleDefs.ts";
@@ -15,6 +14,7 @@ import {
     type debugToolsConfig,
 } from "../config.ts";
 import { type InputHandler, Key } from "../input.ts";
+import { setGameView } from "../ui/gameView.ts";
 
 const availableLoot = GameObjectDefs.getAllTypes()
     .filter((type) => !!("lootImg" in GameObjectDefs.typeToDef(type)));
@@ -371,11 +371,19 @@ export class Editor {
     refreshUi() {
         const e = this.enabled;
 
-        $("#ui-editor").css("display", e ? "block" : "none");
-        $("#ui-leaderboard-wrapper,#ui-right-center,#ui-kill-leader-container").css(
-            "display",
-            !e ? "block" : "none",
-        );
+        // the overlay and the kill leader: components/GameHud.tsx
+        setGameView((v) => {
+            v.editor = e;
+        });
+        this.setHudDisplay();
+    }
+
+    /** the leaderboard and the inventory column hide while editing (ui2.ts / touch.ts set them too) */
+    setHudDisplay() {
+        for (const id of ["ui-leaderboard-wrapper", "ui-right-center"]) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = this.enabled ? "none" : "block";
+        }
     }
 
     m_update(input: InputHandler) {
@@ -396,10 +404,7 @@ export class Editor {
 
         this.config.config.debugRenderer = this.rendererParams;
 
-        $("#ui-leaderboard-wrapper,#ui-right-center,#ui-kill-leader-container").css(
-            "display",
-            !this.enabled ? "block" : "none",
-        );
+        this.setHudDisplay();
     }
 
     getMsg() {

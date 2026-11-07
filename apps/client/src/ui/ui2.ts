@@ -1,14 +1,5 @@
 import type { LootDef } from "@survev/shared/defs/gameObjectDefs.ts";
-import {
-    type AmmoDef,
-    type BackpackDef,
-    type BoostDef,
-    type ChestDef,
-    GEAR_TYPES,
-    type HealDef,
-    type HelmetDef,
-    SCOPE_LEVELS,
-} from "@survev/shared/defs/gameObjects/gearDefs.ts";
+import { GEAR_TYPES, SCOPE_LEVELS } from "@survev/shared/defs/gameObjects/gearDefs.ts";
 import type { GunDef } from "@survev/shared/defs/gameObjects/gunDefs.ts";
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import type { RoleDef } from "@survev/shared/defs/gameObjects/roleDefs.ts";
@@ -28,18 +19,58 @@ import type { Map } from "../map.ts";
 import type { Loot, LootBarn } from "../objects/loot.ts";
 import type { Obstacle } from "../objects/obstacle.ts";
 import type { Player, PlayerBarn } from "../objects/player.ts";
+import {
+    getUiInventoryItemTypes,
+    type HudGear,
+    type HudKillFeedLine,
+    type HudLoot,
+    type HudPerk,
+    type HudState,
+    type HudWeapon,
+    initialHud,
+    InteractionType,
+    MAX_KILL_FEED_LINES,
+    PERK_UI_COUNT,
+    setHud,
+} from "./hudView.ts";
 import type { Localization } from "./localization.ts";
 
-const maxKillFeedLines = 6;
 const touchHoldDuration = 0.75 * 1000;
-const perkUiCount = 4;
 
-enum InteractionType {
-    None,
-    Cancel,
-    Loot,
-    Revive,
-    Object,
+const KILL_FEED_KEYS: Array<keyof HudKillFeedLine> = ["text", "color", "offset", "opacity"];
+const WEAPON_KEYS: Array<keyof HudWeapon> = ["type", "ammo", "equipped", "selectable", "opacity", "width", "bindStr"];
+const AMMO_KEYS: Array<keyof HudState["ammo"]> = ["current", "remaining", "displayCurrent", "displayRemaining"];
+const SCOPE_KEYS: Array<keyof HudState["scopes"][number]> = ["visible", "equipped", "selectable"];
+const LOOT_KEYS: Array<keyof HudLoot> = ["count", "maximum", "selectable", "width"];
+const GEAR_KEYS: Array<keyof HudGear> = ["item", "selectable", "width"];
+const PERK_KEYS: Array<keyof HudPerk> = ["type", "droppable", "width", "pulse"];
+
+/**
+ * Copies `keys` of one HUD group (a weapon slot, a loot item...) from the frame's state into the
+ * plain mirror; if any changed (or `force`), queues a store write of the group.
+ */
+function syncGroup<T>(
+    force: boolean,
+    pending: Array<(hud: HudState) => void>,
+    mirror: T,
+    src: T,
+    keys: ReadonlyArray<keyof T>,
+    target: (hud: HudState) => T,
+) {
+    let changed = force;
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        if (mirror[key] !== src[key]) {
+            mirror[key] = src[key];
+            changed = true;
+        }
+    }
+    if (changed) {
+        pending.push((hud) => {
+            const dst = target(hud);
+            for (let i = 0; i < keys.length; i++) dst[keys[i]] = mirror[keys[i]];
+        });
+    }
 }
 
 const WeaponSlotToBind = {
@@ -49,76 +80,15 @@ const WeaponSlotToBind = {
     [GameConfig.WeaponSlot.Throwable]: Input.EquipThrowable,
 };
 
-function domElemById(id: string) {
-    return document.getElementById(id)!;
-}
 function isLmb(e: MouseEvent) {
     return e.button == 0;
 }
 function isRmb(e: MouseEvent) {
     return e.button == 2;
 }
-// These functions, copy and diff, only work if both
-// arguments have the same internal structure
-function copy(src: any, dst: any, path?: any) {
-    if (src instanceof Array) {
-        for (let i = 0; i < src.length; i++) {
-            copy(src[i], path !== undefined ? dst[path] : dst, i);
-        }
-    } else if (src instanceof Object) {
-        const keys = Object.keys(src);
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            copy(src[key], path !== undefined ? dst[path] : dst, key);
-        }
-    } else {
-        dst[path] = src;
-    }
-}
 
-// 'all' could be removed if clone() were used instead of copy();
-// with clone, oldState would begin with no properties and would
-// thus automatically diff properly.
-function diff(a: any, b: any, all: boolean): any {
-    if (b instanceof Array) {
-        const patch = [];
-        for (let i = 0; i < b.length; i++) {
-            patch[i] = diff(a[i], b[i], all);
-        }
-        return patch;
-    }
-    if (b instanceof Object) {
-        const patch: Record<string, any> = {};
-        const keys = Object.keys(b);
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            patch[key] = diff(a[key], b[key], all);
-        }
-        return patch;
-    }
-    return a != b || all;
-}
-
-function getUiInventoryItemTypes() {
-    const allTypes = GameObjectDefs.getAllTypes();
-    const visibleItemTypes = [];
-
-    for (let typeIndex = 0; typeIndex < allTypes.length; typeIndex++) {
-        const itemType = allTypes[typeIndex];
-        const itemDef = GameObjectDefs.typeToDef(itemType) as AmmoDef | HealDef | BoostDef;
-        if (
-            !(itemDef as AmmoDef).hideUi
-            && (itemDef.type == "heal" || itemDef.type == "boost" || itemDef.type == "ammo")
-        ) {
-            visibleItemTypes.push(itemType);
-        }
-    }
-
-    return visibleItemTypes;
-}
-
+/** the HUD's logic state (animation tickers, previous values); what it shows goes to the hud store */
 class UiState {
-    mobile = false;
     touch = false;
     rareLootMessage = {
         lootType: "",
@@ -142,7 +112,7 @@ class UiState {
         opacity: 0,
     };
 
-    killFeed = Array.from({ length: maxKillFeedLines }, () => ({
+    killFeed = Array.from({ length: MAX_KILL_FEED_LINES }, () => ({
         text: "",
         color: "#000000",
         offset: 0,
@@ -193,7 +163,7 @@ class UiState {
         ticker: 0,
     }));
 
-    perks = Array.from({ length: perkUiCount }, () => ({
+    perks = Array.from({ length: PERK_UI_COUNT }, () => ({
         type: "",
         droppable: false,
         width: 0,
@@ -223,93 +193,18 @@ interface EventListeners<
     fn: (e: any) => void;
 }
 export class UiManager2 {
-    // Ui state
-    oldState = new UiState();
-    newState = new UiState();
+    state = new UiState();
     frameCount = 0;
+    /** what was last written to the hud store (the store itself is never read back) */
+    published = initialHud();
+    pendingWrites: Array<(hud: HudState) => void> = [];
 
-    // DOM
+    // elements other managers own that follow device.touch
     dom = {
-        debugButton: domElemById("ui-debug-button"),
-        emoteButton: domElemById("ui-emote-button"),
-        menu: {
-            touchStyles: domElemById("btn-touch-styles"),
-            aimLine: domElemById("btn-game-aim-line"),
-        },
-        rareLootMessage: {
-            icon: domElemById("ui-perk-message-image-icon"),
-            imageWrapper: domElemById("ui-perk-message-image-wrapper"),
-            wrapper: domElemById("ui-perk-message-wrapper"),
-            name: domElemById("ui-perk-message-name"),
-            desc: domElemById("ui-perk-message-acquired"),
-        },
-        pickupMessage: domElemById("ui-pickup-message"),
-        killMessage: {
-            div: domElemById("ui-kills"),
-            text: domElemById("ui-kill-text"),
-            count: domElemById("ui-kill-count"),
-        },
-        killFeed: {
-            div: domElemById("ui-killfeed-contents"),
-            lines: [] as Array<{ line: HTMLElement; text: HTMLElement }>,
-        },
-        weapons: [] as Array<{
-            div: HTMLElement;
-            type: HTMLElement;
-            number: HTMLElement;
-            image: HTMLImageElement;
-            ammo: HTMLElement;
-        }>,
-        ammo: {
-            current: domElemById("ui-current-clip"),
-            remaining: domElemById("ui-remaining-ammo"),
-            reloadButton: domElemById("ui-reload-button-container"),
-        },
-        interaction: {
-            div: domElemById("ui-interaction"),
-            key: domElemById("ui-interaction-press"),
-            text: domElemById("ui-interaction-description"),
-        },
-        health: {
-            inner: domElemById("ui-health-actual"),
-            depleted: domElemById("ui-health-depleted"),
-        },
-        boost: {
-            div: domElemById("ui-boost-counter"),
-            bars: [
-                domElemById("ui-boost-counter-0").firstElementChild,
-                domElemById("ui-boost-counter-1").firstElementChild,
-                domElemById("ui-boost-counter-2").firstElementChild,
-                domElemById("ui-boost-counter-3").firstElementChild,
-            ] as HTMLElement[],
-        },
-        scopes: [] as Array<{
-            scopeType: string;
-            div: HTMLElement;
-        }>,
-        loot: [] as Array<{
-            lootType: string;
-            div: HTMLElement;
-            count: HTMLElement;
-            image: HTMLImageElement;
-            overlay: HTMLElement;
-        }>,
-        gear: [] as Array<{
-            gearType: (typeof GEAR_TYPES)[number];
-            div: HTMLElement;
-            divTooltip: HTMLElement;
-            divTitle: HTMLElement;
-            divDesc: HTMLElement;
-            level: HTMLElement;
-            image: HTMLImageElement;
-        }>,
-        perks: [] as Array<{
-            perkType: string;
-            div: HTMLElement;
-            divTitle: HTMLElement;
-            divDesc: HTMLElement;
-            image: HTMLImageElement;
-        }>,
+        debugButton: document.getElementById("ui-debug-button"),
+        emoteButton: document.getElementById("ui-emote-button"),
+        touchStyles: document.getElementById("btn-touch-styles"),
+        aimLine: document.getElementById("btn-game-aim-line"),
     };
 
     rareLootMessageQueue: string[] = [];
@@ -323,7 +218,7 @@ export class UiManager2 {
     itemActions = [] as Array<{
         action: string;
         type: string;
-        data: string;
+        data: string | number;
         div: HTMLElement;
         actionQueued: boolean;
         actionTime: number;
@@ -334,97 +229,6 @@ export class UiManager2 {
         public localization: Localization,
         public inputBinds: InputBinds,
     ) {
-        // KillFeed
-        for (let i = 0; i < maxKillFeedLines; i++) {
-            // Search for an existing line; if we don't find one, create it
-            const lineId = `ui-killfeed-${i}`;
-            let line = domElemById(lineId);
-
-            if (!line) {
-                line = document.createElement("div");
-                line.id = lineId;
-                line.classList.add("killfeed-div");
-                const child = document.createElement("div");
-                child.classList.add("killfeed-text");
-                line.appendChild(child);
-                this.dom.killFeed.div.appendChild(line);
-            }
-
-            this.dom.killFeed.lines.push({
-                line,
-                text: line.firstElementChild as HTMLElement,
-            });
-        }
-
-        // Weapon slot
-        for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
-            const weapon = domElemById(`ui-weapon-id-${i + 1}`)!;
-            const weaponData = {
-                div: weapon,
-                type: weapon.getElementsByClassName("ui-weapon-name")[0] as HTMLElement,
-                number: weapon.getElementsByClassName(
-                    "ui-weapon-number",
-                )[0] as HTMLElement,
-                image: weapon.getElementsByClassName(
-                    "ui-weapon-image",
-                )[0] as HTMLImageElement,
-                ammo: weapon.getElementsByClassName(
-                    "ui-weapon-ammo-counter",
-                )[0] as HTMLElement,
-            };
-            this.dom.weapons.push(weaponData);
-        }
-
-        for (let i = 0; i < SCOPE_LEVELS.length; i++) {
-            const scopeType = SCOPE_LEVELS[i];
-            const scopeData = {
-                scopeType,
-                div: domElemById(`ui-scope-${scopeType}`),
-            };
-            this.dom.scopes.push(scopeData);
-        }
-
-        for (const lootType of getUiInventoryItemTypes()) {
-            const lootDiv = domElemById(`ui-loot-${lootType}`);
-            if (lootDiv) {
-                const lootData = {
-                    lootType,
-                    div: lootDiv,
-                    count: lootDiv.getElementsByClassName("ui-loot-count")[0] as HTMLElement,
-                    image: lootDiv.getElementsByClassName("ui-loot-image")[0] as HTMLImageElement,
-                    overlay: lootDiv.getElementsByClassName("ui-loot-overlay")[0] as HTMLElement,
-                };
-                this.dom.loot.push(lootData);
-            }
-        }
-
-        for (let i = 0; i < GEAR_TYPES.length; i++) {
-            const gearType = GEAR_TYPES[i];
-            const div = domElemById(`ui-armor-${gearType}`);
-            const gearData = {
-                gearType,
-                div,
-                divTooltip: div.getElementsByClassName("tooltip-text")[0] as HTMLElement,
-                divTitle: div.getElementsByClassName("tooltip-title")[0] as HTMLElement,
-                divDesc: div.getElementsByClassName("tooltip-desc")[0] as HTMLElement,
-                level: div.getElementsByClassName("ui-armor-level")[0] as HTMLElement,
-                image: div.getElementsByClassName("ui-armor-image")[0] as HTMLImageElement,
-            };
-            this.dom.gear.push(gearData);
-        }
-
-        for (let i = 0; i < perkUiCount; i++) {
-            const perk = domElemById(`ui-perk-${i}`);
-            const perkData = {
-                perkType: "",
-                div: perk,
-                divTitle: perk.getElementsByClassName("tooltip-title")[0] as HTMLElement,
-                divDesc: perk.getElementsByClassName("tooltip-desc")[0] as HTMLElement,
-                image: perk.getElementsByClassName("ui-armor-image")[0] as HTMLImageElement,
-            };
-            this.dom.perks.push(perkData);
-        }
-
         const setEventListener = <
             T extends keyof HTMLElementEventMap = keyof HTMLElementEventMap,
         >(
@@ -440,12 +244,10 @@ export class UiManager2 {
             elem.addEventListener(event, fn);
         };
 
-        const addItemAction = (
-            action: string,
-            type: string,
-            data: string,
-            div: HTMLElement,
-        ) => {
+        // the HUD components (components/Hud.tsx) are mounted before any game starts
+        const addItemAction = (action: string, type: string, data: string | number, divId: string) => {
+            const div = document.getElementById(divId);
+            if (!div) return;
             this.itemActions.push({
                 action,
                 type,
@@ -456,43 +258,30 @@ export class UiManager2 {
             });
         };
 
-        for (let i = 0; i < this.dom.weapons.length; i++) {
-            addItemAction(
-                "use",
-                "weapon",
-                i as unknown as string,
-                this.dom.weapons[i].div,
-            );
-            addItemAction(
-                "drop",
-                "weapon",
-                i as unknown as string,
-                this.dom.weapons[i].div,
-            );
+        for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
+            addItemAction("use", "weapon", i, `ui-weapon-id-${i + 1}`);
+            addItemAction("drop", "weapon", i, `ui-weapon-id-${i + 1}`);
         }
-        for (let i = 0; i < this.dom.scopes.length; i++) {
-            const scope = this.dom.scopes[i];
-            addItemAction("use", "scope", scope.scopeType, scope.div);
-            if (scope.scopeType != "1xscope") {
-                addItemAction("drop", "loot", scope.scopeType, scope.div);
+        for (const scopeType of SCOPE_LEVELS) {
+            addItemAction("use", "scope", scopeType, `ui-scope-${scopeType}`);
+            if (scopeType != "1xscope") {
+                addItemAction("drop", "loot", scopeType, `ui-scope-${scopeType}`);
             }
         }
-        for (let i = 0; i < this.dom.loot.length; i++) {
-            const loot = this.dom.loot[i];
-            const def = GameObjectDefs.typeToDef(loot.lootType);
+        for (const lootType of getUiInventoryItemTypes()) {
+            const def = GameObjectDefs.typeToDef(lootType);
             if (def.type == "heal" || def.type == "boost") {
-                addItemAction("use", "loot", loot.lootType, loot.div);
+                addItemAction("use", "loot", lootType, `ui-loot-${lootType}`);
             }
-            addItemAction("drop", "loot", loot.lootType, loot.div);
+            addItemAction("drop", "loot", lootType, `ui-loot-${lootType}`);
         }
-        for (let i = 0; i < this.dom.gear.length; i++) {
-            const gear = this.dom.gear[i];
-            if (gear.gearType != "backpack") {
-                addItemAction("drop", "loot", gear.gearType, gear.div);
+        for (const gearType of GEAR_TYPES) {
+            if (gearType != "backpack") {
+                addItemAction("drop", "loot", gearType, `ui-armor-${gearType}`);
             }
         }
-        for (let i = 0; i < this.dom.perks.length; i++) {
-            addItemAction("drop", "perk", i as unknown as string, this.dom.perks[i].div);
+        for (let i = 0; i < PERK_UI_COUNT; i++) {
+            addItemAction("drop", "perk", i, `ui-perk-${i}`);
         }
         for (let i = 0; i < this.itemActions.length; i++) {
             const item = this.itemActions[i];
@@ -578,7 +367,7 @@ export class UiManager2 {
         window.removeEventListener("keyup", this.onKeyUp);
     }
 
-    pushAction(itemAction: { action: string; type: string; data: string }) {
+    pushAction(itemAction: { action: string; type: string; data: string | number }) {
         this.uiEvents.push({
             action: itemAction.action,
             type: itemAction.type,
@@ -599,10 +388,9 @@ export class UiManager2 {
         map: Map,
         inputBinds: InputBinds,
     ) {
-        const state = this.newState;
+        const state = this.state;
 
         // Device
-        state.mobile = device.mobile;
         state.touch = device.touch;
         // Process touch-hold events
         if (state.touch) {
@@ -992,372 +780,98 @@ export class UiManager2 {
             }
         }
 
-        // render state diff
-        const patch = diff(this.oldState, this.newState, this.frameCount++ == 0);
-        this.render(patch, this.newState);
-        copy(this.newState, this.oldState);
+        this.publish(state);
+        this.frameCount++;
     }
 
-    render(patch: UiState, state: UiState) {
-        const dom = this.dom;
-
-        // Touch
-        if (patch.touch) {
-            dom.interaction.key.style.backgroundImage = state.touch
-                ? "url('img/gui/tap.svg')"
-                : "none";
-            if (state.touch) {
-                dom.interaction.key.innerHTML = "";
-            }
-            dom.menu.touchStyles.style.display = state.touch ? "flex" : "none";
-            dom.menu.aimLine.style.display = state.touch ? "block" : "none";
-            dom.ammo.reloadButton.style.display = state.touch ? "block" : "none";
-            dom.emoteButton.style.display = state.touch ? "block" : "none";
-            if (dom.debugButton) {
-                dom.debugButton.style.display = state.touch ? "block" : "none";
-            }
+    /**
+     * Copies what the HUD shows into the hud store. A plain mirror of the store finds the groups
+     * that changed, so frames where nothing changed don't touch the store (or schedule a flush).
+     */
+    publish(state: UiState) {
+        if (this.frameCount == 0 || state.touch != this.published.touch) {
+            const touchDisplay = (shown: string) => (state.touch ? shown : "none");
+            if (this.dom.touchStyles) this.dom.touchStyles.style.display = touchDisplay("flex");
+            if (this.dom.aimLine) this.dom.aimLine.style.display = touchDisplay("block");
+            if (this.dom.emoteButton) this.dom.emoteButton.style.display = touchDisplay("block");
+            if (this.dom.debugButton) this.dom.debugButton.style.display = touchDisplay("block");
         }
 
-        // Rare loot message
-        if (patch.rareLootMessage.lootType) {
-            const lootType = state.rareLootMessage.lootType;
-            const lootDef = GameObjectDefs.typeToDefSafe(lootType) as LootDef;
-            if (lootDef && lootDef.type == "xp") {
-                const lootDesc = this.localization.translate("game-xp-drop-desc");
-                dom.rareLootMessage.desc.innerHTML = `+${lootDef.xp} ${lootDesc}`;
-            } else {
-                dom.rareLootMessage.desc.innerHTML = "";
-            }
-
-            const bgImg = lootDef?.lootImg?.border
-                ? `url(img/loot/${lootDef.lootImg.border.slice(0, -4)}.svg)`
-                : "none";
-            dom.rareLootMessage.imageWrapper.style.backgroundImage = bgImg;
-            const lootImg = helpers.getSvgFromGameType(lootType);
-            dom.rareLootMessage.icon.style.backgroundImage = lootImg
-                ? `url('${lootImg}')`
-                : "none";
-            const lootName = this.localization.translate(`game-${lootType}`);
-
-            dom.rareLootMessage.name.innerHTML = lootName;
+        const m = this.published;
+        const pending = this.pendingWrites;
+        // the store still shows the previous game: write everything once
+        const force = this.frameCount == 0;
+        if (
+            force || m.touch != state.touch || m.health != state.health || m.boost != state.boost
+            || m.downed != state.downed
+        ) {
+            m.touch = state.touch;
+            m.health = state.health;
+            m.boost = state.boost;
+            m.downed = state.downed;
+            pending.push((hud) => {
+                hud.touch = m.touch;
+                hud.health = m.health;
+                hud.boost = m.boost;
+                hud.downed = m.downed;
+            });
+        }
+        syncGroup(
+            force,
+            pending,
+            m.rareLootMessage,
+            state.rareLootMessage,
+            ["lootType", "opacity"],
+            (h) => h.rareLootMessage,
+        );
+        syncGroup(force, pending, m.pickupMessage, state.pickupMessage, ["message", "opacity"], (h) => h.pickupMessage);
+        syncGroup(force, pending, m.killMessage, state.killMessage, ["text", "count", "opacity"], (h) => h.killMessage);
+        for (let i = 0; i < state.killFeed.length; i++) {
+            syncGroup(force, pending, m.killFeed[i], state.killFeed[i], KILL_FEED_KEYS, (h) => h.killFeed[i]);
+        }
+        syncGroup(
+            force,
+            pending,
+            m.interaction,
+            state.interaction,
+            ["type", "text", "key", "usable"],
+            (h) => h.interaction,
+        );
+        for (let i = 0; i < state.weapons.length; i++) {
+            syncGroup(force, pending, m.weapons[i], state.weapons[i], WEAPON_KEYS, (h) => h.weapons[i]);
+        }
+        syncGroup(force, pending, m.ammo, state.ammo, AMMO_KEYS, (h) => h.ammo);
+        for (let i = 0; i < state.scopes.length; i++) {
+            syncGroup(force, pending, m.scopes[i], state.scopes[i], SCOPE_KEYS, (h) => h.scopes[i]);
+        }
+        for (let i = 0; i < state.loot.length; i++) {
+            const type = state.loot[i].type;
+            syncGroup(force, pending, m.loot[type], state.loot[i], LOOT_KEYS, (h) => h.loot[type]);
+        }
+        for (let i = 0; i < state.gear.length; i++) {
+            syncGroup(force, pending, m.gear[i], state.gear[i], GEAR_KEYS, (h) => h.gear[i]);
+        }
+        for (let i = 0; i < state.perks.length; i++) {
+            syncGroup(force, pending, m.perks[i], state.perks[i], PERK_KEYS, (h) => h.perks[i]);
         }
 
-        if (patch.rareLootMessage.opacity) {
-            dom.rareLootMessage.wrapper.style.opacity = String(
-                state.rareLootMessage.opacity,
-            );
-        }
-
-        // Pickup message
-        if (patch.pickupMessage.message) {
-            dom.pickupMessage.innerHTML = state.pickupMessage.message;
-        }
-        if (patch.pickupMessage.opacity) {
-            dom.pickupMessage.style.opacity = String(state.pickupMessage.opacity);
-        }
-
-        // Kill message
-        if (patch.killMessage.text || patch.killMessage.count) {
-            dom.killMessage.text.innerHTML = state.killMessage.text;
-            dom.killMessage.count.innerHTML = state.killMessage.count;
-        }
-        if (patch.killMessage.opacity) {
-            dom.killMessage.div.style.opacity = String(state.killMessage.opacity);
-        }
-
-        // KillFeed
-        for (let i = 0; i < patch.killFeed.length; i++) {
-            const patchK = patch.killFeed[i];
-            const domK = dom.killFeed.lines[i];
-            const x = state.killFeed[i];
-
-            if (patchK.text) {
-                domK.text.innerHTML = x.text;
-            }
-
-            if (patchK.offset) {
-                const top = device.uiLayout != device.UiLayout.Sm || device.tablet ? 35 : 15;
-                domK.line.style.top = `${Math.floor(x.offset * top)}px`;
-            }
-            if (patchK.color) {
-                domK.text.style.color = x.color;
-            }
-            if (patchK.opacity) {
-                domK.line.style.opacity = String(x.opacity);
-            }
-        }
-
-        // Health
-        if (patch.health || patch.downed) {
-            const steps = [
-                {
-                    health: 100,
-                    color: [179, 179, 179],
-                },
-                {
-                    health: 100,
-                    color: [255, 255, 255],
-                },
-                {
-                    health: 75,
-                    color: [255, 255, 255],
-                },
-                {
-                    health: 75,
-                    color: [255, 158, 158],
-                },
-                {
-                    health: 25,
-                    color: [255, 82, 82],
-                },
-                {
-                    health: 25,
-                    color: [255, 0, 0],
-                },
-                {
-                    health: 0,
-                    color: [255, 0, 0],
-                },
-            ];
-
-            let endIdx = 0;
-            const health = Math.ceil(state.health);
-
-            while (steps[endIdx].health > health && endIdx < steps.length - 1) {
-                endIdx++;
-            }
-
-            const stepA = steps[math.max(endIdx - 1, 0)];
-            const stepB = steps[endIdx];
-            const t = math.delerp(state.health, stepA.health, stepB.health);
-            let rgb = [
-                Math.floor(math.lerp(t, stepA.color[0], stepB.color[0])),
-                Math.floor(math.lerp(t, stepA.color[1], stepB.color[1])),
-                Math.floor(math.lerp(t, stepA.color[2], stepB.color[2])),
-            ];
-
-            if (state.downed) {
-                rgb = [255, 0, 0];
-            }
-
-            dom.health.inner.style.backgroundColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 1.0)`;
-            dom.health.inner.style.width = `${state.health}%`;
-            dom.health.depleted.style.width = `${state.health}%`;
-            dom.health.depleted.style.display = state.health > 0 ? "block" : "none";
-            if (state.health > 25) {
-                dom.health.inner.classList.remove("ui-bar-danger");
-            } else {
-                dom.health.inner.classList.add("ui-bar-danger");
-            }
-        }
-        if (patch.boost) {
-            const breakPoints = GameConfig.player.boostBreakpoints;
-            const max = breakPoints.reduce((a, b) => a + b, 0);
-
-            let boostT = state.boost / 100;
-            for (let i = 0; i < dom.boost.bars.length; i++) {
-                const breakPointT = breakPoints[i] / max;
-                const widthT = math.clamp(boostT / breakPointT, 0, 1);
-                boostT = math.max(boostT - breakPointT, 0);
-                dom.boost.bars[i].style.width = `${widthT * 100}%`;
-            }
-            dom.boost.div.style.opacity = String(state.boost == 0 ? 0 : 1);
-        }
-        if (patch.interaction.type) {
-            dom.interaction.div.style.display = state.interaction.type == InteractionType.None ? "none" : "flex";
-        }
-        if (patch.interaction.text) {
-            dom.interaction.text.innerHTML = state.interaction.text;
-        }
-        if (patch.interaction.key) {
-            dom.interaction.key.innerHTML = state.touch ? "" : state.interaction.key;
-            dom.interaction.key.className = dom.interaction.key.innerHTML.length > 1
-                ? "ui-interaction-small"
-                : "ui-interaction-large";
-        }
-        if (patch.interaction.usable) {
-            dom.interaction.key.style.display = state.interaction.usable
-                ? "block"
-                : "none";
-        }
-
-        for (let weaponIndex = 0; weaponIndex < patch.weapons.length; weaponIndex++) {
-            const weaponPatch = patch.weapons[weaponIndex];
-            const weaponDom = dom.weapons[weaponIndex];
-            const weaponState = state.weapons[weaponIndex];
-            if (weaponPatch.type) {
-                let weaponName = "";
-                let weaponTransformCss = "";
-                const weaponDef = GameObjectDefs.typeToDefSafe(weaponState.type);
-                if (weaponDef) {
-                    weaponName = this.localization.translate(`game-hud-${weaponState.type}`)
-                        || this.localization.translate(`game-${weaponState.type}`);
-                    weaponTransformCss = helpers.getCssTransformFromGameType(weaponState.type);
-                }
-
-                weaponDom.type.innerHTML = weaponName;
-                weaponDom.image.src = helpers.getSvgFromGameType(weaponState.type);
-                weaponDom.image.style.display = weaponDef ? "inline" : "none";
-                weaponDom.image.style.transform = weaponTransformCss;
-            }
-            if (weaponPatch.equipped) {
-                weaponDom.div.style.backgroundColor = weaponState.equipped
-                    ? "rgba(0, 0, 0, 0.4)"
-                    : "rgba(0, 0, 0, 0)";
-            }
-            if (weaponPatch.selectable) {
-                weaponDom.div.style.pointerEvents = weaponState.type !== "" || weaponState.selectable ? "auto" : "none";
-            }
-            if (weaponPatch.width) {
-                const weaponWidth = math.lerp(weaponState.width, 83.33, 100);
-                weaponDom.div.style.width = `${weaponWidth}%`;
-            }
-            if (weaponPatch.opacity) {
-                weaponDom.div.style.opacity = String(weaponState.opacity);
-            }
-            if (weaponPatch.ammo && weaponDom.ammo) {
-                weaponDom.ammo.innerHTML = String(weaponState.ammo);
-                weaponDom.ammo.style.display = weaponState.ammo > 0 ? "block" : "none";
-            }
-            if (weaponPatch.bindStr) {
-                weaponDom.number.innerHTML = weaponState.bindStr[0] || "";
-            }
-        }
-        if (patch.ammo.current) {
-            const currentAmmo = state.ammo.current;
-            dom.ammo.current.innerHTML = String(currentAmmo);
-            dom.ammo.current.style.color = currentAmmo > 0 ? "white" : "red";
-        }
-        if (patch.ammo.remaining) {
-            const remainingAmmo = state.ammo.remaining;
-            dom.ammo.remaining.innerHTML = String(remainingAmmo === Number.MAX_VALUE ? "&#8734;" : remainingAmmo);
-            dom.ammo.remaining.style.color = remainingAmmo !== 0 ? "white" : "red";
-        }
-        if (patch.ammo.displayCurrent) {
-            dom.ammo.current.style.opacity = String(state.ammo.displayCurrent ? 1 : 0);
-        }
-        if (patch.ammo.displayRemaining) {
-            dom.ammo.remaining.style.opacity = String(
-                state.ammo.displayRemaining ? 1 : 0,
-            );
-            dom.ammo.reloadButton.style.opacity = String(
-                state.ammo.displayRemaining ? 1 : 0,
-            );
-        }
-
-        for (let scopeIndex = 0; scopeIndex < patch.scopes.length; scopeIndex++) {
-            const scopePatch = patch.scopes[scopeIndex];
-            const scopeDom = dom.scopes[scopeIndex];
-            const scopeState = state.scopes[scopeIndex];
-            if (scopePatch.visible) {
-                scopeDom.div.classList.toggle("ui-hidden", !scopeState.visible);
-            }
-            if (scopePatch.equipped) {
-                scopeDom.div.classList.toggle("ui-zoom-active", scopeState.equipped);
-                scopeDom.div.classList.toggle("ui-zoom-inactive", !scopeState.equipped);
-            }
-            if (scopePatch.selectable) {
-                scopeDom.div.style.pointerEvents = scopeState.selectable ? "auto" : "none";
-            }
-        }
-
-        for (let lootIndex = 0; lootIndex < patch.loot.length; lootIndex++) {
-            const lootPatch = patch.loot[lootIndex];
-            const lootDom = dom.loot[lootIndex];
-            const lootState = state.loot[lootIndex];
-            if (lootPatch && lootDom && lootState) {
-                if (lootPatch.count || lootPatch.maximum) {
-                    lootDom.count.innerHTML = String(lootState.count);
-                    lootDom.div.style.opacity = String(
-                        (GameObjectDefs.typeToDef(lootDom.lootType) as AmmoDef).special && lootState.count == 0
-                            ? 0
-                            : lootState.count > 0
-                            ? 1
-                            : 0.25,
-                    );
-                    lootDom.div.style.color = lootState.count === lootState.maximum ? "#ff9900" : "#ffffff";
-                }
-                if (lootPatch.width) {
-                    const scale = 1 + lootState.width * 0.33;
-                    const transform = `scale(${scale}, ${scale})`;
-                    lootDom.image.style.transform = transform;
-                    if (lootDom.overlay) {
-                        lootDom.overlay.style.transform = transform;
-                    }
-                }
-                if (lootPatch.selectable) {
-                    lootDom.div.style.pointerEvents = lootState.selectable ? "auto" : "none";
-                }
-            }
-        }
-
-        for (let gearIndex = 0; gearIndex < patch.gear.length; gearIndex++) {
-            const gearPatch = patch.gear[gearIndex];
-            const gearDom = dom.gear[gearIndex];
-            const gearState = state.gear[gearIndex];
-            if (gearPatch.item) {
-                // GearDef?
-                const gearDef = gearState.item
-                    ? (GameObjectDefs.typeToDef(gearState.item) as HelmetDef | ChestDef | BackpackDef)
-                    : null;
-                const gearDefMin = gearDef as ChestDef;
-                const gearLevel = gearDefMin ? gearDefMin.level : 0;
-                gearDom.div.style.display = gearDefMin ? "block" : "none";
-                gearDom.level.innerHTML = this.localization.translate(`game-level-${gearLevel}`);
-                gearDom.divTooltip.style.display = gearDef?.hasDesc ? "block" : "none";
-                gearDom.divTitle.innerHTML = this.localization.translate(`game-${gearState.item}`);
-                gearDom.divDesc.innerHTML = this.localization.translate(`game-${gearState.item}-desc`);
-                gearDom.level.style.color = gearLevel === 4 ? "#b30000" : gearLevel === 3 ? "#ff9900" : "#ffffff";
-                gearDom.image.src = helpers.getSvgFromGameType(gearState.item);
-            }
-            if (gearPatch.selectable) {
-                gearDom.div.style.pointerEvents = gearState.selectable ? "auto" : "none";
-            }
-            if (gearPatch.width) {
-                const scale = 1 + gearState.width * 0.33;
-                let transform = `scale(${scale}, ${scale})`;
-                const meleeGearDef = GameObjectDefs.typeToDefSafe(gearState.item) as MeleeDef;
-                if (meleeGearDef?.lootImg.rot !== undefined) {
-                    transform += ` rotate(${meleeGearDef.lootImg.rot}rad)`;
-                }
-                gearDom.image.style.transform = transform;
-            }
-        }
-
-        for (let perkIndex = 0; perkIndex < patch.perks.length; perkIndex++) {
-            const perkPatch = patch.perks[perkIndex];
-            const perkDom = dom.perks[perkIndex];
-            const perkState = state.perks[perkIndex];
-            if (perkPatch.type) {
-                perkDom.perkType = perkState.type;
-                perkDom.divTitle.innerHTML = this.localization.translate(`game-${perkState.type}`);
-                perkDom.divDesc.innerHTML = this.localization.translate(`game-${perkState.type}-desc`);
-                perkDom.div.style.display = perkState.type ? "block" : "none";
-                perkDom.image.src = perkState.type ? helpers.getSvgFromGameType(perkState.type) : "";
-            }
-            if (perkPatch.droppable) {
-                perkDom.div.classList.toggle("ui-outline-hover", perkState.droppable);
-                perkDom.div.classList.toggle("ui-perk-no-drop", !perkState.droppable);
-            }
-            if (perkPatch.pulse) {
-                perkDom.div.classList.toggle("ui-perk-pulse", perkState.pulse);
-            }
-            if (perkPatch.width) {
-                const scale = 1 + perkState.width * 0.33;
-                perkDom.image.style.transform = `scale(${scale}, ${scale})`;
-            }
+        if (pending.length > 0) {
+            setHud((hud) => {
+                for (let i = 0; i < pending.length; i++) pending[i](hud);
+            });
+            pending.length = 0;
         }
     }
 
     displayPickupMessage(type: PickupMsgType) {
-        const pickupMessage = this.newState.pickupMessage;
+        const pickupMessage = this.state.pickupMessage;
         pickupMessage.message = this.getPickupMessageText(type);
         pickupMessage.ticker = 0;
         pickupMessage.duration = 3;
     }
 
     displayKillMessage(text: string, count: string) {
-        const killMessage = this.newState.killMessage;
+        const killMessage = this.state.killMessage;
         killMessage.text = text;
         killMessage.count = count;
         killMessage.ticker = 0;
@@ -1365,15 +879,15 @@ export class UiManager2 {
     }
 
     hideKillMessage() {
-        this.newState.killMessage.ticker = math.max(
-            this.newState.killMessage.ticker,
-            this.newState.killMessage.duration - 0.2,
+        this.state.killMessage.ticker = math.max(
+            this.state.killMessage.ticker,
+            this.state.killMessage.duration - 0.2,
         );
     }
 
     addRareLootMessage(lootType: string, clearQueue?: boolean) {
         if (clearQueue) {
-            this.newState.rareLootMessage.ticker = this.newState.rareLootMessage.duration;
+            this.state.rareLootMessage.ticker = this.state.rareLootMessage.duration;
             this.rareLootMessageQueue = [];
         }
         this.rareLootMessageQueue.push(lootType);
@@ -1386,8 +900,8 @@ export class UiManager2 {
             this.rareLootMessageQueue.splice(idx, 1);
         }
 
-        if (this.newState.rareLootMessage.lootType == lootType) {
-            this.newState.rareLootMessage.ticker = this.newState.rareLootMessage.duration;
+        if (this.state.rareLootMessage.lootType == lootType) {
+            this.state.rareLootMessage.ticker = this.state.rareLootMessage.duration;
         }
     }
 
@@ -1399,7 +913,7 @@ export class UiManager2 {
     }
 
     addKillFeedMessage(text: string, color: string) {
-        const killFeed = this.newState.killFeed;
+        const killFeed = this.state.killFeed;
         const oldest = killFeed[killFeed.length - 1];
         oldest.text = text;
         oldest.color = color;
@@ -1711,27 +1225,9 @@ export class UiManager2 {
 
 export function loadStaticDomImages() {
     // Fetch dom images here instead of index.html to speed up page responsiveness
-    const lootImages = {
-        "ui-loot-bandage": "img/loot/loot-medical-bandage.svg",
-        "ui-loot-healthkit": "img/loot/loot-medical-healthkit.svg",
-        "ui-loot-soda": "img/loot/loot-medical-soda.svg",
-        "ui-loot-painkiller": "img/loot/loot-medical-pill.svg",
-        "ui-loot-9mm": "img/loot/loot-ammo-box.svg",
-        "ui-loot-12gauge": "img/loot/loot-ammo-box.svg",
-        "ui-loot-762mm": "img/loot/loot-ammo-box.svg",
-        "ui-loot-556mm": "img/loot/loot-ammo-box.svg",
-        "ui-loot-50AE": "img/loot/loot-ammo-box.svg",
-        "ui-loot-308sub": "img/loot/loot-ammo-box.svg",
-        "ui-loot-flare": "img/loot/loot-ammo-box.svg",
-        "ui-loot-45acp": "img/loot/loot-ammo-box.svg",
-    };
-
-    for (const [id, img] of Object.entries(lootImages)) {
-        (
-            domElemById(id).getElementsByClassName("ui-loot-image")[0] as HTMLImageElement
-        ).src = img;
-    }
-
-    (domElemById("mag-glass-white") as HTMLImageElement).src = "img/gui/mag-glass.svg";
-    (domElemById("ui-minimize-img") as HTMLImageElement).src = "img/gui/minimize.svg";
+    setHud((hud) => {
+        hud.staticImages = true;
+    });
+    (document.getElementById("mag-glass-white") as HTMLImageElement).src = "img/gui/mag-glass.svg";
+    (document.getElementById("ui-minimize-img") as HTMLImageElement).src = "img/gui/minimize.svg";
 }
