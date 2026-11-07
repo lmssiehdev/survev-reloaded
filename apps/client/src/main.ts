@@ -28,7 +28,7 @@ import { teamCodeFromPath } from "./teamLink.ts";
 import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
 import { mountAccount } from "./ui/components/Account.tsx";
 import { mountAppModals } from "./ui/components/AppModals.tsx";
-import { mountGameKeybindsTab } from "./ui/components/Keybinds.tsx";
+import { mountGameView } from "./ui/components/GameHud.tsx";
 import { currentNewsTime, mountStartMenu } from "./ui/components/StartMenu.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
@@ -41,13 +41,6 @@ import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 
 export class Application {
-    // the in-game menu's; the start menu is TSX
-    muteBtns = $("#btn-game-sound");
-    aimLineBtn = $("#btn-game-aim-line");
-    // the in-game menu's sliders; the settings modal's are TSX
-    masterSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-master-volume");
-    soundSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-sound-volume");
-    musicSliders = $<HTMLInputElement>("#ui-game-tab-settings .sl-music-volume");
     startMenuWrapper = $("#start-menu-wrapper");
     gameAreaWrapper = $("#game-area-wrapper");
     config = appConfig;
@@ -133,40 +126,6 @@ export class Application {
             });
             this.localization.localizeIndex();
             this.account.init();
-
-            this.muteBtns.on("click", (_t) => {
-                this.config.set("muteAudio", !this.config.get("muteAudio"));
-            });
-            this.muteBtns.on("mousedown", (e) => {
-                e.stopPropagation();
-            });
-            $(this.masterSliders).on("mousedown", (e) => {
-                e.stopPropagation();
-            });
-            $(this.soundSliders).on("mousedown", (e) => {
-                e.stopPropagation();
-            });
-            $(this.musicSliders).on("mousedown", (e) => {
-                e.stopPropagation();
-            });
-            this.masterSliders.on("input", (t) => {
-                const r = Number($(t.target).val()) / 100;
-                this.audioManager.setMasterVolume(r);
-                this.config.set("masterVolume", r);
-            });
-            this.soundSliders.on("input", (t) => {
-                const r = Number($(t.target).val()) / 100;
-                this.audioManager.setSoundVolume(r);
-                this.config.set("soundVolume", r);
-            });
-            this.musicSliders.on("input", (t) => {
-                const r = Number($(t.target).val()) / 100;
-                this.audioManager.setMusicVolume(r);
-                this.config.set("musicVolume", r);
-            });
-            $("#ui-game-tab-settings .btn-fullscreen-toggle").on("click", () => {
-                helpers.toggleFullScreen();
-            });
 
             this.updateLoginSupport();
             const lastSeenNewsTime = this.config.get("lastNewsTimestamp")!;
@@ -425,22 +384,13 @@ export class Application {
     onConfigModified(key?: ConfigKey) {
         const muteAudio = this.config.get("muteAudio")!;
         if (muteAudio != this.audioManager.mute) {
-            this.muteBtns.removeClass(muteAudio ? "audio-on-icon" : "audio-off-icon");
-            this.muteBtns.addClass(muteAudio ? "audio-off-icon" : "audio-on-icon");
             this.audioManager.setMute(muteAudio);
         }
 
-        const masterVolume = this.config.get("masterVolume")!;
-        this.masterSliders.val(masterVolume * 100);
-        this.audioManager.setMasterVolume(masterVolume);
-
-        const soundVolume = this.config.get("soundVolume")!;
-        this.soundSliders.val(soundVolume * 100);
-        this.audioManager.setSoundVolume(soundVolume);
-
-        const musicVolume = this.config.get("musicVolume")!;
-        this.musicSliders.val(musicVolume * 100);
-        this.audioManager.setMusicVolume(musicVolume);
+        // the volume sliders (settings modal, in-game menu) only write the config
+        this.audioManager.setMasterVolume(this.config.get("masterVolume")!);
+        this.audioManager.setSoundVolume(this.config.get("soundVolume")!);
+        this.audioManager.setMusicVolume(this.config.get("musicVolume")!);
 
         if (key == "language") {
             this.localization.setLocale(this.config.get("language")!);
@@ -812,7 +762,7 @@ if (sharedTeamCode) window.history.replaceState("", "", `/#${sharedTeamCode}`);
 mountAppModals();
 mountStartMenu();
 mountAccount();
-mountGameKeybindsTab();
+mountGameView();
 const App = new Application();
 setApp(App);
 

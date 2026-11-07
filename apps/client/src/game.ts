@@ -1210,9 +1210,8 @@ export class Game {
 
         // Update kill leader
         if (msg.killLeaderDirty) {
-            const leaderNameText = helpers.htmlEscape(
-                this.m_playerBarn.getPlayerName(msg.killLeaderId, this.m_activeId, true),
-            );
+            // plain text: the kill leader view escapes it
+            const leaderNameText = this.m_playerBarn.getPlayerName(msg.killLeaderId, this.m_activeId, true);
             this.m_uiManager.updateKillLeader(
                 msg.killLeaderId,
                 leaderNameText,

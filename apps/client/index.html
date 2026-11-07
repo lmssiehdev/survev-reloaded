@@ -46,96 +46,11 @@
         <canvas tabindex="1" id="cvs"></canvas>
         <div id="game-area-wrapper" style="display: none" oncontextmenu="return false">
             <div id="game-touch-area"></div>
-            <!-- Class Select -->
-            <div id="ui-role-menu-wrapper">
-                <div id="ui-role-menu">
-                    <div id="ui-role-header"></div>
-                    <div id="ui-role-body"></div>
-                    <div id="ui-role-footer">
-                        <div id="ui-role-footer-desc" data-l10n="game-select-class">SELECT A CLASS</div>
-                        <div id="ui-role-footer-enter">ENTER GAME (20)</div>
-                    </div>
-                </div>
-            </div>
+            <!-- class select: src/ui/components/GameHud.tsx -->
+            <div id="ui-role-menu-ui" style="display: contents" data-game-view></div>
             <div id="ui-game" class="click-through">
-                <div id="tablet-console"></div>
-                <div id="ui-center">
-                    <div id="ui-game-menu">
-                        <div id="btn-game-tabs" class="btns-game-double-row">
-                            <div class="btn-game-container">
-                                <a
-                                    id="btn-game-settings"
-                                    class="btn-game-tab-select btn-game-menu btn-game-menu-selected btn-darken"
-                                    data-tab="settings"
-                                ></a>
-                                <div class="btn-double-row game-menu-icon-static settings-icon"></div>
-                            </div>
-                            <div class="btn-game-container">
-                                <a
-                                    id="btn-game-keybinds"
-                                    class="btn-game-tab-select btn-game-menu btn-darken"
-                                    data-tab="keybinds"
-                                ></a>
-                                <div class="btn-double-row game-menu-icon-static keybind-icon"></div>
-                            </div>
-                        </div>
-                        <div id="ui-game-tab-settings" class="ui-game-tab">
-                            <a
-                                id="btn-game-fullscreen"
-                                class="btn-fullscreen-toggle btn-game-menu btn-darken"
-                                data-l10n="game-full-screen"
-                            >Full Screen</a>
-                            <div id="btn-touch-styles" class="btns-game-double-row">
-                                <div class="btn-game-container">
-                                    <a
-                                        id="btn-game-move-style"
-                                        class="btn-double-row btn-game-touch-style btn-darken"
-                                    ></a>
-                                    <div class="btn-double-row game-menu-icon-toggle movement-icon"></div>
-                                </div>
-                                <div class="btn-game-container">
-                                    <a
-                                        id="btn-game-aim-style"
-                                        class="btn-double-row btn-game-touch-style btn-darken"
-                                    ></a>
-                                    <div class="btn-double-row game-menu-icon-toggle target-icon"></div>
-                                </div>
-                            </div>
-                            <a
-                                id="btn-game-aim-line"
-                                class="btn-game-menu btn-darken locked-on-icon"
-                                data-l10n="game-aim-line"
-                            >Aim Line</a>
-                            <a
-                                id="btn-game-sound"
-                                class="btn-sound-toggle btn-game-menu btn-darken audio-on-icon"
-                                data-l10n="game-sound"
-                            >Sound</a>
-                            <div class="slider-container ui-slider-container">
-                                <p class="slider-text" data-l10n="index-master-volume">Master Volume</p>
-                                <input type="range" min="0" max="100" value="100" class="slider sl-master-volume">
-                            </div>
-                            <div class="slider-container ui-slider-container">
-                                <p class="slider-text" data-l10n="index-sfx-volume">SFX Volume</p>
-                                <input type="range" min="0" max="100" value="100" class="slider sl-sound-volume">
-                            </div>
-                            <div class="slider-container ui-slider-container">
-                                <p class="slider-text" data-l10n="index-music-volume">Music Volume</p>
-                                <input type="range" min="0" max="100" value="100" class="slider sl-music-volume">
-                            </div>
-                            <a id="btn-game-quit" class="btn-quit btn-game-menu btn-darken" data-l10n="game-quit-game"
-                            >Quit Game</a>
-                        </div>
-                        <!-- src/ui/components/Keybinds.tsx -->
-                        <div id="ui-game-tab-keybinds" class="ui-game-tab"></div>
-                        <a id="btn-game-resume" class="btn-game-menu btn-darken" data-l10n="game-return-to-game"
-                        >Return to Game</a>
-                    </div>
-                </div>
-                <div id="big-map" class="js-ui-map-show">
-                    <div id="big-map-collision"></div>
-                    <div id="big-map-close"></div>
-                </div>
+                <!-- in-game menu and big map close button: src/ui/components/GameMenu.tsx -->
+                <div id="ui-game-menu-ui" style="display: contents" data-game-view></div>
                 <div id="ui-emotes" class="ui-emote-wheel">
                     <div
                         id="ui-emote-middle"
@@ -388,105 +303,17 @@
                     </div>
                     <div id="ui-emote-button"></div>
                 </div>
-                <div id="ui-top-left" class="js-ui-hud-show click-through">
-                    <div id="ui-team" class="js-ui-mobile-map-hidden">
-                        <div class="ui-team-member ui-bg-standard" data-id="0">
-                            <div class="ui-team-member-name"></div>
-                            <div class="ui-team-member-color ui-background-yellow"></div>
-                            <div class="ui-team-member-status"></div>
-                            <div class="ui-team-member-health">
-                                <div class="ui-bar-inner ui-health-actual"></div>
-                            </div>
-                        </div>
-                        <div class="ui-team-member ui-bg-standard" data-id="1">
-                            <div class="ui-team-member-name"></div>
-                            <div class="ui-team-member-color ui-background-purple"></div>
-                            <div class="ui-team-member-status"></div>
-                            <div class="ui-team-member-health">
-                                <div class="ui-bar-inner ui-health-actual"></div>
-                            </div>
-                        </div>
-                        <div class="ui-team-member ui-bg-standard" data-id="2">
-                            <div class="ui-team-member-name"></div>
-                            <div class="ui-team-member-color ui-background-cyan"></div>
-                            <div class="ui-team-member-status"></div>
-                            <div class="ui-team-member-health">
-                                <div class="ui-bar-inner ui-health-actual"></div>
-                            </div>
-                        </div>
-                        <div class="ui-team-member ui-bg-standard" data-id="3">
-                            <div class="ui-team-member-name"></div>
-                            <div class="ui-team-member-color ui-background-orange"></div>
-                            <div class="ui-team-member-status"></div>
-                            <div class="ui-team-member-health">
-                                <div class="ui-bar-inner ui-health-actual"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="ui-map-wrapper" class="ui-map-wrapper-desktop click-through">
-                    <div id="ui-map-container">
-                        <div id="ui-map-info" class="js-ui-map-hidden js-ui-hud-show">
-                            <div id="ui-gas-icon" class="gas-icon"></div>
-                            <div id="ui-gas-timer"></div>
-                        </div>
-                        <div id="ui-spec-counter" class="js-ui-map-hidden js-ui-hud-show">
-                            <div id="ui-spec-counter-icon"></div>
-                            <div id="ui-spec-counter-number"></div>
-                        </div>
-                        <div id="ui-settings-container-desktop" class="js-ui-desktop-map-hidden">
-                            <div id="ui-map-expand-desktop" class="ui-map-expand ui-settings-button">
-                                <img id="mag-glass-white" src="">
-                            </div>
-                            <div id="ui-map-minimize" class="ui-settings-button js-ui-map-hidden">
-                                <img id="ui-minimize-img" src="">
-                            </div>
-                        </div>
-                        <div id="ui-settings-container-mobile" class="js-ui-mobile-map-hidden">
-                            <div id="ui-alive-info">
-                                <div id="ui-alive-icon" class="ui-map-icon alive-icon"></div>
-                                <div id="ui-map-counter-default" class="js-ui-players-alive">0</div>
-                                <div id="ui-map-counter-faction">
-                                    <span class="ui-players-alive-red js-ui-players-alive-red">0</span>:<span
-                                        class="ui-players-alive-blue js-ui-players-alive-blue"
-                                    >0</span>
-                                </div>
-                            </div>
-                            <div id="ui-map-expand-mobile" class="ui-map-expand ui-settings-button"></div>
-                            <div id="ui-menu-display" class="ui-settings-button prop-event"></div>
-                        </div>
-                    </div>
-                </div>
-                <div id="ui-kill-leader-container">
-                    <div id="ui-kill-leader-wrapper" class="js-ui-map-hidden js-ui-hud-show hide-on-mobile">
-                        <div id="ui-kill-leader-name">Waiting for new leader</div>
-                        <div id="ui-kill-leader-icon"></div>
-                        <div id="ui-kill-leader-count">0</div>
-                    </div>
-                </div>
+                <!-- team panel: src/ui/components/GameHud.tsx -->
+                <div id="ui-top-left-ui" style="display: contents" data-game-view></div>
+                <!-- minimap controls and kill leader: src/ui/components/GameHud.tsx -->
+                <div id="ui-map-ui" style="display: contents" data-game-view></div>
                 <div id="ui-killfeed-wrapper">
                     <div id="ui-killfeed" class="js-ui-map-hidden js-ui-hud-show">
                         <div id="ui-killfeed-contents"></div>
                     </div>
                 </div>
-                <div id="ui-leaderboard-wrapper">
-                    <div id="ui-leaderboard" class="js-ui-hud-show">
-                        <div id="ui-leaderboard-alive">
-                            <span class="ui-players-alive js-ui-players-alive">0</span>
-                        </div>
-                        <div id="ui-leaderboard-alive-faction">
-                            <span class="ui-players-alive-red js-ui-players-alive-red">0</span>
-                            <span class="ui-players-alive-blue js-ui-players-alive-blue">0</span>
-                        </div>
-                        <div class="ui-leaderboard-header" data-l10n="game-alive">Alive</div>
-                    </div>
-                    <div id="ui-kill-counter-wrapper" class="js-ui-map-show">
-                        <div id="ui-kill-counter">
-                            <span class="ui-player-kills js-ui-player-kills">0</span>
-                        </div>
-                        <div class="ui-kill-counter-header" data-l10n="game-kills">Kills</div>
-                    </div>
-                </div>
+                <!-- alive / kill counters: src/ui/components/GameHud.tsx -->
+                <div id="ui-leaderboard-ui" style="display: contents" data-game-view></div>
                 <div id="ui-top-center-scopes-wrapper">
                     <div id="ui-top-center-scopes" class="click-through js-ui-map-hidden">
                         <div id="ui-scope-1xscope" class="ui-scope ui-zoom">
@@ -516,18 +343,8 @@
                         </div>
                     </div>
                 </div>
-                <div id="ui-top-center" class="js-ui-map-hidden js-ui-hud-show click-through">
-                    <div id="ui-waiting-text" class="top-center-text">
-                        <span data-l10n="game-waiting-for-players">Waiting for players</span>...
-                    </div>
-                    <div id="ui-spectate-text" class="top-center-text ui-spectate-mode">
-                        <div class="spectate-text spectate-desc" data-l10n="game-spectating">Spectating</div>
-                        <div id="spectate-player" class="spectate-text"></div>
-                    </div>
-                </div>
-                <div id="ui-upper-center" class="click-through">
-                    <div id="ui-announcement"></div>
-                </div>
+                <!-- waiting / spectating text and announcements: src/ui/components/GameHud.tsx -->
+                <div id="ui-top-center-ui" style="display: contents" data-game-view></div>
                 <div id="ui-lower-center" class="js-ui-map-hidden js-ui-hud-show click-through">
                     <div id="ui-interaction">
                         <div id="ui-interaction-press"></div>
@@ -673,38 +490,8 @@
                         </div>
                     </div>
                 </div>
-                <div id="ui-spectate-options-wrapper">
-                    <div id="ui-spectate-options" class="ui-spectate-mode js-ui-hud-show click-through">
-                        <div id="ui-spectate-buttons" class="ui-bg-standard">
-                            <a
-                                class="menu-option btn-darken"
-                                id="btn-spectate-next-player"
-                                data-l10n="game-next-teammate"
-                            >Next Teammate</a>
-                            <a
-                                class="menu-option btn-darken"
-                                id="btn-spectate-prev-player"
-                                data-l10n="game-previous-teammate"
-                            >Previous Teammate</a>
-                            <a
-                                class="menu-option btn-darken"
-                                id="btn-spectate-view-stats"
-                                data-l10n="game-view-match-stats"
-                            >View Match Stats</a>
-                            <a
-                                class="menu-option btn-darken btn-quit"
-                                id="btn-spectate-quit"
-                                data-l10n="game-leave-game"
-                            >Leave Game</a>
-                        </div>
-                        <div id="ui-spectate-stats" class="ui-bg-standard">
-                            <div id="ui-spectate-stats-header" data-l10n="game-your-results">Your Results</div>
-                            <table id="ui-spectate-stats-table">
-                                <tbody id="ui-spectate-stats-data"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                <!-- spectate options: src/ui/components/GameHud.tsx -->
+                <div id="ui-spectate-ui" style="display: contents" data-game-view></div>
                 <div id="ui-bottom-center-1" class="click-through">
                     <div id="ui-kills">
                         <div id="ui-kill-text"></div>
@@ -712,23 +499,10 @@
                     </div>
                 </div>
             </div>
-            <div id="ui-stats">
-                <div id="ui-stats-bg"></div>
-                <div id="ui-stats-contents">
-                    <div id="ui-stats-contents-inner">
-                        <div id="ui-stats-header"></div>
-                        <div id="ui-stats-info-box"></div>
-                        <div id="ui-stats-options"></div>
-                        <div id="ui-stats-logo"></div>
-                    </div>
-                </div>
-            </div>
-            <div id="ui-editor" style="display: none">
-                <div id="ui-editor-top-center">
-                    <div class="ui-editor-header">EDIT MODE</div>
-                </div>
-                <div id="ui-editor-top-right"></div>
-            </div>
+            <!-- death / victory screen: src/ui/components/DeathScreen.tsx -->
+            <div id="ui-stats-ui" style="display: contents" data-game-view></div>
+            <!-- debug editor overlay: src/ui/components/DeathScreen.tsx -->
+            <div id="ui-editor-ui" style="display: contents" data-game-view></div>
         </div>
         <div id="start-menu-wrapper">
             <div id="safari-margin"></div>

@@ -1,4 +1,3 @@
-import { render } from "@solidjs/web";
 import { createSignal, For } from "solid-js";
 import { helpers } from "../../helpers.ts";
 import { bindList } from "../../inputBinds.ts";
@@ -136,7 +135,8 @@ export function KeybindModal() {
 }
 
 /** the in-game menu's keybinds tab */
-function GameKeybindsTab() {
+/** the in-game menu's keybinds tab (components/GameMenu.tsx) */
+export function GameKeybindsTab() {
     return (
         <>
             <KeybindList id="ui-keybind-list" />
@@ -148,9 +148,4 @@ function GameKeybindsTab() {
             </a>
         </>
     );
-}
-
-/** fills #ui-game-tab-keybinds in index.html */
-export function mountGameKeybindsTab() {
-    render(() => <GameKeybindsTab />, document.getElementById("ui-game-tab-keybinds")!);
 }
