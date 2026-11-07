@@ -4,45 +4,28 @@ import type { UserStatsResponse } from "@survev/shared/types/stats.ts";
 import {
     ALL_TEAM_MODES,
     type LeaderboardType,
-    type StatsInterval,
+    TEAM_MODE_BY_NAME,
     TEAM_MODES,
     type TeamModeFilter,
     type TeamModeName,
 } from "@survev/shared/types/statsFilters.ts";
+import { LEADERBOARD_TITLE_KEYS, TEAM_MODE_LABEL_KEYS } from "@survev/shared/types/statsLabels.ts";
 import { helpers } from "../helpers.ts";
 import type { StatsKey } from "./i18n.ts";
 
 export const gameModes = helpers.getGameModes();
 export const formatTime = helpers.formatTime;
 
-export const intervalLabels = {
-    daily: "stats-today",
-    weekly: "stats-this-week",
-    alltime: "stats-all-time",
-} satisfies Record<StatsInterval, StatsKey>;
-
-export const teamModeLabels = {
-    solo: "stats-solo",
-    duo: "stats-duo",
-    squad: "stats-squad",
-} satisfies Record<TeamModeName, StatsKey>;
+/** label of a team mode as the leaderboard URL spells it */
+export const teamModeNameLabel = (name: TeamModeName) => TEAM_MODE_LABEL_KEYS[TEAM_MODE_BY_NAME[name]];
 
 export function teamModeFilterLabel(filter: TeamModeFilter): StatsKey {
-    return filter === ALL_TEAM_MODES ? "stats-all" : teamModeLabels[GameConfig.TeamModeToString[filter]];
+    return filter === ALL_TEAM_MODES ? "stats-all" : TEAM_MODE_LABEL_KEYS[filter];
 }
 
-/** leaderboard type selector */
-export const leaderboardTypeLabels = {
-    most_kills: "stats-most-kills",
-    most_damage_dealt: "stats-most-damage",
-    kpg: "stats-kpg-full",
-    kills: "stats-total-kills",
-    wins: "stats-total-wins",
-} satisfies Record<LeaderboardType, StatsKey>;
-
-/** header of the leaderboard's stat column */
+/** header of the leaderboard's stat column: kills per game is abbreviated */
 export const leaderboardStatLabels = {
-    ...leaderboardTypeLabels,
+    ...LEADERBOARD_TITLE_KEYS,
     kpg: "stats-kpg",
 } satisfies Record<LeaderboardType, StatsKey>;
 
@@ -53,6 +36,7 @@ export interface Stat {
 
 export interface ModeCard {
     name: TeamModeName;
+    label: StatsKey;
     games: number;
     midStats: Stat[];
     botStats: Stat[];
@@ -85,10 +69,12 @@ export function getProfile(stats: UserStatsResponse): Profile {
 export function getModeCards(stats: UserStatsResponse): ModeCard[] {
     return TEAM_MODES.map((teamMode) => {
         const name = GameConfig.TeamModeToString[teamMode];
+        const label = TEAM_MODE_LABEL_KEYS[teamMode];
         const mode = stats.modes.find((m) => m.teamMode === teamMode);
-        if (!mode) return { name, games: 0, midStats: [], botStats: [] };
+        if (!mode) return { name, label, games: 0, midStats: [], botStats: [] };
         return {
             name,
+            label,
             games: mode.games,
             // overall rating / rank are not available yet
             midStats: [

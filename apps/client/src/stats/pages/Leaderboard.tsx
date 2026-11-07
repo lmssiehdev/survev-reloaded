@@ -1,10 +1,11 @@
 import type { LeaderboardParams, LeaderboardResponse } from "@survev/shared/types/stats.ts";
 import { LEADERBOARD_TYPES, STATS_INTERVALS, TEAM_MODE_NAMES } from "@survev/shared/types/statsFilters.ts";
+import { INTERVAL_LABEL_KEYS, LEADERBOARD_TITLE_KEYS } from "@survev/shared/types/statsLabels.ts";
 import { createMemo, Errored, For, Loading, Show } from "solid-js";
 import { getLeaderboard } from "../api.ts";
 import { Select } from "../components/Select.tsx";
 import { Spinner } from "../components/Spinner.tsx";
-import { gameModes, intervalLabels, leaderboardStatLabels, leaderboardTypeLabels, teamModeLabels } from "../format.ts";
+import { gameModes, leaderboardStatLabels, teamModeNameLabel } from "../format.ts";
 import { t } from "../i18n.ts";
 import { oneOf, text, useSearchState } from "../searchState.ts";
 
@@ -43,7 +44,7 @@ export function Leaderboard() {
                             class="leaderboard-opt"
                             value={params.teamMode}
                             values={TEAM_MODE_NAMES}
-                            labels={teamModeLabels}
+                            label={teamModeNameLabel}
                             onChange={(teamMode) => update({ teamMode })}
                         />
                     </div>
@@ -53,7 +54,7 @@ export function Leaderboard() {
                             class="leaderboard-opt"
                             value={params.type}
                             values={LEADERBOARD_TYPES}
-                            labels={leaderboardTypeLabels}
+                            label={(type) => LEADERBOARD_TITLE_KEYS[type]}
                             onChange={(type) => update({ type })}
                         />
                     </div>
@@ -63,7 +64,7 @@ export function Leaderboard() {
                             class="leaderboard-opt"
                             value={params.interval}
                             values={STATS_INTERVALS}
-                            labels={intervalLabels}
+                            label={(interval) => INTERVAL_LABEL_KEYS[interval]}
                             onChange={(interval) => update({ interval })}
                         />
                     </div>

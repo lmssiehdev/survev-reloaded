@@ -1,8 +1,9 @@
 import type { UserStatsRequest } from "@survev/shared/types/stats.ts";
 import { ALL_MAPS, STATS_INTERVALS } from "@survev/shared/types/statsFilters.ts";
+import { INTERVAL_LABEL_KEYS } from "@survev/shared/types/statsLabels.ts";
 import { For, Show } from "solid-js";
 import { Select } from "../components/Select.tsx";
-import { gameModes, intervalLabels, type ModeCard, type Profile } from "../format.ts";
+import { gameModes, type ModeCard, type Profile } from "../format.ts";
 import { t } from "../i18n.ts";
 
 export type PlayerCardsFilters = Pick<UserStatsRequest, "interval" | "mapIdFilter">;
@@ -87,7 +88,7 @@ export function PlayerFilters(props: {
                         class="player-opt"
                         value={props.filters.interval}
                         values={STATS_INTERVALS}
-                        labels={intervalLabels}
+                        label={(interval) => INTERVAL_LABEL_KEYS[interval]}
                         onChange={(interval) => props.onChange({ interval })}
                     />
                 </div>
@@ -134,7 +135,7 @@ export function ModeCards(props: { cards: ModeCard[] }) {
                                         </div>
                                         <div class="col-5 p-0">
                                             <div class={`mode-name mode-name-${card.name}`}>
-                                                {t(`stats-${card.name}`)}
+                                                {t(card.label)}
                                             </div>
                                         </div>
                                         <div class="col-5 mt-2">

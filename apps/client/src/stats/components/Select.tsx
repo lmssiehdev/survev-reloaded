@@ -7,7 +7,7 @@ export function Select<T extends string>(props: {
     class: string;
     value: T;
     values: readonly T[];
-    labels: Record<T, StatsKey>;
+    label: (value: T) => StatsKey;
     onChange: (value: T) => void;
 }) {
     return (
@@ -21,7 +21,7 @@ export function Select<T extends string>(props: {
             }}
         >
             <For each={props.values}>
-                {(value) => <option value={value}>{t(props.labels[value])}</option>}
+                {(value) => <option value={value}>{t(props.label(value))}</option>}
             </For>
         </select>
     );

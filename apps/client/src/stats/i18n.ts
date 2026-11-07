@@ -1,6 +1,6 @@
+import english from "@survev/shared/l10n/stats.en.json";
 import { createSignal, createStore } from "solid-js";
 import { config } from "./config.ts";
-import english from "./en.json";
 
 export const statsLocales = {
     en: "English",
