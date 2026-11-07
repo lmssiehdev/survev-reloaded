@@ -151,7 +151,7 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
 
     // Copy keybind code
     $("#keybind-link, #keybind-copy").on("click", (e) => {
-        createToast("Copied!", modalKeybind.selector, $("#keybind-link"), e);
+        createToast("Copied!", $(modalKeybind.element!), $("#keybind-link"), e);
         const t = $("#keybind-link").html();
         helpers.copyTextToClipboard(t);
     });
@@ -163,7 +163,7 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         const success = inputBinds.fromBase64(String(code));
         $("#keybind-warning").css("display", success ? "none" : "block");
         if (success) {
-            createToast("Loaded!", modalKeybind.selector, $("#btn-keybind-code-load"), e);
+            createToast("Loaded!", $(modalKeybind.element!), $("#btn-keybind-code-load"), e);
             inputBinds.saveBinds();
         }
         inputBindUi.refresh();
@@ -205,9 +205,6 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
         const checkbox = $(this).siblings("input:checkbox");
         checkbox.prop("checked", !checkbox.is(":checked"));
         checkbox.trigger("change");
-    });
-    $("#force-refresh").on("click", () => {
-        window.location.href = `/?t=${Date.now()}`;
     });
 }
 function onResize() {

@@ -5,6 +5,7 @@ import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
+import { showNotification } from "./appModals.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import type { Localization } from "./localization.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -88,7 +89,6 @@ export class ProfileUi {
         public account: Account,
         public localization: Localization,
         public loadoutMenu: LoadoutMenu,
-        public errorModal: MenuModal,
     ) {
         account.addEventListener("error", this.onError.bind(this));
         account.addEventListener("login", this.onLogin.bind(this));
@@ -329,17 +329,14 @@ export class ProfileUi {
     onError(type: string, data?: string) {
         const typeText = {
             server_error: "Operation failed, please try again later.",
-            facebook_account_in_use: "Failed linking Facebook account.<br/>Account already in use!",
-            twitch_account_in_use: "Failed linking Twitch account.<br/>Account already in use!",
-            discord_account_in_use: "Failed linking Discord account.<br/>Account already in use!",
+            facebook_account_in_use: "Failed linking Facebook account.\nAccount already in use!",
+            twitch_account_in_use: "Failed linking Twitch account.\nAccount already in use!",
+            discord_account_in_use: "Failed linking Discord account.\nAccount already in use!",
             account_banned: `Account banned: ${data}`,
             login_failed: "Login failed.",
         };
         const text = typeText[type as keyof typeof typeText];
-        if (text) {
-            this.errorModal.selector.find(".modal-body-text").html(text);
-            this.errorModal.show();
-        }
+        if (text) showNotification(text);
     }
 
     onLogin() {
@@ -403,7 +400,7 @@ export class ProfileUi {
             : device.mobile
             ? this.loginOptionsModalMobile
             : this.loginOptionsModal;
-        createLoginOptions(modal!.selector, opts.link, this.account, this.localization);
+        createLoginOptions($(modal!.element!), opts.link, this.account, this.localization);
         modal!.show();
     }
 

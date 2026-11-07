@@ -24,10 +24,11 @@ import { PingTest } from "./pingTest.ts";
 import { ResourceManager } from "./resources.ts";
 import { SiteInfo } from "./siteInfo.ts";
 import { teamCodeFromPath } from "./teamLink.ts";
+import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
+import { mountAppModals } from "./ui/components/AppModals.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
 import Menu from "./ui/menu.ts";
-import { MenuModal } from "./ui/menuModal.ts";
 import { LoadoutDisplay } from "./ui/opponentDisplay.ts";
 import { Pass } from "./ui/pass.ts";
 import { ProfileUi } from "./ui/profileUi.ts";
@@ -51,9 +52,6 @@ export class Application {
     gameAreaWrapper = $("#game-area-wrapper");
     playButtons = $(".play-button-container");
     playLoading = $(".play-loading-outer");
-    errorModal = new MenuModal($("#modal-notification"));
-    refreshModal = new MenuModal($("#modal-refresh"));
-    ipBanModal = new MenuModal($("#modal-ip-banned"));
     config = new ConfigManager();
     localization = new Localization();
 
@@ -109,7 +107,6 @@ export class Application {
             this.account,
             this.localization,
             this.loadoutMenu,
-            this.errorModal,
         );
         this.siteInfo = new SiteInfo(this.config, this.localization);
 
@@ -334,7 +331,7 @@ export class Application {
                 this.setPlayLockout(false);
 
                 if (errMsg == "invalid_protocol") {
-                    this.showInvalidProtocolModal();
+                    showRefresh();
                 }
                 if (errMsg == "behind_proxy" || errMsg == "ip_banned") {
                     this.showErrorModal(errMsg);
@@ -428,7 +425,7 @@ export class Application {
         // Seeing these errors when returning to the menu would be
         // confusing, so we'll hide the modal instead.
         if (active) {
-            this.errorModal.hide();
+            notificationModal.hide();
         }
     }
 
@@ -673,7 +670,7 @@ export class Application {
                             this.joinGame(data);
                         },
                         ban: (ban) => {
-                            this.showIpBanModal(ban);
+                            this.onIpBanned(ban);
                         },
                     });
                 });
@@ -818,7 +815,7 @@ export class Application {
 
     onJoinGameError(err: FindGameError) {
         if (err == "invalid_protocol") {
-            this.showInvalidProtocolModal();
+            showRefresh();
         }
 
         // Forcefully set captcha to enabled if we fail the captcha
@@ -837,33 +834,8 @@ export class Application {
         this.refreshUi();
     }
 
-    showInvalidProtocolModal() {
-        this.refreshModal.show(true);
-    }
-
-    showIpBanModal(ban: FindGameResponse & { type: "banned" }) {
-        $("#modal-ip-banned-reason").text(`Reason: ${ban.reason}`);
-
-        let expiration = "Duration: indefinite";
-        if (ban.expiresAt) {
-            const timeLeft = new Date(ban.expiresAt).getTime() - Date.now();
-
-            const daysLeft = Math.round(timeLeft / (1000 * 60 * 60 * 24));
-            const hoursLeft = Math.round(timeLeft / (1000 * 60 * 60));
-
-            if (daysLeft > 1) {
-                expiration = `Expires in: ${daysLeft} days`;
-            } else if (hoursLeft > 1) {
-                expiration = `Expires in: ${hoursLeft} hours`;
-            } else {
-                expiration = `Expires in: less than an hour`;
-            }
-        }
-
-        $("#modal-ip-banned-expiration").text(expiration);
-
-        this.ipBanModal.show(true);
-
+    onIpBanned(ban: FindGameResponse & { type: "banned" }) {
+        showIpBan(ban);
         this.quickPlayPendingModeIdx = -1;
         this.teamMenu.leave("banned");
         this.refreshUi();
@@ -871,10 +843,7 @@ export class Application {
 
     showErrorModal(err: FindGameError | GameWsDisconnectReason) {
         const text = this.getErrorString(err, "full");
-        if (text) {
-            this.errorModal.selector.find(".modal-body-text").html(text);
-            this.errorModal.show();
-        }
+        if (text) showNotification(text);
     }
 
     update() {
@@ -930,6 +899,8 @@ export class Application {
 const sharedTeamCode = teamCodeFromPath(window.location.pathname);
 if (sharedTeamCode) window.history.replaceState("", "", `/#${sharedTeamCode}`);
 
+// islands mount before Application, whose classes look their elements up by id
+mountAppModals();
 const App = new Application();
 
 function onPageLoad() {

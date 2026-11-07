@@ -245,7 +245,7 @@ export class LoadoutMenu {
         this.confirmItemModal = new MenuModal($("#modal-item-confirm"));
         this.confirmItemModal.onShow(displayBlockingElem);
         this.confirmItemModal.onHide((e) => {
-            const confirmAll = e?.target?.dataset?.confirmAll;
+            const confirmAll = e?.target instanceof HTMLElement && e.target.dataset.confirmAll;
             if (confirmAll) {
                 this.confirmAllItems();
                 return;

@@ -1,34 +1,71 @@
-import $ from "jquery";
+const FADE_MS = 200;
 
+/** jQuery's fadeOut(): animate to transparent, then display: none */
+function fadeOut(el: HTMLElement) {
+    const anim = el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], {
+        duration: FADE_MS,
+        // jQuery's default "swing"
+        easing: "ease-in-out",
+    });
+    anim.onfinish = () => {
+        el.style.display = "none";
+    };
+    return anim;
+}
+
+/**
+ * Open/close state for one modal and the "click outside closes it" rule.
+ *
+ * TSX modals render `<Modal modal={...}>` (components/Modal.tsx), which attaches its root.
+ * Modals still in index.html pass their element(s) here and get the same display + fade.
+ */
 export class MenuModal {
     checkSelector = true;
     skipFade = false;
-    visible = false;
     onShowFn = function() {};
-    onHideFn = function(_e?: JQuery.TriggeredEvent) {};
-    modalCloseListener: (e: JQuery.TriggeredEvent) => void;
+    onHideFn = function(_e?: Event) {};
 
-    constructor(public selector: JQuery<HTMLElement>) {
-        selector.find(".close").on("click", (e) => {
-            this.hide(e);
-        });
+    visible = false;
 
-        this.modalCloseListener = (e) => {
-            if (
-                $(e.target).closest(".modal-close").length == 0
-                && (!!$(e.target).is(this.selector) || !this.checkSelector)
-            ) {
-                e.stopPropagation();
-                this.hide();
+    private elements: HTMLElement[] = [];
+    private fades: Animation[] = [];
+
+    constructor(elements: Iterable<HTMLElement> = []) {
+        this.elements = [...elements];
+        for (const el of this.elements) {
+            for (const close of el.querySelectorAll(".close")) {
+                close.addEventListener("click", (e) => this.hide(e));
             }
-        };
+        }
     }
+
+    /** the modal's root element (`.modal`) */
+    get element(): HTMLElement | undefined {
+        return this.elements[0];
+    }
+
+    /** a TSX <Modal> calls this with its root element */
+    attach(el: HTMLElement) {
+        this.elements = [el];
+    }
+
+    modalCloseListener = (e: Event) => {
+        const target = e.target;
+        if (
+            target instanceof Element
+            && !target.closest(".modal-close")
+            && (this.elements.some((el) => el === target) || !this.checkSelector)
+        ) {
+            e.stopPropagation();
+            this.hide();
+        }
+    };
 
     onShow(fn: () => void) {
         this.onShowFn = fn;
     }
 
-    onHide(fn: (e?: JQuery.TriggeredEvent) => void) {
+    onHide(fn: (e?: Event) => void) {
         this.onHideFn = fn;
     }
 
@@ -36,28 +73,32 @@ export class MenuModal {
         return this.visible;
     }
 
+    /** `isModal`: clicking outside doesn't close it */
     show(isModal?: boolean) {
-        if (!this.visible) {
-            this.visible = true;
-            this.selector.finish();
-            this.selector.css("display", "block");
-            this.onShowFn();
-            if (!isModal) {
-                $(document).on("click touchend", this.modalCloseListener);
-            }
+        if (this.visible) return;
+        this.visible = true;
+        for (const fade of this.fades) fade.cancel();
+        this.fades = [];
+        for (const el of this.elements) el.style.display = "block";
+        this.onShowFn();
+        if (!isModal) {
+            document.addEventListener("click", this.modalCloseListener);
+            document.addEventListener("touchend", this.modalCloseListener);
         }
     }
 
-    hide(e?: JQuery.TriggeredEvent) {
-        if (this.visible) {
-            this.visible = false;
+    hide(e?: Event) {
+        if (!this.visible) return;
+        this.visible = false;
+        for (const el of this.elements) {
             if (this.skipFade) {
-                this.selector.css("display", "none");
+                el.style.display = "none";
             } else {
-                this.selector.fadeOut(200);
+                this.fades.push(fadeOut(el));
             }
-            this.onHideFn(e);
-            $(document).off("click touchend", this.modalCloseListener);
         }
+        this.onHideFn(e);
+        document.removeEventListener("click", this.modalCloseListener);
+        document.removeEventListener("touchend", this.modalCloseListener);
     }
 }
