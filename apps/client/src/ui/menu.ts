@@ -1,4 +1,3 @@
-import $ from "jquery";
 import { device } from "../device.ts";
 import type { InputBindUi } from "../inputBinds.ts";
 import { keybindModal } from "./appModals.ts";
@@ -9,25 +8,24 @@ function setupModals(inputBindUi: InputBindUi) {
     keybindModal.onHide(() => inputBindUi.cancelBind());
 }
 
+const all = (selector: string) => document.querySelectorAll<HTMLElement>(selector);
+
 function onResize() {
     // Add styling specific to safari in browser
     if (device.os == "ios") {
         // iPhone X+ specific
         if (device.model == "iphonex") {
-            if (device.isLandscape) {
-                $(".main-volume-slider").css("width", "90%");
-            } else {
-                $(".main-volume-slider").css("width", "");
-            }
+            for (const el of all(".main-volume-slider")) el.style.width = device.isLandscape ? "90%" : "";
         } else if (!window.navigator.standalone) {
             if (device.isLandscape) {
-                $("#start-main-center").attr("style", "");
-                $("#modal-customize .modal-content").attr("style", "");
+                for (const el of all("#start-main-center, #modal-customize .modal-content")) {
+                    el.removeAttribute("style");
+                }
             } else {
-                $("#modal-customize .modal-content").css({
-                    transform: "translate(-50%, -50%) scale(0.45)",
-                    top: "38%",
-                });
+                for (const el of all("#modal-customize .modal-content")) {
+                    el.style.transform = "translate(-50%, -50%) scale(0.45)";
+                    el.style.top = "38%";
+                }
             }
         }
     }
