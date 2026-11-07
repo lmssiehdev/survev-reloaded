@@ -1,5 +1,6 @@
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
-import { createSignal, createStore } from "solid-js";
+import { createStore } from "solid-js";
+import { controller } from "./controller.ts";
 import type { MessageKey } from "./i18n.ts";
 import { MenuModal } from "./menuModal.ts";
 import type { ProfileUi } from "./profileUi.ts";
@@ -26,7 +27,7 @@ export const [profile, setProfile] = createStore({
 });
 
 /** set once Application has created it */
-export const [profileUi, setProfileUi] = createSignal<ProfileUi | null>(null);
+export const [profileUi, setProfileUi] = controller<ProfileUi>();
 
 function dropdown() {
     const modal = new MenuModal();

@@ -2,7 +2,7 @@
  * A short message that floats up from `anchor` at the click position and fades out
  * ("Copied!", "Loaded!"). Styled by .copy-toast.
  */
-export function showToast(text: string, container: HTMLElement, anchor: HTMLElement, event: MouseEvent) {
+export function showToast(text: string, container: HTMLElement, anchor: HTMLElement, event: MouseEvent, rise = 25) {
     const toast = document.createElement("div");
     toast.className = "copy-toast";
     toast.textContent = text;
@@ -11,7 +11,7 @@ export function showToast(text: string, container: HTMLElement, anchor: HTMLElem
     toast.style.left = `${event.pageX - toast.offsetWidth / 2}px`;
     toast.style.top = `${top}px`;
     toast
-        .animate([{ top: `${top}px`, opacity: 0 }, { top: `${top - 25}px`, opacity: 1 }], {
+        .animate([{ top: `${top}px`, opacity: 0 }, { top: `${top - rise}px`, opacity: 1 }], {
             duration: 300,
             easing: "ease-in-out",
             fill: "forwards",

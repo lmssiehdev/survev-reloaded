@@ -1,5 +1,7 @@
 import { type JSX, render } from "@solidjs/web";
 import { createSignal, Show } from "solid-js";
+import { keybindModal, settingsModal } from "../appModals.ts";
+import { fade } from "../fade.ts";
 import { t } from "../i18n.ts";
 import type { MenuModal } from "../menuModal.ts";
 import {
@@ -336,7 +338,10 @@ function StartTopRight() {
         fn();
     };
     return (
-        <div id="start-top-right" style={{ display: mobileAccountModal.isOpen() ? "none" : undefined }}>
+        <div
+            id="start-top-right"
+            ref={fade(() => !(mobileAccountModal.isOpen() || settingsModal.isOpen() || keybindModal.isOpen()))}
+        >
             <div class="account-block" style={{ display: profile.loginSupported ? "block" : "none" }}>
                 <div class="account-details-top" style={{ display: menuOpen() ? "none" : "block" }}>
                     <div class="account-details-top-buttons">

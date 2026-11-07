@@ -1,5 +1,6 @@
-import { createSignal, createStore, reconcile } from "solid-js";
+import { createStore, reconcile } from "solid-js";
 import type { InputBindUi } from "../inputBinds.ts";
+import { controller } from "./controller.ts";
 
 /** the keybind lists' data; InputBinds writes it, components/Keybinds.tsx reads it */
 export const [keybinds, setKeybinds] = createStore({
@@ -25,4 +26,4 @@ export function setCapturing(bind: number | null) {
 }
 
 /** set once the game's input handler exists (after the renderer starts) */
-export const [keybindUi, setKeybindUi] = createSignal<InputBindUi | null>(null);
+export const [keybindUi, setKeybindUi] = controller<InputBindUi>();

@@ -1,5 +1,4 @@
 import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
-import $ from "jquery";
 import type { Account } from "../account.ts";
 import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
@@ -39,13 +38,7 @@ export class ProfileUi {
 
         createAccountModal.onHide(() => this.loadoutMenu.hide());
 
-        // the start menu's loadout button, outside the account views
-        $("#btn-customize").on("click", () => {
-            this.openLoadout();
-            return false;
-        });
-
-        setProfileUi(() => this);
+        setProfileUi(this);
         this.updateLoginSupport();
         this.sync();
     }

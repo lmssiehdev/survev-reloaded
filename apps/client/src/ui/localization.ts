@@ -1,6 +1,6 @@
 import $ from "jquery";
 import { device } from "../device.ts";
-import { detectLocale, isLocale, type Locale, locale, Locales, locales, setLocale, translate } from "./i18n.ts";
+import { detectLocale, isLocale, type Locale, locale, setLocale, translate } from "./i18n.ts";
 
 export type { Locale };
 
@@ -51,17 +51,6 @@ export class Localization {
                 }
             }
         });
-
-        $("#start-bottom-right .language-select").val(this.getLocale());
-    }
-
-    populateLanguageSelect() {
-        // the start menu's; the settings modal's is TSX
-        const el = $("#start-bottom-right .language-select");
-        el.empty();
-        for (const loc of locales) {
-            el.append($("<option>", { value: loc, text: Locales[loc] }));
-        }
     }
 
     detectLocale() {

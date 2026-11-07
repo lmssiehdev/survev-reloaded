@@ -9,6 +9,8 @@ import { helpers } from "../../helpers.ts";
 import { t, translate } from "../i18n.ts";
 import { type Fade, passView, type QuestView } from "../passView.ts";
 import { profileUi } from "../profile.ts";
+import { startMenu } from "../startMenu.ts";
+import { RightColumnToggle } from "./StartMenu.tsx";
 
 export interface PassPanelProps {
     getCategory(gameType: string): { loadoutType: string; categoryImage: string } | null;
@@ -159,9 +161,9 @@ export function PassPanel(props: PassPanelProps) {
                 visible={!!unlock().def}
                 hovered={hovered()}
             />
-            <div class="right-column-toggle news-toggle">
-                <div class="account-alert" />
-            </div>
+            <RightColumnToggle class="news-toggle">
+                <div class="account-alert" style={{ display: startMenu.newsUnread ? "block" : "none" }} />
+            </RightColumnToggle>
             <div
                 id="pass-loading"
                 class="pass-column menu-block"

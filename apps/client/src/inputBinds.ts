@@ -280,7 +280,7 @@ export class InputBindUi {
         public input: InputHandler,
         public inputBinds: InputBinds,
     ) {
-        setKeybindUi(() => this);
+        setKeybindUi(this);
     }
 
     /** the next key/button press becomes `bind`; Escape cancels, Backspace clears it */

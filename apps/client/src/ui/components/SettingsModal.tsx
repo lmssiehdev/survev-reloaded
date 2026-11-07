@@ -22,8 +22,8 @@ const sliders: { key: VolumeKey; label: MessageKey; class: string }[] = [
     { key: "musicVolume", label: "index-music-volume", class: "sl-music-volume" },
 ];
 
-/** the language picker; shown in the settings modal on small screens */
-function LanguageSelect() {
+/** the language picker: in the start menu's bottom bar, and in the settings modal on small screens */
+export function LanguageSelect() {
     return (
         <div class="language-select-wrap">
             <select

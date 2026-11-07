@@ -1,133 +1,14 @@
 import $ from "jquery";
 import { device } from "../device.ts";
-import { helpers } from "../helpers.ts";
 import type { InputBindUi } from "../inputBinds.ts";
-import { hamburgerModal, keybindModal, settingsModal } from "./appModals.ts";
+import { keybindModal } from "./appModals.ts";
 import { resetKeybindModal } from "./components/Keybinds.tsx";
 
 function setupModals(inputBindUi: InputBindUi) {
-    const startMenuWrapper = $("#start-menu");
-    $("#btn-help").on("click", () => {
-        const e = $("#start-help");
-        startMenuWrapper.addClass("display-help");
-        const height = startMenuWrapper.css("height");
-        e.css("display", "block");
-        startMenuWrapper.animate(
-            {
-                scrollTop: height,
-            },
-            1000,
-        );
-        return false;
-    });
-    const teamMobileLink = $("#team-mobile-link");
-    const teamMobileLinkDesc = $("#team-mobile-link-desc");
-    const teamMobileLinkWarning = $("#team-mobile-link-warning");
-    const teamMobileLinkInput = $("#team-link-input");
-    const socialShareBlock = $("#social-share-block");
-    const newsBlock = $("#news-block");
-
-    // Team mobile link
-    $("#btn-join-team").on("click", () => {
-        $("#server-warning").css("display", "none");
-        teamMobileLinkInput.val("");
-        teamMobileLink.css("display", "block");
-        teamMobileLinkDesc.css("display", "block");
-        teamMobileLinkWarning.css("display", "none");
-        startMenuWrapper.css("display", "none");
-        newsBlock.css("display", "none");
-        socialShareBlock.css("display", "none");
-        $("#right-column").css("display", "none");
-        return false;
-    });
-    $("#btn-team-mobile-link-leave").on("click", () => {
-        teamMobileLink.css("display", "none");
-        teamMobileLinkInput.val("");
-        startMenuWrapper.css("display", "block");
-        newsBlock.css("display", "block");
-        socialShareBlock.css("display", "block");
-        $("#right-column").css("display", "block");
-        return false;
-    });
-
-    // Auto submit link or code on enter
-    $("#team-link-input").on("keypress", (e) => {
-        if (e.key === "Enter") {
-            $("#btn-team-mobile-link-join").trigger("click");
-            e.target.blur();
-        }
-    });
-
-    // Blur name input on enter
-    $("#player-name-input-solo").on("keypress", (e) => {
-        if (e.key === "Enter") {
-            e.target.blur();
-        }
-    });
-
-    // Scroll to name input on mobile
-    if (device.mobile && device.os != "ios") {
-        $("#player-name-input-solo").on("focus", function() {
-            if (device.isLandscape) {
-                const height = device.screenHeight;
-                const offset = height <= 282 ? 18 : 36;
-                document.body.scrollTop = $(this).offset()!.top - offset;
-            }
-        });
-        $("#player-name-input-solo").on("blur", () => {
-            document.body.scrollTop = 0;
-        });
-    }
-
-    // Modals
-    const startBottomRight = $("#start-bottom-right");
-    const startTopLeft = $("#start-top-left");
-    const startTopRight = $("#start-top-right");
-
-    // Keybind Modal
-    keybindModal.onShow(() => {
-        startBottomRight.fadeOut(200);
-        startTopRight.fadeOut(200);
-        resetKeybindModal();
-    });
-    keybindModal.onHide(() => {
-        startBottomRight.fadeIn(200);
-        startTopRight.fadeIn(200);
-        inputBindUi.cancelBind();
-    });
-    $(".btn-keybind").on("click", () => {
-        keybindModal.show();
-        return false;
-    });
-
-    // Settings Modal
-    const modalSettings = settingsModal;
-    modalSettings.onShow(() => {
-        startBottomRight.fadeOut(200);
-        startTopRight.fadeOut(200);
-    });
-    modalSettings.onHide(() => {
-        startBottomRight.fadeIn(200);
-        startTopRight.fadeIn(200);
-    });
-    $(".btn-settings").on("click", () => {
-        modalSettings.show();
-        return false;
-    });
-
-    // Hamburger Modal
-    const modalHamburger = hamburgerModal;
-    modalHamburger.onShow(() => {
-        startTopLeft.fadeOut(200);
-    });
-    modalHamburger.onHide(() => {
-        startTopLeft.fadeIn(200);
-    });
-    $("#btn-hamburger").on("click", () => {
-        modalHamburger.show();
-        return false;
-    });
+    keybindModal.onShow(resetKeybindModal);
+    keybindModal.onHide(() => inputBindUi.cancelBind());
 }
+
 function onResize() {
     // Add styling specific to safari in browser
     if (device.os == "ios") {
@@ -150,30 +31,9 @@ function onResize() {
             }
         }
     }
-    if (device.tablet) {
-        // Temporarily remove the youtube links
-        $("#featured-youtuber").remove();
-        $(".btn-youtube").remove();
-    }
-    if (device.touch) {
-        // Remove full screen option from main menu
-        $(".btn-start-fullscreen").css("display", "none");
-    } else {
-        $(".btn-start-fullscreen").css("display", "block");
-    }
-    // Set keybind button styling
-    $(".btn-keybind").css("display", device.mobile ? "none" : "inline-block");
-}
-
-function applyMobileBrowserStyling(isTablet: boolean) {
-    $("#team-hide-url").css("display", "none");
-    if (isTablet) {
-        $("#start-bottom-middle").addClass("start-bottom-middle-tablet");
-    }
 }
 
 export default {
     setupModals,
     onResize,
-    applyMobileBrowserStyling,
 };

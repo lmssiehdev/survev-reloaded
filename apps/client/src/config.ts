@@ -209,7 +209,7 @@ export class ConfigManager {
         if (!key) return;
 
         this.config[key] = value;
-        this.syncState();
+        this.syncState([key]);
 
         this.store();
         this.onModified(key);
@@ -221,10 +221,23 @@ export class ConfigManager {
         return this.config[key];
     }
 
-    /** copies `config` into the reactive state; only the leaves that changed notify */
-    private syncState() {
+    /**
+     * Copies `config` into the reactive state. Objects are cloned and merged leaf by leaf, so the
+     * store never shares an object with `config` (a write to one would silently change the other)
+     * and only the leaves that changed notify.
+     */
+    private syncState(keys = Object.keys(this.config) as ConfigKey[]) {
+        const copy = <K extends ConfigKey>(state: ConfigType, key: K) => {
+            const value = this.config[key];
+            const current = state[key];
+            if (value && typeof value === "object" && current && typeof current === "object") {
+                reconcile(structuredClone(value))(current);
+            } else {
+                state[key] = value && typeof value === "object" ? structuredClone(value) : value;
+            }
+        };
         this.setState((state) => {
-            reconcile(this.config)(state);
+            for (const key of keys) copy(state, key);
         });
     }
 
