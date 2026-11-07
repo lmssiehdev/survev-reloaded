@@ -1,26 +1,11 @@
 import { Collapsible } from "@kobalte/core/collapsible";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
-import { useNavigate, useSearchParams } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import type { JSX } from "@solidjs/web";
 import slugify from "slugify";
-import { createEffect, createMemo, createSignal, For } from "solid-js";
-import { device } from "../../device.ts";
-import { SDK } from "../../sdk/sdk.ts";
+import { createSignal, For } from "solid-js";
 import { config } from "../config.ts";
 import { locale, setLocale, type StatsLocale, statsLocales, t } from "../i18n.ts";
-
-const phone = device.mobile && !device.tablet;
-
-/** ad slots per page: phones get one box under the content, desktops a top banner */
-const adSlots = {
-    leaderboard: phone
-        ? { top: [], bottom: ["survevio_300x250_leaderboard_bottom"] }
-        : { top: ["survevio_728x90_leaderboard_top", "survevio_300x250_leaderboard_top"], bottom: [] },
-    player: phone
-        ? { top: [], bottom: ["survevio_300x250_playerprofile_bottom"] }
-        : { top: ["survevio_728x90_playerprofile_top", "survevio_300x250_playerprofile_top"], bottom: [] },
-};
-type Page = keyof typeof adSlots;
 
 function LanguageSelect() {
     return (
@@ -109,10 +94,6 @@ function Navbar() {
     );
 }
 
-function AdSlot(props: { id: string }) {
-    return <div id={props.id} style={{ "text-align": "center" }}></div>;
-}
-
 function Footer() {
     return (
         <div id="footer" class="footer">
@@ -141,71 +122,12 @@ function Footer() {
 }
 
 export function Layout(props: { children?: JSX.Element }) {
-    const [search] = useSearchParams();
-    const page = createMemo<Page>(() => (search.slug ? "player" : "leaderboard"));
-    const shown = (p: Page, where: "top" | "bottom") => page() === p && adSlots[p][where].length > 0;
-
-    let activeSlots: string[] = [];
-    createEffect(page, (p) => {
-        const next = [...adSlots[p].top, ...adSlots[p].bottom];
-        void SDK.ensureNitroReady()
-            .catch(() => {})
-            .finally(() => {
-                SDK.hideNitroPlacementsById(activeSlots);
-                SDK.showNitroPlacements(next);
-                activeSlots = next;
-            });
-    });
-
     return (
         <>
             <Navbar />
             <div id="contentMain">
                 <div id="leaderboard-bg" class="stats-bg"></div>
-
-                <div id="adsLeaderBoardTop" style={{ display: shown("leaderboard", "top") ? "block" : "none" }}>
-                    <div class="ad-block-top container mt-3">
-                        <div class="ad-block-top-leaderboard">
-                            <AdSlot id="survevio_728x90_leaderboard_top" />
-                        </div>
-                        <div class="ad-block-top-med-rect">
-                            <AdSlot id="survevio_300x250_leaderboard_top" />
-                        </div>
-                    </div>
-                </div>
-
-                <div id="adsPlayerTop" style={{ display: shown("player", "top") ? "block" : "none" }}>
-                    <div class="ad-block-top container mt-3">
-                        <div class="ad-block-top-leaderboard">
-                            <AdSlot id="survevio_728x90_playerprofile_top" />
-                        </div>
-                        <div class="ad-block-top-med-rect">
-                            <AdSlot id="survevio_300x250_playerprofile_top" />
-                        </div>
-                    </div>
-                </div>
-
                 <div id="content">{props.children}</div>
-
-                <div
-                    id="adsLeaderBoardBottom"
-                    class="col-12"
-                    style={{ display: shown("leaderboard", "bottom") ? "block" : "none" }}
-                >
-                    <div class="ad-block-bot-med-rect">
-                        <AdSlot id="survevio_300x250_leaderboard_bottom" />
-                    </div>
-                </div>
-
-                <div
-                    id="adsPlayerBottom"
-                    class="col-12"
-                    style={{ display: shown("player", "bottom") ? "block" : "none" }}
-                >
-                    <div class="ad-block-bot-med-rect">
-                        <AdSlot id="survevio_300x250_playerprofile_bottom" />
-                    </div>
-                </div>
             </div>
             <Footer />
         </>
