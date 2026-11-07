@@ -2256,9 +2256,7 @@ export class UiManager {
         this.gameTabBtns.removeClass("btn-game-menu-selected");
         $(`#ui-game-tab-${this.currentGameTab}`).css("display", "block");
         $(`#btn-game-${this.currentGameTab}`).addClass("btn-game-menu-selected");
-        if (this.currentGameTab == "keybinds") {
-            this.inputBindUi.refresh();
-        } else {
+        if (this.currentGameTab != "keybinds") {
             this.inputBindUi.cancelBind();
         }
     }

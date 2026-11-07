@@ -3,6 +3,7 @@ import { For } from "solid-js";
 import { appModals, ipBanModal, notificationModal, refreshModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
 import { HamburgerModal } from "./HamburgerModal.tsx";
+import { KeybindModal } from "./Keybinds.tsx";
 import { Modal, OkFooter } from "./Modal.tsx";
 import { SettingsModal } from "./SettingsModal.tsx";
 
@@ -23,6 +24,7 @@ function Lines(props: { text: string }) {
 function AppModals() {
     return (
         <>
+            <KeybindModal />
             <SettingsModal />
             <HamburgerModal />
             <Modal

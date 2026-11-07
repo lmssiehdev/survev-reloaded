@@ -27,6 +27,7 @@ import { SiteInfo } from "./siteInfo.ts";
 import { teamCodeFromPath } from "./teamLink.ts";
 import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
 import { mountAppModals } from "./ui/components/AppModals.tsx";
+import { mountGameKeybindsTab } from "./ui/components/Keybinds.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
 import Menu from "./ui/menu.ts";
@@ -299,11 +300,7 @@ export class Application {
             this.resourceManager.loadMapAssets("main");
             this.input = new InputHandler(document.getElementById("game-touch-area")!);
             this.inputBinds = new InputBinds(this.input, this.config);
-            this.inputBindUi = new InputBindUi(
-                this.input,
-                this.inputBinds,
-                this.localization,
-            );
+            this.inputBindUi = new InputBindUi(this.input, this.inputBinds);
             const onJoin = () => {
                 this.loadoutDisplay!.free();
                 this.game!.init();
@@ -365,7 +362,7 @@ export class Application {
             this.loadoutMenu.loadoutDisplay = this.loadoutDisplay;
             this.onResize();
             this.tryJoinTeam(false);
-            Menu.setupModals(this.inputBinds, this.inputBindUi);
+            Menu.setupModals(this.inputBindUi);
             this.onConfigModified();
             this.config.addModifiedListener(this.onConfigModified.bind(this));
             loadStaticDomImages();
@@ -894,6 +891,7 @@ if (sharedTeamCode) window.history.replaceState("", "", `/#${sharedTeamCode}`);
 
 // islands mount before Application, whose classes look their elements up by id
 mountAppModals();
+mountGameKeybindsTab();
 const App = new Application();
 
 function onPageLoad() {

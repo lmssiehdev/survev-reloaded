@@ -46,3 +46,4 @@ export function showIpBan(ban: FindGameResponse & { type: "banned" }) {
 
 export const settingsModal = new MenuModal();
 export const hamburgerModal = new MenuModal();
+export const keybindModal = new MenuModal();

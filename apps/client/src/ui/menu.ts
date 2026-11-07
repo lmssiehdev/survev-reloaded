@@ -1,42 +1,11 @@
 import $ from "jquery";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import type { InputBinds, InputBindUi } from "../inputBinds.ts";
-import { hamburgerModal, settingsModal } from "./appModals.ts";
-import { MenuModal } from "./menuModal.ts";
+import type { InputBindUi } from "../inputBinds.ts";
+import { hamburgerModal, keybindModal, settingsModal } from "./appModals.ts";
+import { resetKeybindModal } from "./components/Keybinds.tsx";
 
-function createToast(
-    text: string,
-    container: JQuery<HTMLElement>,
-    parent: JQuery<HTMLElement>,
-    event: JQuery.ClickEvent,
-) {
-    const copyToast = $("<div/>", {
-        class: "copy-toast",
-        html: text,
-    });
-    container.append(copyToast);
-    copyToast.css({
-        left: event.pageX - parseInt(copyToast.css("width")) / 2,
-        top: parent.offset()!.top,
-    });
-    copyToast.animate(
-        {
-            top: "-=25",
-            opacity: 1,
-        },
-        {
-            queue: false,
-            duration: 300,
-            complete: function() {
-                $(this).fadeOut(250, function() {
-                    $(this).remove();
-                });
-            },
-        },
-    );
-}
-function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
+function setupModals(inputBindUi: InputBindUi) {
     const startMenuWrapper = $("#start-menu");
     $("#btn-help").on("click", () => {
         const e = $("#start-help");
@@ -116,58 +85,19 @@ function setupModals(inputBinds: InputBinds, inputBindUi: InputBindUi) {
     const startTopRight = $("#start-top-right");
 
     // Keybind Modal
-    const modalKeybind = new MenuModal($("#ui-modal-keybind"));
-    modalKeybind.onShow(() => {
+    keybindModal.onShow(() => {
         startBottomRight.fadeOut(200);
         startTopRight.fadeOut(200);
-
-        // Reset the share section
-        $("#ui-modal-keybind-share").css("display", "none");
-        $("#keybind-warning").css("display", "none");
-        $("#ui-modal-keybind-list").css("height", "420px");
-        $("#keybind-code-input").html("");
-        inputBindUi.refresh();
+        resetKeybindModal();
     });
-    modalKeybind.onHide(() => {
+    keybindModal.onHide(() => {
         startBottomRight.fadeIn(200);
         startTopRight.fadeIn(200);
         inputBindUi.cancelBind();
     });
     $(".btn-keybind").on("click", () => {
-        modalKeybind.show();
+        keybindModal.show();
         return false;
-    });
-
-    // Share button
-    $(".js-btn-keybind-share").on("click", () => {
-        // Toggle the share screen
-        if ($("#ui-modal-keybind-share").css("display") == "block") {
-            $("#ui-modal-keybind-share").css("display", "none");
-            $("#ui-modal-keybind-list").css("height", "420px");
-        } else {
-            $("#ui-modal-keybind-share").css("display", "block");
-            $("#ui-modal-keybind-list").css("height", "275px");
-        }
-    });
-
-    // Copy keybind code
-    $("#keybind-link, #keybind-copy").on("click", (e) => {
-        createToast("Copied!", $(modalKeybind.element!), $("#keybind-link"), e);
-        const t = $("#keybind-link").html();
-        helpers.copyTextToClipboard(t);
-    });
-
-    // Apply keybind code
-    $("#btn-keybind-code-load").on("click", (e) => {
-        const code = $("#keybind-code-input").val()!;
-        $("#keybind-code-input").val("");
-        const success = inputBinds.fromBase64(String(code));
-        $("#keybind-warning").css("display", success ? "none" : "block");
-        if (success) {
-            createToast("Loaded!", $(modalKeybind.element!), $("#btn-keybind-code-load"), e);
-            inputBinds.saveBinds();
-        }
-        inputBindUi.refresh();
     });
 
     // Settings Modal

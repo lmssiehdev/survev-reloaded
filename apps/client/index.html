@@ -126,13 +126,8 @@
                             <a id="btn-game-quit" class="btn-quit btn-game-menu btn-darken" data-l10n="game-quit-game"
                             >Quit Game</a>
                         </div>
-                        <div id="ui-game-tab-keybinds" class="ui-game-tab">
-                            <div id="ui-keybind-list" class="js-keybind-list"></div>
-                            <a
-                                class="js-btn-keybind-restore btn-keybind-restore btn-game-menu btn-darken"
-                                data-l10n="game-restore-defaults"
-                            >Restore Defaults</a>
-                        </div>
+                        <!-- src/ui/components/Keybinds.tsx -->
+                        <div id="ui-game-tab-keybinds" class="ui-game-tab"></div>
                         <a id="btn-game-resume" class="btn-game-menu btn-darken" data-l10n="game-return-to-game"
                         >Return to Game</a>
                     </div>
@@ -1712,55 +1707,6 @@
                 </div>
             </div>
             <!-- Modals -->
-            <div id="ui-modal-keybind" class="ui-modal-keybind modal" oncontextmenu="return false">
-                <div class="ui-modal-keybind-content modal-content modal-close">
-                    <div id="ui-modal-keybind-header" class="modal-header">
-                        <span id="ui-close-keybind" class="close close-corner"></span>
-                        <h2 data-l10n="index-customize-keybinds">Customize Keybinds</h2>
-                    </div>
-                    <div id="ui-modal-keybind-body" class="modal-body">
-                        <div id="ui-modal-keybind-list" class="js-keybind-list"></div>
-                        <div id="ui-modal-keybind-share">
-                            <div class="ui-modal-keybind-share-row">
-                                <div class="ui-modal-keybind-share-elem">
-                                    <span data-l10n="index-keybind-link">Share your keybinds with this code</span>:
-                                </div>
-                                <div class="ui-modal-keybind-share-elem">
-                                    <div id="keybind-link-text">
-                                        <div id="keybind-link">aFvc42SfhpoFlrJKVkA1fx+5afasdf9034hfSF09nASqqF</div>
-                                        <span id="keybind-copy" class="copy-item btn-darken"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="keybind-share-paste-text" data-l10n="index-keybind-paste"
-                            >Load keybinds using a code here</span><span>:</span>
-                            <div id="keybind-warning" class="link-warning">Invalid code!</div>
-                            <div class="ui-modal-keybind-share-row">
-                                <input
-                                    type="text"
-                                    class="menu-option"
-                                    contenteditable="false"
-                                    tabindex="0"
-                                    autofocus
-                                    placeholder="Paste a keybind code here"
-                                    id="keybind-code-input"
-                                />
-                                <a
-                                    class="btn-game-menu btn-darken"
-                                    id="btn-keybind-code-load"
-                                    data-l10n="index-keybind-apply"
-                                >Load</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="ui-modal-keybind-footer" class="modal-footer modal-footer-round">
-                        <a class="js-btn-keybind-share btn-game-menu btn-darken" data-l10n="game-share">Share</a>
-                        <a class="js-btn-keybind-restore btn-game-menu btn-darken" data-l10n="game-restore-defaults"
-                        >Restore Defaults</a>
-                    </div>
-                </div>
-            </div>
-            <!-- Loadouts -->
             <div id="modal-customize" class="modal">
                 <div id="modal-customize-wrapper" class="modal-close">
                     <div id="modal-content-left" class="modal-content-shadow">
@@ -1930,7 +1876,9 @@
                     </div>
                 </div>
             </div>
-            <!-- settings, hamburger, notification, update and ip ban modals: src/ui/components/AppModals.tsx -->
+            <!--
+                keybind, settings, hamburger, notification, update and ip ban modals: src/ui/components/AppModals.tsx
+            -->
             <div id="app-modals" style="display: contents"></div>
             <div id="modal-create-account" class="modal modal-account">
                 <div class="modal-content modal-close">
