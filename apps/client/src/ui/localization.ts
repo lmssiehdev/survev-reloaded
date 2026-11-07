@@ -1,87 +1,26 @@
 import $ from "jquery";
 import { device } from "../device.ts";
-import english from "../en.json";
+import { detectLocale, isLocale, type Locale, locale, Locales, locales, setLocale, translate } from "./i18n.ts";
 
-export function downloadFile(
-    file: string,
-    onComplete: (err: unknown, data?: Record<string, string>) => void,
-) {
-    fetch(file, {
-        method: "GET",
-    })
-        .then(res => res.json())
-        .then((data) => onComplete(null, data))
-        .catch((err) => onComplete(err));
-}
+export type { Locale };
 
-const Locales = {
-    da: "Dansk",
-    de: "Deutsch",
-    en: "English",
-    es: "Español",
-    fr: "Français",
-    it: "Italiano",
-    nl: "Nederlands",
-    pl: "Polski",
-    pt: "Português",
-    ru: "Русский",
-    sv: "Svenska",
-    vn: "Tiếng Việt",
-    tr: "Türkçe",
-    jp: "日本語",
-    ko: "한국어",
-    th: "ภาษาไทย",
-    "zh-cn": "中文简体",
-    "zh-tw": "中文繁體",
-};
-
-export type Locale = keyof typeof Locales;
-
+/**
+ * The game classes' handle on ./i18n.ts. TSX reads `t()` from there directly; this keeps the
+ * static `data-l10n` markup in index.html translated until those screens are components.
+ */
 export class Localization {
-    constructor(
-        public locale: Locale = "en",
-        private readonly acceptedLocales: Locale[] = Object.keys(Locales) as Locale[],
-        private translations: Record<string, Record<string, string>> = {
-            en: english,
-        },
-        private readonly isStats = false,
-    ) {}
-
-    setLocale(locale: Locale) {
-        const newLocale = this.acceptedLocales.includes(locale) ? locale : "en";
-        if (newLocale !== this.locale) {
-            const downloadUrl = `./l10n/${this.isStats ? "stats/" : ""}${locale}.json`;
-            if (!this.translations[locale]) {
-                downloadFile(downloadUrl, (err, data) => {
-                    if (err) {
-                        console.error(
-                            `Failed loading translation data for locale ${locale}`,
-                        );
-                        return;
-                    }
-                    this.translations[locale] = data!;
-                    this.setLocale(locale);
-                });
-            } else {
-                this.locale = newLocale;
-                this.localizeIndex();
-            }
-        }
+    setLocale(next: Locale) {
+        void setLocale(isLocale(next) ? next : "en").then((switched) => {
+            if (switched) this.localizeIndex();
+        });
     }
 
     getLocale() {
-        return this.locale;
+        return locale();
     }
 
     translate(key: string) {
-        // Also try spaces as dashes
-        const spacedKey = key.replace(" ", "-");
-        return (
-            this.translations[this.locale]?.[key]
-            || this.translations[this.locale]?.[spacedKey]
-            || this.translations["en"][key]
-            || ""
-        );
+        return translate(key);
     }
 
     localizeIndex() {
@@ -117,31 +56,14 @@ export class Localization {
     }
 
     populateLanguageSelect() {
-        if (this.isStats) return;
         const el = $(".language-select");
         el.empty();
-        this.acceptedLocales.forEach((locale) => {
-            const name = Locales[locale];
-            el.append($("<option>", { value: locale, text: name }));
-        });
+        for (const loc of locales) {
+            el.append($("<option>", { value: loc, text: Locales[loc] }));
+        }
     }
 
     detectLocale() {
-        let detectedLocale = (
-            navigator.language || (navigator as any).userLanguage
-        ).toLowerCase();
-        const languageWildcards = ["pt", "de", "es", "fr", "ko", "ru", "en"];
-        for (const wildcard of languageWildcards) {
-            if (detectedLocale.includes(wildcard)) {
-                detectedLocale = wildcard;
-                break;
-            }
-        }
-        for (const loc of this.acceptedLocales) {
-            if (detectedLocale.includes(loc)) {
-                return loc;
-            }
-        }
-        return "en";
+        return detectLocale();
     }
 }

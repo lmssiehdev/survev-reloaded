@@ -4,7 +4,7 @@ import { util } from "@survev/shared/utils/util.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
 
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
-import type { Locale } from "./ui/localization.ts";
+import type { Locale } from "./ui/i18n.ts";
 
 type AimStyle = "locked" | "anywhere";
 
