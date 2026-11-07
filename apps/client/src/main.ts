@@ -29,6 +29,7 @@ import { notificationModal, showIpBan, showNotification, showRefresh } from "./u
 import { mountAccount } from "./ui/components/Account.tsx";
 import { mountAppModals } from "./ui/components/AppModals.tsx";
 import { mountGameView } from "./ui/components/GameHud.tsx";
+import { mountHud } from "./ui/components/Hud.tsx";
 import { currentNewsTime, mountStartMenu } from "./ui/components/StartMenu.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
@@ -763,6 +764,7 @@ mountAppModals();
 mountStartMenu();
 mountAccount();
 mountGameView();
+mountHud();
 const App = new Application();
 setApp(App);
 
