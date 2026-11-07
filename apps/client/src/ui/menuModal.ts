@@ -1,3 +1,5 @@
+import { type Accessor, createSignal } from "solid-js";
+
 const FADE_MS = 200;
 
 /** jQuery's fadeOut(): animate to transparent, then display: none */
@@ -25,12 +27,17 @@ export class MenuModal {
     onShowFn = function() {};
     onHideFn = function(_e?: Event) {};
 
+    /** synchronous: true right after show() */
     visible = false;
+    /** reactive, for views that change while the modal is open */
+    readonly isOpen: Accessor<boolean>;
+    private readonly setOpen: (open: boolean) => void;
 
     private elements: HTMLElement[] = [];
     private fades: Animation[] = [];
 
     constructor(elements: Iterable<HTMLElement> = []) {
+        [this.isOpen, this.setOpen] = createSignal(false);
         this.elements = [...elements];
         for (const el of this.elements) {
             for (const close of el.querySelectorAll(".close")) {
@@ -44,9 +51,9 @@ export class MenuModal {
         return this.elements[0];
     }
 
-    /** a TSX <Modal> calls this with its root element */
+    /** a TSX view calls this with its root element; a modal can drive several */
     attach(el: HTMLElement) {
-        this.elements = [el];
+        if (!this.elements.includes(el)) this.elements.push(el);
     }
 
     modalCloseListener = (e: Event) => {
@@ -77,6 +84,7 @@ export class MenuModal {
     show(isModal?: boolean) {
         if (this.visible) return;
         this.visible = true;
+        this.setOpen(true);
         for (const fade of this.fades) fade.cancel();
         this.fades = [];
         for (const el of this.elements) el.style.display = "block";
@@ -90,6 +98,7 @@ export class MenuModal {
     hide(e?: Event) {
         if (!this.visible) return;
         this.visible = false;
+        this.setOpen(false);
         for (const el of this.elements) {
             if (this.skipFade) {
                 el.style.display = "none";

@@ -26,6 +26,7 @@ import { ResourceManager } from "./resources.ts";
 import { SiteInfo } from "./siteInfo.ts";
 import { teamCodeFromPath } from "./teamLink.ts";
 import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
+import { mountAccount } from "./ui/components/Account.tsx";
 import { mountAppModals } from "./ui/components/AppModals.tsx";
 import { mountGameKeybindsTab } from "./ui/components/Keybinds.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
@@ -107,11 +108,7 @@ export class Application {
         this.account = new Account(this.config);
         this.loadoutMenu = new LoadoutMenu(this.account, this.localization);
         this.pass = new Pass(this.account, this.loadoutMenu, this.localization);
-        this.profileUi = new ProfileUi(
-            this.account,
-            this.localization,
-            this.loadoutMenu,
-        );
+        this.profileUi = new ProfileUi(this.account, this.loadoutMenu);
         this.siteInfo = new SiteInfo(this.config, this.localization);
 
         this.teamMenu = new TeamMenu(
@@ -891,6 +888,7 @@ if (sharedTeamCode) window.history.replaceState("", "", `/#${sharedTeamCode}`);
 
 // islands mount before Application, whose classes look their elements up by id
 mountAppModals();
+mountAccount();
 mountGameKeybindsTab();
 const App = new Application();
 

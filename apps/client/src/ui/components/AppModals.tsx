@@ -2,6 +2,7 @@ import { render } from "@solidjs/web";
 import { For } from "solid-js";
 import { appModals, ipBanModal, notificationModal, refreshModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
+import { CreateAccountModal } from "./Account.tsx";
 import { HamburgerModal } from "./HamburgerModal.tsx";
 import { KeybindModal } from "./Keybinds.tsx";
 import { Modal, OkFooter } from "./Modal.tsx";
@@ -63,6 +64,7 @@ function AppModals() {
                 <div id="modal-ip-banned-reason">{appModals.ipBanReason}</div>
                 <div id="modal-ip-banned-expiration">{appModals.ipBanExpiration}</div>
             </Modal>
+            <CreateAccountModal />
         </>
     );
 }
