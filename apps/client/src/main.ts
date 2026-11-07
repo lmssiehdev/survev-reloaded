@@ -28,6 +28,7 @@ import { teamCodeFromPath } from "./teamLink.ts";
 import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
 import { mountAccount } from "./ui/components/Account.tsx";
 import { mountAppModals } from "./ui/components/AppModals.tsx";
+import { mountEmoteWheels } from "./ui/components/EmoteWheel.tsx";
 import { mountGameView } from "./ui/components/GameHud.tsx";
 import { mountHud } from "./ui/components/Hud.tsx";
 import { currentNewsTime, mountStartMenu } from "./ui/components/StartMenu.tsx";
@@ -765,6 +766,7 @@ mountStartMenu();
 mountAccount();
 mountGameView();
 mountHud();
+mountEmoteWheels();
 const App = new Application();
 setApp(App);
 

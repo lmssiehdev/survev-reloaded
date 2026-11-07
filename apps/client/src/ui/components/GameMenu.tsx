@@ -4,6 +4,7 @@ import { device } from "../../device.ts";
 import { gameTabs, gameUi, gameView, px } from "../gameView.ts";
 import { type MessageKey, t } from "../i18n.ts";
 import { GameKeybindsTab } from "./Keybinds.tsx";
+import { TouchControls } from "./TouchControls.tsx";
 
 type VolumeKey = "masterVolume" | "soundVolume" | "musicVolume";
 
@@ -67,33 +68,7 @@ export function GameMenu() {
                         >
                             {t("game-full-screen")}
                         </a>
-                        <div id="btn-touch-styles" class="btns-game-double-row">
-                            <div class="btn-game-container">
-                                <a
-                                    id="btn-game-move-style"
-                                    class="btn-double-row btn-game-touch-style btn-darken"
-                                    onTouchStart={() => gameUi()?.touch.toggleMoveStyle()}
-                                >
-                                </a>{" "}
-                                <div class="btn-double-row game-menu-icon-toggle movement-icon"></div>
-                            </div>
-                            <div class="btn-game-container">
-                                <a
-                                    id="btn-game-aim-style"
-                                    class="btn-double-row btn-game-touch-style btn-darken"
-                                    onTouchStart={() => gameUi()?.touch.toggleAimStyle()}
-                                >
-                                </a>{" "}
-                                <div class="btn-double-row game-menu-icon-toggle target-icon"></div>
-                            </div>
-                        </div>
-                        <a
-                            id="btn-game-aim-line"
-                            class="btn-game-menu btn-darken locked-on-icon"
-                            onTouchStart={() => gameUi()?.touch.toggleAimLine()}
-                        >
-                            {t("game-aim-line")}
-                        </a>
+                        <TouchControls />
                         <a
                             id="btn-game-sound"
                             class={[

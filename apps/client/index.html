@@ -51,98 +51,8 @@
             <div id="ui-game" class="click-through">
                 <!-- in-game menu and big map close button: src/ui/components/GameMenu.tsx -->
                 <div id="ui-game-menu-ui" style="display: contents" data-game-view></div>
-                <div id="ui-emotes" class="ui-emote-wheel">
-                    <div
-                        id="ui-emote-middle"
-                        class="ui-emote-middle ui-emote-circle ui-emote-parent"
-                        data-key="middle"
-                        data-id="0"
-                    >
-                        <div class="ui-emote ui-emote-bg-circle"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div
-                        id="ui-emote-top"
-                        class="ui-emote-top ui-emote-quarter ui-emote-parent"
-                        data-key="top"
-                        data-id="1"
-                    >
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div
-                        id="ui-emote-right"
-                        class="ui-emote-right ui-emote-quarter ui-emote-parent"
-                        data-key="right"
-                        data-id="2"
-                    >
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div
-                        id="ui-emote-bottom"
-                        class="ui-emote-bottom ui-emote-quarter ui-emote-parent"
-                        data-key="bottom"
-                        data-id="3"
-                    >
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div
-                        id="ui-emote-left"
-                        class="ui-emote-left ui-emote-quarter ui-emote-parent"
-                        data-key="left"
-                        data-id="4"
-                    >
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                </div>
-                <div id="ui-team-pings" class="ui-emote-wheel">
-                    <div id="ui-team-ping-middle" class="ui-emote-middle ui-emote-circle ui-emote-parent" data-id="0">
-                        <div class="ui-emote ui-emote-bg-circle"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div id="ui-team-ping-top" class="ui-emote-top ui-emote-quarter ui-emote-parent" data-id="1">
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div id="ui-team-ping-right" class="ui-emote-right ui-emote-quarter ui-emote-parent" data-id="2">
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div id="ui-team-ping-bottom" class="ui-emote-bottom ui-emote-quarter ui-emote-parent" data-id="3">
-                        <div class="ui-emote ui-emote-bg-quarter"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-large"></div>
-                    </div>
-                    <div
-                        id="ui-team-ping-bottom-left"
-                        class="ui-emote-bottom-left ui-emote-eighth ui-emote-parent"
-                        data-id="4"
-                    >
-                        <div class="ui-emote ui-emote-bg-eighth"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-small"></div>
-                    </div>
-                    <div
-                        id="ui-team-ping-top-left"
-                        class="ui-emote-top-left ui-emote-eighth ui-emote-parent"
-                        data-id="5"
-                    >
-                        <div class="ui-emote ui-emote-bg-eighth"></div>
-                        <div class="ui-emote ui-emote-hl"></div>
-                        <div class="ui-emote-image ui-emote-image-small"></div>
-                    </div>
-                </div>
+                <!-- src/ui/components/EmoteWheel.tsx -->
+                <div id="emote-wheels-ui" style="display: contents"></div>
                 <div id="ui-team-indicators" class="js-ui-map-hidden js-desktop-ui-hud-show">
                     <div class="ui-team-indicator ui-indicator-main" data-id="0">
                         <div class="ui-team-indicator-pos ui-background-yellow"></div>
@@ -182,7 +92,8 @@
                 </div>
                 <div id="ui-right-center" class="ui-right-center-desktop js-ui-map-hidden">
                     <div id="ui-hud-inventory-ui" style="display: contents"></div>
-                    <div id="ui-emote-button"></div>
+                    <!-- src/ui/components/EmoteWheel.tsx -->
+                    <div id="emote-button-ui" style="display: contents"></div>
                 </div>
                 <!-- team panel: src/ui/components/GameHud.tsx -->
                 <div id="ui-top-left-ui" style="display: contents" data-game-view></div>

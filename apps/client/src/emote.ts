@@ -1,4 +1,3 @@
-import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
 
 import { EmotesDefs } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
@@ -24,6 +23,17 @@ import type { Map } from "./map.ts";
 import type { DeadBodyBarn } from "./objects/deadBody.ts";
 import type { Player, PlayerBarn } from "./objects/player.ts";
 import type { Renderer } from "./renderer.ts";
+import {
+    type EmoteWedge,
+    type PingWedge,
+    setEmoteBarnRef,
+    setEmoteTouch,
+    setWedge,
+    setWheelOpen,
+    setWheelsOpacity,
+    type WedgeRef,
+    type WheelName,
+} from "./ui/emoteWheel.ts";
 import type { UiManager } from "./ui/ui.ts";
 
 const airdropIdx = 4;
@@ -31,8 +41,6 @@ const airstrikeIdx = 5;
 const emoteTimeout = 10.0;
 
 interface Indicator {
-    elem: JQuery<HTMLElement>;
-    borderElem: JQuery<HTMLElement>;
     pingContainer: PIXI.Container;
     indContainer: PIXI.Container;
     borderSprite: {
@@ -63,10 +71,9 @@ interface Indicator {
 }
 
 interface TeamPingSelector {
-    parent: JQuery<HTMLElement>;
+    wedge: WedgeRef;
     angleA: number;
     angleC: number;
-    highlight: JQuery<HTMLElement>;
     highlightDisplayed: boolean;
     ping: string;
     emote: string;
@@ -76,7 +83,7 @@ interface TeamPingSelector {
 }
 
 interface EmoteWheelData {
-    parent: JQuery<HTMLElement>;
+    wedge: WedgeRef;
     vA: Vec2;
     vC: Vec2;
     ping: string;
@@ -113,7 +120,6 @@ function isAngleBetween(target: number, angle1: number, angle2: number) {
     return angle1 <= target || target <= angle2;
 }
 export class EmoteBarn {
-    gameElem = $("#ui-game");
     disable = false;
     activePlayer: Player | null = null;
     worldPos = v2.create(0, 0);
@@ -148,23 +154,14 @@ export class EmoteBarn {
     emoteTouchedPos: Vec2 | null = null;
     bigmapPingPos: Vec2 | null = null;
 
-    onTouchStart!: (event: JQuery.TouchEventBase) => void;
-    emoteElems = $(".ui-emote");
-    bigmapCollision = $("#big-map-collision");
-
-    emoteButtonElem = $("#ui-emote-button");
-
-    emoteWheels = $("#ui-emotes, #ui-team-pings");
-    teamEmotes = $(".ui-emote-bottom-left, .ui-emote-top-left");
+    onTouchStart!: (event: TouchEvent) => void;
+    onBigmapTouchEnd!: (event: TouchEvent) => void;
+    bigmapCollision = document.getElementById("big-map-collision");
 
     // Emotes
-    emoteWheel = $("#ui-emotes");
-
-    emoteWheelData: Record<string, EmoteWheelData>;
+    emoteWheelData: Record<EmoteWedge, EmoteWheelData>;
 
     // Team pings
-    teamPingWheel = $("#ui-team-pings");
-
     teamPingSelectors: TeamPingSelector[] = [];
 
     displayedSelectors: typeof this.teamPingSelectors;
@@ -218,12 +215,10 @@ export class EmoteBarn {
         {
             angleA: number;
             angleC: number;
-            highlight: JQuery<HTMLElement>;
             highlightDisplayed: boolean;
         } & EmoteWheelData
     >;
 
-    parentDisplayed!: JQuery<HTMLElement>;
     constructor(
         public audioManager: AudioManager,
         public uiManager: UiManager,
@@ -288,48 +283,32 @@ export class EmoteBarn {
             }
         };
 
+        this.onBigmapTouchEnd = (e) => {
+            e.stopPropagation();
+            this.bigmapPingPos = {
+                x: e.changedTouches[0].pageX,
+                y: e.changedTouches[0].pageY,
+            };
+            this.emoteScreenPos = v2.create(
+                this.camera.m_screenWidth / 2,
+                this.camera.m_screenHeight / 2,
+            );
+            this.pingMouseTriggered = true;
+        };
+
         if (device.touch) {
-            this.emoteElems.css("pointer-events", "auto");
-            this.bigmapCollision.on("touchend", (e) => {
-                e.stopPropagation();
-                this.bigmapPingPos = {
-                    x: e.originalEvent!.changedTouches[0].pageX,
-                    y: e.originalEvent!.changedTouches[0].pageY,
-                };
-                this.emoteScreenPos = v2.create(
-                    this.camera.m_screenWidth / 2,
-                    this.camera.m_screenHeight / 2,
-                );
-                this.pingMouseTriggered = true;
-            });
-
-            // Dragging Emote button
-            this.emoteButtonElem.css("pointer-events", "auto");
-            this.emoteButtonElem.on("touchstart", (event) => {
-                event.stopPropagation();
-                this.emoteScreenPos = v2.create(
-                    this.camera.m_screenWidth / 2,
-                    this.camera.m_screenHeight / 2,
-                );
-                this.emoteMouseTriggered = true;
-            });
-
-            // Listen for an emote wheel touch
-            this.emoteElems.on("touchstart", (e) => {
-                e.stopPropagation();
-                this.emoteTouchedPos = {
-                    x: e.originalEvent!.changedTouches[0].pageX,
-                    y: e.originalEvent!.changedTouches[0].pageY,
-                };
-            });
+            // the wheels and the emote button (components/EmoteWheel.tsx) take touches
+            setEmoteTouch(true);
+            setEmoteBarnRef(this);
+            this.bigmapCollision?.addEventListener("touchend", this.onBigmapTouchEnd);
             // Reset wheel
-            $(document).on("touchstart", this.onTouchStart);
+            document.addEventListener("touchstart", this.onTouchStart);
         }
 
         // Set ping wheel specific data
         this.emoteWheelData = {
             middle: {
-                parent: $("#ui-emote-middle"),
+                wedge: { wheel: "emotes", key: "middle" },
                 vA: v2.create(-1, 1),
                 vC: v2.create(1, 1),
                 ping: "",
@@ -337,7 +316,7 @@ export class EmoteBarn {
                 displayCloseIcon: true,
             },
             top: {
-                parent: $("#ui-emote-top"),
+                wedge: { wheel: "emotes", key: "top" },
                 vA: v2.create(-1, 1),
                 vC: v2.create(1, 1),
                 ping: "",
@@ -345,7 +324,7 @@ export class EmoteBarn {
                 emoteSlot: EmoteSlot.Top,
             },
             right: {
-                parent: $("#ui-emote-right"),
+                wedge: { wheel: "emotes", key: "right" },
                 vA: v2.create(1, 1),
                 vC: v2.create(1, -1),
                 ping: "",
@@ -353,7 +332,7 @@ export class EmoteBarn {
                 emoteSlot: EmoteSlot.Right,
             },
             bottom: {
-                parent: $("#ui-emote-bottom"),
+                wedge: { wheel: "emotes", key: "bottom" },
                 vA: v2.create(1, -1),
                 vC: v2.create(-1, -1),
                 ping: "",
@@ -361,7 +340,7 @@ export class EmoteBarn {
                 emoteSlot: EmoteSlot.Bottom,
             },
             left: {
-                parent: $("#ui-emote-left"),
+                wedge: { wheel: "emotes", key: "left" },
                 vA: v2.create(-1, -1),
                 vC: v2.create(-1, 1),
                 ping: "",
@@ -372,9 +351,9 @@ export class EmoteBarn {
 
         // Set ping wheel specific data
         const teamPingData: Record<
-            string,
+            PingWedge,
             {
-                parent: JQuery<HTMLElement>;
+                wedge: WedgeRef;
                 vA: Vec2;
                 vC: Vec2;
                 ping: string;
@@ -384,7 +363,7 @@ export class EmoteBarn {
             }
         > = {
             middle: {
-                parent: $("#ui-team-ping-middle"),
+                wedge: { wheel: "pings", key: "middle" },
                 vA: v2.create(-1, 1),
                 vC: v2.create(1, 1),
                 ping: "",
@@ -392,35 +371,35 @@ export class EmoteBarn {
                 displayCloseIcon: true,
             },
             top: {
-                parent: $("#ui-team-ping-top"),
+                wedge: { wheel: "pings", key: "top" },
                 vA: v2.create(-1, 1),
                 vC: v2.create(1, 1),
                 ping: "ping_danger",
                 emote: "",
             },
             right: {
-                parent: $("#ui-team-ping-right"),
+                wedge: { wheel: "pings", key: "right" },
                 vA: v2.create(1, 1),
                 vC: v2.create(1, -1),
                 ping: "ping_coming",
                 emote: "",
             },
             bottom: {
-                parent: $("#ui-team-ping-bottom"),
+                wedge: { wheel: "pings", key: "bottom" },
                 vA: v2.create(1, -1),
                 vC: v2.create(-1, -1),
                 ping: "ping_help",
                 emote: "",
             },
             "bottom-left": {
-                parent: $("#ui-team-ping-bottom-left"),
+                wedge: { wheel: "pings", key: "bottom-left" },
                 vA: v2.create(-1, -1),
                 vC: v2.create(-1, 0),
                 ping: "",
                 emote: "emote_medical",
             },
             "top-left": {
-                parent: $("#ui-team-ping-top-left"),
+                wedge: { wheel: "pings", key: "top-left" },
                 vA: v2.create(-1, 0),
                 vC: v2.create(-1, 1),
                 ping: "",
@@ -430,23 +409,17 @@ export class EmoteBarn {
         };
 
         // Populate the ping selectors
-        for (const key in teamPingData) {
-            if (teamPingData.hasOwnProperty(key)) {
-                const pingData = teamPingData[key];
-                const angleA = vectorToDegreeAngle(pingData.vA);
-                const angleC = vectorToDegreeAngle(pingData.vC);
-                this.teamPingSelectors.push({
-                    parent: pingData.parent,
-                    angleA,
-                    angleC,
-                    highlight: pingData.parent.find(".ui-emote-hl"),
-                    highlightDisplayed: false,
-                    ping: pingData.ping,
-                    emote: pingData.emote,
-                    ammoEmote: pingData?.ammoEmote,
-                    displayCloseIcon: pingData?.displayCloseIcon,
-                });
-            }
+        for (const pingData of Object.values(teamPingData)) {
+            this.teamPingSelectors.push({
+                wedge: pingData.wedge,
+                angleA: vectorToDegreeAngle(pingData.vA),
+                angleC: vectorToDegreeAngle(pingData.vC),
+                highlightDisplayed: false,
+                ping: pingData.ping,
+                emote: pingData.emote,
+                ammoEmote: pingData?.ammoEmote,
+                displayCloseIcon: pingData?.displayCloseIcon,
+            });
         }
         this.displayedSelectors = this.teamPingSelectors;
 
@@ -488,10 +461,6 @@ export class EmoteBarn {
             indSpriteOuter.visible = true;
             indContainer.addChild(indSpriteOuter);
             return {
-                elem: $("#ui-team-indicators").find(`.ui-indicator-ping[data-id=${idx}]`),
-                borderElem: $("#ui-team-indicators").find(
-                    `.ui-indicator-ping-border[data-id=${idx}]`,
-                ),
                 pingContainer,
                 indContainer,
                 borderSprite: {
@@ -548,19 +517,18 @@ export class EmoteBarn {
 
     m_free() {
         if (device.touch) {
-            $(document).off("touchstart", this.onTouchStart);
-            this.emoteButtonElem.off("touchstart");
-            this.emoteElems.off("touchstart");
-            this.bigmapCollision.off("touchend");
+            document.removeEventListener("touchstart", this.onTouchStart);
+            setEmoteBarnRef(null);
+            this.bigmapCollision?.removeEventListener("touchend", this.onBigmapTouchEnd);
         }
         this.init();
     }
 
     init() {
         this.emoteWheelsGreyed = false;
-        this.emoteWheels.css("opacity", 1);
+        setWheelsOpacity(1);
         this.teamEmotesGreyed = false;
-        this.teamEmotes.css("opacity", 1);
+        this.setTeamEmotesOpacity(1);
         this.disable = false;
         this.inputReset();
     }
@@ -570,8 +538,8 @@ export class EmoteBarn {
         this.pingKeyTriggered = false;
         this.emoteMouseTriggered = false;
         this.wheelDisplayed = false;
-        this.displayWheel(this.teamPingWheel, false);
-        this.displayWheel(this.emoteWheel, false);
+        this.displayWheel("pings", false);
+        this.displayWheel("emotes", false);
         this.emoteTouchedPos = null;
         this.bigmapPingPos = null;
         this.emoteTimeoutTicker = 0;
@@ -579,12 +547,12 @@ export class EmoteBarn {
             const s = this.displayedSelectors[i];
             const emoteData = EmotesDefs[s.emote];
             const teamOnly = emoteData?.teamOnly;
-            if (this.teamEmotesGreyed && teamOnly) {
-                s.parent.css("opacity", this.teamEmoteOpacityReset);
-            } else {
-                s.parent.css("opacity", this.wedgeOpacityReset);
-            }
-            s.highlight.css("display", "none");
+            setWedge(s.wedge, {
+                opacity: this.teamEmotesGreyed && teamOnly
+                    ? this.teamEmoteOpacityReset
+                    : this.wedgeOpacityReset,
+                highlight: false,
+            });
             s.highlightDisplayed = false;
         }
     }
@@ -902,15 +870,7 @@ export class EmoteBarn {
                 (this.pingMouseTriggered || this.emoteMouseTriggered)
                 && !this.wheelDisplayed
             ) {
-                this.parentDisplayed = this.pingMouseTriggered
-                    ? this.teamPingWheel
-                    : this.emoteWheel;
-                this.parentDisplayed.css({
-                    display: "block",
-                    left: this.emoteScreenPos.x,
-                    top: this.emoteScreenPos.y,
-                });
-                this.displayWheel(this.parentDisplayed, true);
+                setWheelOpen(this.pingMouseTriggered ? "pings" : "emotes", true, this.emoteScreenPos);
                 this.wheelDisplayed = true;
                 this.displayedSelectors = this.pingMouseTriggered
                     ? this.teamPingSelectors
@@ -927,16 +887,16 @@ export class EmoteBarn {
                 } else {
                     // Grey out all wheels if we're on cooldown
                     if (this.emoteHardTicker > 0.0 && !this.emoteWheelsGreyed) {
-                        this.emoteWheels.css("opacity", 0.5);
+                        setWheelsOpacity(0.5);
                         this.emoteWheelsGreyed = true;
                     } else if (this.emoteHardTicker <= 0.0 && this.emoteWheelsGreyed) {
-                        this.emoteWheels.css("opacity", 1.0);
+                        setWheelsOpacity(1.0);
                         this.emoteWheelsGreyed = false;
                     }
 
                     // Grey out team emotes in solo
                     if (!this.teamEmotesGreyed && teamMode == TeamMode.Solo) {
-                        this.teamEmotes.css("opacity", this.teamEmoteOpacityReset);
+                        this.setTeamEmotesOpacity(this.teamEmoteOpacityReset);
                         this.teamEmotesGreyed = true;
                     }
 
@@ -983,9 +943,7 @@ export class EmoteBarn {
 
                                 if (oldEmote != s.emote) {
                                     // Change the image background to our chosen emotes
-                                    const imageElem = s.parent.find(".ui-emote-image");
-                                    const imgUrl = getImgUrlFromSelector(s);
-                                    imageElem.css("background-image", `url(${imgUrl})`);
+                                    setWedge(s.wedge, { image: getImgUrlFromSelector(s) });
                                 }
                             }
 
@@ -1014,8 +972,7 @@ export class EmoteBarn {
                                 continue;
                             }
                             if (s.highlightDisplayed) {
-                                s.parent.css("opacity", this.wedgeOpacityReset);
-                                s.highlight.css("display", "none");
+                                setWedge(s.wedge, { opacity: this.wedgeOpacityReset, highlight: false });
                                 s.highlightDisplayed = false;
                             }
                         }
@@ -1024,8 +981,7 @@ export class EmoteBarn {
                     if (selector) {
                         this.emoteSelector = selector;
                         if (!selector.highlightDisplayed) {
-                            selector.parent.css("opacity", 1.0);
-                            selector.highlight.css("display", "block");
+                            setWedge(selector.wedge, { opacity: 1.0, highlight: true });
                             selector.highlightDisplayed = true;
                         }
                         if (device.touch && this.emoteTouchedPos) {
@@ -1231,54 +1187,58 @@ export class EmoteBarn {
         }
     }
 
-    displayWheel(parent: JQuery<HTMLElement>, display: boolean) {
-        parent.css("display", display ? "block" : "none");
+    displayWheel(wheel: WheelName, display: boolean) {
+        setWheelOpen(wheel, display);
+    }
+
+    /** the team-only wedges of the ping wheel (greyed out in solo) */
+    setTeamEmotesOpacity(opacity: number) {
+        setWedge({ wheel: "pings", key: "bottom-left" }, { opacity });
+        setWedge({ wheel: "pings", key: "top-left" }, { opacity });
+    }
+
+    /** touch devices: a touch on a wheel wedge (components/EmoteWheel.tsx) */
+    onWheelTouch(x: number, y: number) {
+        this.emoteTouchedPos = { x, y };
+    }
+
+    /** touch devices: the emote button opens the emote wheel at the screen center */
+    onEmoteButtonTouch() {
+        this.emoteScreenPos = v2.create(
+            this.camera.m_screenWidth / 2,
+            this.camera.m_screenHeight / 2,
+        );
+        this.emoteMouseTriggered = true;
     }
 
     updateEmoteWheel(emoteLoadout: string[]) {
         this.emoteLoadout = emoteLoadout;
 
-        // Map emotes to selector names
-        const emotes = {
-            top: emoteLoadout[EmoteSlot.Top],
-            right: emoteLoadout[EmoteSlot.Right],
-            bottom: emoteLoadout[EmoteSlot.Bottom],
-            left: emoteLoadout[EmoteSlot.Left],
-        };
-
-        for (const key in emotes) {
-            if (emotes.hasOwnProperty(key)) {
-                const emoteType = emotes[key as keyof typeof emotes];
-                const emoteData = EmotesDefs[emoteType];
-                if (emoteData && this.emoteWheelData[key]) {
-                    this.emoteWheelData[key].emote = emoteType;
-                }
+        for (const ewData of Object.values(this.emoteWheelData)) {
+            if (ewData.emoteSlot === undefined) continue;
+            const emoteType = emoteLoadout[ewData.emoteSlot];
+            if (EmotesDefs[emoteType]) {
+                ewData.emote = emoteType;
             }
         }
 
         this.emoteWheelSelectors = [];
         // Populate the ping selectors
-        for (const key in this.emoteWheelData) {
-            if (this.emoteWheelData.hasOwnProperty(key)) {
-                const ewData = this.emoteWheelData[key];
-                const angleA = vectorToDegreeAngle(ewData.vA);
-                const angleC = vectorToDegreeAngle(ewData.vC);
-                this.emoteWheelSelectors.push(
-                    Object.assign(
-                        {
-                            angleA,
-                            angleC,
-                            highlight: ewData.parent.find(".ui-emote-hl"),
-                            highlightDisplayed: false,
-                        },
-                        ewData,
-                    ),
-                );
-                // Change the image background to our chosen emotes
-                const imageElem = ewData.parent.find(".ui-emote-image");
-                const imgUrl = getImgUrlFromSelector(ewData);
-                imageElem.css("background-image", `url(${imgUrl})`);
-            }
+        for (const ewData of Object.values(this.emoteWheelData)) {
+            const angleA = vectorToDegreeAngle(ewData.vA);
+            const angleC = vectorToDegreeAngle(ewData.vC);
+            this.emoteWheelSelectors.push(
+                Object.assign(
+                    {
+                        angleA,
+                        angleC,
+                        highlightDisplayed: false,
+                    },
+                    ewData,
+                ),
+            );
+            // Change the image background to our chosen emotes
+            setWedge(ewData.wedge, { image: getImgUrlFromSelector(ewData) });
         }
     }
 

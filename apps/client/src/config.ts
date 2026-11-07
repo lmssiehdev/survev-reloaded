@@ -7,7 +7,7 @@ import { createStore, reconcile } from "solid-js";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
 import type { Locale } from "./ui/i18n.ts";
 
-type AimStyle = "locked" | "anywhere";
+export type AimStyle = "locked" | "anywhere";
 
 export const debugToolsConfig = {
     enabled: false,
