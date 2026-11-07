@@ -8,7 +8,7 @@ import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import { PingDefs } from "@survev/shared/defs/gameObjects/pingDefs.ts";
 import type { ThrowableDef } from "@survev/shared/defs/gameObjects/throwableDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
-import { EmoteSlot, GameConfig, Input, type TeamMode } from "@survev/shared/gameConfig.ts";
+import { EmoteSlot, GameConfig, Input, TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Emote } from "@survev/shared/net/updateMsg.ts";
 import { coldet } from "@survev/shared/utils/coldet.ts";
 import { math } from "@survev/shared/utils/math.ts";
@@ -935,7 +935,7 @@ export class EmoteBarn {
                     }
 
                     // Grey out team emotes in solo
-                    if (!this.teamEmotesGreyed && teamMode == 1) {
+                    if (!this.teamEmotesGreyed && teamMode == TeamMode.Solo) {
                         this.teamEmotes.css("opacity", this.teamEmoteOpacityReset);
                         this.teamEmotesGreyed = true;
                     }
@@ -993,7 +993,7 @@ export class EmoteBarn {
                             const emoteData = EmotesDefs[s.emote];
                             const teamOnly = emoteData && emoteData.teamOnly;
 
-                            const disableInSolo = teamOnly && teamMode == 1;
+                            const disableInSolo = teamOnly && teamMode == TeamMode.Solo;
                             if (
                                 distToCenter <= distMinLength
                                 && !highlight

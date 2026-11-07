@@ -2,10 +2,13 @@
   "$schema": "https://www.schemastore.org/tsconfig.json",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["DOM", "ESNext"]
+    "lib": ["DOM", "ESNext"],
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web"
   },
   "include": [
     "./src/**/*.ts",
+    "./src/**/*.tsx",
     "./src/**/*.js",
     "./atlas-builder/**/*.ts",
     "./building-editor/**/*.ts",
