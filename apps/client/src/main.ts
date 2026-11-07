@@ -8,7 +8,6 @@ import type {
     GameWsDisconnectReason,
 } from "@survev/shared/types/api.ts";
 import { math } from "@survev/shared/utils/math.ts";
-import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
@@ -43,8 +42,8 @@ import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 
 export class Application {
-    startMenuWrapper = $("#start-menu-wrapper");
-    gameAreaWrapper = $("#game-area-wrapper");
+    startMenuWrapper = document.getElementById("start-menu-wrapper")!;
+    gameAreaWrapper = document.getElementById("game-area-wrapper")!;
     config = appConfig;
     localization = new Localization();
 
@@ -126,7 +125,6 @@ export class Application {
                 this.profileUi.updateLoginSupport();
                 this.account.initLogin();
             });
-            this.localization.localizeIndex();
             this.account.init();
 
             this.updateLoginSupport();
@@ -422,16 +420,13 @@ export class Application {
     }
 
     refreshUi() {
-        this.startMenuWrapper.css("display", this.active ? "flex" : "none");
-        this.gameAreaWrapper.css({
-            display: this.active ? "none" : "block",
-            opacity: this.active ? 0 : 1,
-        });
+        this.startMenuWrapper.style.display = this.active ? "flex" : "none";
+        this.gameAreaWrapper.style.display = this.active ? "none" : "block";
+        this.gameAreaWrapper.style.opacity = this.active ? "0" : "1";
+        document.body.classList.toggle("user-select-none", !this.active);
         if (this.active) {
-            $("body").removeClass("user-select-none");
             document.removeEventListener("contextmenu", this.contextListener);
         } else {
-            $("body").addClass("user-select-none");
             document.addEventListener("contextmenu", this.contextListener);
         }
         setStartMenu((m) => {
