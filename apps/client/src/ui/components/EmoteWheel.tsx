@@ -1,4 +1,3 @@
-import { render } from "@solidjs/web";
 import { For } from "solid-js";
 import { device } from "../../device.ts";
 import {
@@ -95,7 +94,7 @@ function Wheel<K extends AnyWedge>(props: {
 }
 
 /** `#ui-emotes` (hold the emote bind) and `#ui-team-pings` (hold the team ping bind) */
-function EmoteWheels() {
+export function EmoteWheels() {
     return (
         <>
             <Wheel<EmoteWedge> id="ui-emotes" wedgeId="ui-emote" keys={EMOTE_WEDGES} dataKey view={emoteWheel.emotes} />
@@ -111,12 +110,12 @@ function EmoteWheels() {
 }
 
 /** touch devices: press to open the emote wheel at the screen center */
-function EmoteButton() {
+export function EmoteButton() {
     return (
         <div
             id="ui-emote-button"
             style={{
-                display: touchControls.touch ? "block" : undefined,
+                display: touchControls.touch ? "block" : "none",
                 "pointer-events": touchEvents(),
             }}
             ref={onNative("touchstart", (e) => {
@@ -127,9 +126,4 @@ function EmoteButton() {
             })}
         />
     );
-}
-
-export function mountEmoteWheels() {
-    render(() => <EmoteWheels />, document.getElementById("emote-wheels-ui")!);
-    render(() => <EmoteButton />, document.getElementById("emote-button-ui")!);
 }

@@ -15,6 +15,8 @@ export type TeamMemberStatus = "" | "disconnected" | "dead" | "downed";
 export interface TeamMemberView {
     displayed: boolean;
     name: string;
+    /** off-screen marker at the screen edge (#ui-team-indicators); null: hidden */
+    indicator: { left: number; top: number; transform: string } | null;
     /** health bar width in px; null: the stylesheet's */
     healthWidth: number | null;
     /** health bar color; "" for the stylesheet's */
@@ -55,6 +57,7 @@ export interface RolePerkView {
 const teamMember = (): TeamMemberView => ({
     displayed: false,
     name: "",
+    indicator: null,
     healthWidth: null,
     healthColor: "",
     healthDanger: false,
@@ -66,6 +69,16 @@ const teamMember = (): TeamMemberView => ({
 export const [gameView, setGameView] = createStore({
     /** a game's UiManager exists: the minimap and team panels show */
     active: false,
+    /** the whole in-game UI is hidden (the HUD visibility toggle) */
+    hidden: false,
+    /** the faction patch on the health bar */
+    flair: "" as "" | "red" | "blue",
+    /** #ui-killfeed-wrapper top; "" for the stylesheet's */
+    killfeedTop: "",
+    /** scopes highlight on hover; set once spectating ends */
+    zoomHover: false,
+    /** a weapon slot (1 or 2, 0 for none) being dragged onto the other one */
+    weaponDrag: { slot: 0, dragging: false, moved: false, left: 0, top: 0 },
 
     menu: {
         open: false,

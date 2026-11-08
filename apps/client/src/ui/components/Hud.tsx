@@ -1,4 +1,4 @@
-import { type JSX, render } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
 import type { LootDef } from "@survev/shared/defs/gameObjectDefs.ts";
 import type { AmmoDef, BackpackDef, ChestDef, HelmetDef } from "@survev/shared/defs/gameObjects/gearDefs.ts";
 import { GEAR_TYPES, SCOPE_LEVELS } from "@survev/shared/defs/gameObjects/gearDefs.ts";
@@ -9,8 +9,11 @@ import { math } from "@survev/shared/utils/math.ts";
 import { createMemo, For } from "solid-js";
 import { device } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
+import { gameUi, gameView } from "../gameView.ts";
 import { hud, InteractionType, MAX_KILL_FEED_LINES, PERK_UI_COUNT } from "../hudView.ts";
 import { t, translate } from "../i18n.ts";
+import { type ItemAction, itemActions } from "../itemActions.ts";
+import type { UiManager } from "../ui.ts";
 
 const display = (visible: boolean, shown = "block") => (visible ? shown : "none");
 const pointerEvents = (enabled: boolean) => (enabled ? "auto" : "none");
@@ -25,8 +28,12 @@ function LootItem(props: { type: string; children: JSX.Element; ammo?: boolean; 
     const loot = () => hud.loot[props.type];
     const special = () => !!(GameObjectDefs.typeToDef(props.type) as AmmoDef).special;
     const scale = () => popScale(loot().width);
+    const def = GameObjectDefs.typeToDef(props.type);
+    const actions: ItemAction[] = [{ action: "drop", type: "loot", data: props.type }];
+    if (def.type == "heal" || def.type == "boost") actions.unshift({ action: "use", type: "loot", data: props.type });
     return (
         <div
+            {...itemActions(...actions)}
             id={`ui-loot-${props.type}`}
             class={props.ammo
                 ? "ui-outline-hover ui-ammo tooltip"
@@ -131,13 +138,17 @@ export function Scopes() {
             <For each={SCOPE_LEVELS}>
                 {(type, i) => {
                     const scope = () => hud.scopes[i()];
+                    const actions: ItemAction[] = [{ action: "use", type: "scope", data: type }];
+                    if (type != "1xscope") actions.push({ action: "drop", type: "loot", data: type });
                     return (
                         <div
+                            {...itemActions(...actions)}
                             id={`ui-scope-${type}`}
                             class={[
                                 "ui-scope ui-zoom",
                                 {
                                     "ui-outline-hover": type != "1xscope",
+                                    "ui-zoom-hover": gameView.zoomHover,
                                     "ui-hidden": !scope().visible,
                                     "ui-zoom-active": scope().equipped,
                                     "ui-zoom-inactive": !scope().equipped,
@@ -159,19 +170,43 @@ export function Scopes() {
     );
 }
 
+/** the faction patch beside the health bar */
+const flairStyle = () =>
+    gameView.flair
+        ? { display: "block", "background-image": `url(../img/gui/player-patch-${gameView.flair}.svg)` }
+        : undefined;
+
 // ---- interaction prompt (lower center) ----
+
+/** a touch on the interaction or reload buttons; it doesn't reach the game's own touch input */
+const touchButton = (press: (ui: UiManager) => void) => (e: TouchEvent) => {
+    e.stopPropagation();
+    const ui = gameUi();
+    if (ui) press(ui);
+};
+const onInteractionTouch = touchButton((ui) => ui.onInteractionTouch());
+const onReloadTouch = touchButton((ui) => ui.onReloadTouch());
 
 export function Interaction() {
     const key = () => (hud.touch ? "" : hud.interaction.key);
     return (
-        <div id="ui-interaction" style={{ display: display(hud.interaction.type != InteractionType.None, "flex") }}>
+        <div
+            id="ui-interaction"
+            style={{
+                display: display(hud.interaction.type != InteractionType.None, "flex"),
+                "pointer-events": "auto",
+            }}
+            onTouchStart={onInteractionTouch}
+        >
             <div
                 id="ui-interaction-press"
                 class={key().length > 1 ? "ui-interaction-small" : "ui-interaction-large"}
                 style={{
                     "background-image": hud.touch ? "url('img/gui/tap.svg')" : "none",
                     display: display(hud.interaction.usable),
+                    "pointer-events": "auto",
                 }}
+                onTouchStart={onInteractionTouch}
             >
                 {key()}
             </div>
@@ -231,7 +266,9 @@ export function EquippedAmmo() {
                     style={{
                         color: hud.ammo.current > 0 ? "white" : "red",
                         opacity: hud.ammo.displayCurrent ? "1" : "0",
+                        "pointer-events": "auto",
                     }}
+                    onTouchStart={onReloadTouch}
                 >
                     {hud.ammo.current}
                 </div>
@@ -240,13 +277,20 @@ export function EquippedAmmo() {
                     style={{
                         color: hud.ammo.remaining !== 0 ? "white" : "red",
                         opacity: hud.ammo.displayRemaining ? "1" : "0",
+                        "pointer-events": "auto",
                     }}
+                    onTouchStart={onReloadTouch}
                 >
                     {hud.ammo.remaining === Number.MAX_VALUE ? "∞" : hud.ammo.remaining}
                 </div>
                 <div
                     id="ui-reload-button-container"
-                    style={{ display: display(hud.touch), opacity: hud.ammo.displayRemaining ? "1" : "0" }}
+                    style={{
+                        display: display(hud.touch),
+                        opacity: hud.ammo.displayRemaining ? "1" : "0",
+                        "pointer-events": "auto",
+                    }}
+                    onTouchStart={onReloadTouch}
                 >
                     <div id="ui-reload-button" />
                 </div>
@@ -310,8 +354,8 @@ export function HealthAndBoost() {
                 </For>
             </div>
             <div id="ui-health-counter">
-                <div id="ui-health-flair-left" class="ui-health-flair" />
-                <div id="ui-health-flair-right" class="ui-health-flair" />
+                <div id="ui-health-flair-left" class="ui-health-flair" style={flairStyle()} />
+                <div id="ui-health-flair-right" class="ui-health-flair" style={flairStyle()} />
                 <div id="ui-health-container">
                     <div
                         class={["ui-bar-inner", { "ui-bar-danger": hud.health <= 25 }]}
@@ -340,6 +384,7 @@ export function Perks() {
                 const perk = () => hud.perks[i];
                 return (
                     <div
+                        {...itemActions({ action: "drop", type: "perk", data: i })}
                         id={`ui-perk-${i}`}
                         class={[
                             "ui-armor-counter tooltip-perk",
@@ -387,8 +432,12 @@ export function Gear() {
                     const rot = (GameObjectDefs.typeToDefSafe(gear().item) as MeleeDef | undefined)?.lootImg.rot;
                     return popScale(gear().width) + (rot !== undefined ? ` rotate(${rot}rad)` : "");
                 };
+                const actions: ItemAction[] = gearType == "backpack"
+                    ? []
+                    : [{ action: "drop", type: "loot", data: gearType }];
                 return (
                     <div
+                        {...itemActions(...actions)}
                         id={`ui-armor-${gearType}`}
                         class={gearType == "backpack"
                             ? "ui-armor-counter tooltip-perk"
@@ -422,15 +471,41 @@ export function Gear() {
 
 function WeaponSlot(props: { idx: number }) {
     const weapon = () => hud.weapons[props.idx];
+    const actions = itemActions(
+        { action: "use", type: "weapon", data: props.idx },
+        { action: "drop", type: "weapon", data: props.idx },
+    );
+    /** slots 1 and 2 can be dragged onto each other */
+    const slot = props.idx < 2 ? props.idx + 1 : undefined;
+    const drag = () => gameView.weaponDrag;
+    const dragged = () => slot !== undefined && drag().slot == slot && drag().moved;
     const def = createMemo(() => GameObjectDefs.typeToDefSafe(weapon().type));
     const name = () => def() ? translate(`game-hud-${weapon().type}`) || translate(`game-${weapon().type}`) : "";
     return (
         <div class="ui-weapon-info">
             <div
-                class="ui-weapon-switch ui-outline-hover"
+                {...actions}
+                onMouseDown={(e) => {
+                    actions.onMouseDown(e);
+                    if (slot !== undefined) gameUi()?.onWeapMouseDown(e, slot);
+                }}
+                onMouseUp={(e) => {
+                    actions.onMouseUp(e);
+                    if (slot !== undefined) gameUi()?.onWeapMouseUp(e, e.currentTarget.matches(":hover"), slot);
+                }}
+                class={[
+                    "ui-weapon-switch",
+                    {
+                        // the other slots don't highlight while one is dragged
+                        "ui-outline-hover": slot !== undefined || !drag().dragging,
+                        "ui-weapon-dragged": dragged(),
+                    },
+                ]}
                 id={`ui-weapon-id-${props.idx + 1}`}
-                data-slot={props.idx < 2 ? String(props.idx + 1) : undefined}
+                data-slot={slot}
                 style={{
+                    left: dragged() ? `${drag().left}px` : undefined,
+                    top: dragged() ? `${drag().top}px` : undefined,
                     "background-color": weapon().equipped ? "rgba(0, 0, 0, 0.4)" : "rgba(0, 0, 0, 0)",
                     "pointer-events": pointerEvents(weapon().type !== "" || weapon().selectable),
                     width: `${math.lerp(weapon().width, 83.33, 100)}%`,
@@ -482,25 +557,4 @@ export function KillMessage() {
             <div id="ui-kill-count">{hud.killMessage.count}</div>
         </div>
     );
-}
-
-const ISLANDS: Array<[string, () => JSX.Element]> = [
-    ["ui-hud-inventory-ui", Inventory],
-    ["ui-hud-killfeed-ui", KillFeed],
-    ["ui-hud-scopes-ui", Scopes],
-    ["ui-hud-interaction-ui", Interaction],
-    ["ui-hud-messages-ui", Messages],
-    ["ui-hud-ammo-ui", EquippedAmmo],
-    ["ui-hud-health-ui", HealthAndBoost],
-    ["ui-hud-perks-ui", Perks],
-    ["ui-hud-gear-ui", Gear],
-    ["ui-hud-weapons-ui", Weapons],
-    ["ui-hud-kills-ui", KillMessage],
-];
-
-/** the in-game HUD islands inside #ui-game; UiManager2 looks their elements up by id */
-export function mountHud() {
-    for (const [id, Island] of ISLANDS) {
-        render(() => <Island />, document.getElementById(id)!);
-    }
 }

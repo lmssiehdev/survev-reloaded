@@ -16,7 +16,7 @@ export function Modal(props: {
     footer?: JSX.Element;
 }) {
     return (
-        <div id={props.id} class="modal" ref={(el) => props.modal.attach(el)}>
+        <div id={props.id} class={["modal", props.modal.classes()]} ref={(el) => props.modal.attach(el)}>
             <div class="modal-content modal-close">
                 <div class="modal-header">
                     <span class={`close ${props.closeClass ?? "close-corner"}`} onClick={(e) => props.modal.hide(e)} />

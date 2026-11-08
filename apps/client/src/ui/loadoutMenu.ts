@@ -12,10 +12,15 @@ import type { Account } from "../account.ts";
 import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { mountLoadout } from "./components/Loadout.tsx";
-import { fadeIn, fadeOut, showElem } from "./fade.ts";
 import { translate } from "./i18n.ts";
-import { EMOTE_SLOT_COUNT, type LoadoutItemView, setLoadoutView, SORT_TYPES, type SortType } from "./loadoutView.ts";
+import {
+    EMOTE_SLOT_COUNT,
+    type LoadoutItemView,
+    setLoadoutMenu,
+    setLoadoutView,
+    SORT_TYPES,
+    type SortType,
+} from "./loadoutView.ts";
 import { MenuModal } from "./menuModal.ts";
 import type { LoadoutDisplay } from "./opponentDisplay.ts";
 
@@ -143,7 +148,6 @@ export interface LoadoutDom {
     list?: HTMLElement;
     itemName?: HTMLElement;
     picker?: HTMLElement;
-    screenBlock?: HTMLElement;
     hex?: HTMLInputElement;
     size?: HTMLInputElement;
     stroke?: HTMLInputElement;
@@ -151,9 +155,6 @@ export interface LoadoutDom {
 
 const RARITY_NAMES = ["stock", "common", "uncommon", "rare", "epic", "mythic"];
 const RARITY_COLORS = ["#c5c5c5", "#c5c5c5", "#12ff00", "#00deff", "#f600ff", "#d96100"];
-
-/** the start menu, which the loadout modal replaces while it is open */
-const startMain = () => document.getElementById("start-main");
 
 /**
  * The loadout / customize modal's logic. It keeps the working loadout and item state, and writes
@@ -256,7 +257,9 @@ export class LoadoutMenu {
             this.onHide();
         });
         this.confirmItemModal.onShow(() => {
-            fadeIn(this.dom.screenBlock, 200);
+            setLoadoutView((s) => {
+                s.screenBlock = true;
+            });
         });
         this.confirmItemModal.onHide((e) => {
             const confirmAll = e?.target instanceof HTMLElement && e.target.dataset.confirmAll;
@@ -269,7 +272,7 @@ export class LoadoutMenu {
         account.addEventListener("request", this.onRequest.bind(this));
         account.addEventListener("loadout", this.onLoadout.bind(this));
         account.addEventListener("items", this.onItems.bind(this));
-        mountLoadout(this);
+        setLoadoutMenu(() => this);
     }
 
     init() {
@@ -313,9 +316,9 @@ export class LoadoutMenu {
         }
         this.selectCat(0);
         this.tryBeginConfirmingItems();
-        fadeOut(startMain(), 200);
-        const background = document.getElementById("background");
-        if (background) background.style.display = "none";
+        setLoadoutView((s) => {
+            s.open = true;
+        });
     }
 
     onHide() {
@@ -326,10 +329,8 @@ export class LoadoutMenu {
         this.clearConfirmItemModal();
         setLoadoutView((s) => {
             s.cursorReset = true;
+            s.open = false;
         });
-        fadeIn(startMain(), 200);
-        const background = document.getElementById("background");
-        if (background) showElem(background);
     }
 
     onResize() {
@@ -446,7 +447,9 @@ export class LoadoutMenu {
 
     confirmAllItems() {
         this.clearConfirmItemModal();
-        fadeOut(this.dom.screenBlock, 300);
+        setLoadoutView((s) => {
+            s.screenBlock = false;
+        });
     }
 
     confirmNextItem() {
@@ -472,7 +475,9 @@ export class LoadoutMenu {
             }, 200);
         } else {
             this.confirmingItems = false;
-            fadeOut(this.dom.screenBlock, 300);
+            setLoadoutView((s) => {
+                s.screenBlock = false;
+            });
         }
     }
 

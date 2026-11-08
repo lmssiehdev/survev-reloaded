@@ -1,30 +1,5 @@
 import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
-import { createStore } from "solid-js";
-
-/** an opacity the view transitions to over `ms` (jQuery .animate replacement) */
-export interface Fade {
-    opacity: number;
-    ms: number;
-}
-
-/** a fresh fully opaque Fade (store objects must not be shared) */
-export const opaque = (): Fade => ({ opacity: 1, ms: 0 });
-
-/**
- * Writes `patch` into a store draft leaf by leaf: nested objects (the Fades) are merged rather
- * than replaced, so only the views reading a changed leaf update.
- */
-export function assignLeaves<T extends object>(target: T, patch: Partial<T>) {
-    for (const key in patch) {
-        const value = patch[key];
-        const current = target[key];
-        if (value && typeof value === "object" && current && typeof current === "object") {
-            Object.assign(current, value);
-        } else {
-            target[key] = value as T[typeof key];
-        }
-    }
-}
+import { createSignal, createStore } from "solid-js";
 
 export interface QuestView {
     type: string;
@@ -46,12 +21,9 @@ export interface QuestView {
     loading: boolean;
     showTimer: boolean;
     timerText: string;
-    /** desc shows "QUEST COMPLETE!" */
-    completeText: boolean;
+    /** just completed: shows "QUEST COMPLETE!", then fades out (.pass-quest-completing) */
+    completing: boolean;
     pulse: boolean;
-    main: Fade;
-    refresh: Fade;
-    counter: Fade;
 }
 
 export interface PassView {
@@ -63,7 +35,8 @@ export interface PassView {
     /** game type of the next unlock; "" for none */
     unlockItem: string;
     unlockPulse: boolean;
-    unlockImages: Fade;
+    /** the unlock images fade out while the next unlock swaps in */
+    unlockHidden: boolean;
     loadingVisible: boolean;
     lockedVisible: boolean;
     /** raises #pass-block above the loading spinner */
@@ -81,9 +54,19 @@ export const [passView, setPassView] = createStore<PassView>({
     barPct: 0,
     unlockItem: "",
     unlockPulse: false,
-    unlockImages: opaque(),
+    unlockHidden: false,
     loadingVisible: true,
     lockedVisible: false,
     blockRaised: false,
     quests: {},
 });
+
+/** what the pass panel calls back into; the Pass class sets it once it exists */
+export interface PassPanelProps {
+    getCategory(gameType: string): { loadoutType: string; categoryImage: string } | null;
+    onRefresh(idx: number): void;
+    onRefreshConfirm(idx: number): void;
+    onRefreshCancel(idx: number): void;
+}
+
+export const [passPanel, setPassPanel] = createSignal<PassPanelProps>();

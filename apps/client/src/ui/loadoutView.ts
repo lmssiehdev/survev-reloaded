@@ -1,4 +1,5 @@
-import { createStore } from "solid-js";
+import { createSignal, createStore } from "solid-js";
+import type { LoadoutMenu } from "./loadoutMenu.ts";
 
 export const SORT_TYPES = ["newest", "alpha", "rarity", "subcat"] as const;
 export type SortType = (typeof SORT_TYPES)[number];
@@ -57,6 +58,10 @@ export const [loadoutView, setLoadoutView] = createStore({
     listHeight: "",
     /** set once the modal has been closed (it closes with cursor: initial) */
     cursorReset: false,
+    /** the modal is open: the start menu and its background fade out */
+    open: false,
+    /** the dark screen behind the "new item" modal */
+    screenBlock: false,
     crosshairPanel: false,
     crosshairParent: false,
     emotePanel: false,
@@ -76,3 +81,6 @@ export const [loadoutView, setLoadoutView] = createStore({
     confirmTransform: "",
     confirmFilter: "",
 });
+
+/** the loadout modal's controller; LoadoutMenu sets it once it exists */
+export const [loadoutMenu, setLoadoutMenu] = createSignal<LoadoutMenu>();

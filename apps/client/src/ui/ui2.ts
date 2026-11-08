@@ -33,9 +33,8 @@ import {
     PERK_UI_COUNT,
     setHud,
 } from "./hudView.ts";
+import { itemPresses, setHudUi, TOUCH_HOLD_MS } from "./itemActions.ts";
 import type { Localization } from "./localization.ts";
-
-const touchHoldDuration = 0.75 * 1000;
 
 const KILL_FEED_KEYS: Array<keyof HudKillFeedLine> = ["text", "color", "offset", "opacity"];
 const WEAPON_KEYS: Array<keyof HudWeapon> = ["type", "ammo", "equipped", "selectable", "opacity", "width", "bindStr"];
@@ -79,13 +78,6 @@ const WeaponSlotToBind = {
     [GameConfig.WeaponSlot.Melee]: Input.EquipMelee,
     [GameConfig.WeaponSlot.Throwable]: Input.EquipThrowable,
 };
-
-function isLmb(e: MouseEvent) {
-    return e.button == 0;
-}
-function isRmb(e: MouseEvent) {
-    return e.button == 2;
-}
 
 /** the HUD's logic state (animation tickers, previous values); what it shows goes to the hud store */
 class UiState {
@@ -185,13 +177,6 @@ class UiState {
     downed = false;
 }
 
-interface EventListeners<
-    T extends keyof HTMLElementEventMap = keyof HTMLElementEventMap,
-> {
-    event: T;
-    elem: HTMLElement;
-    fn: (e: any) => void;
-}
 export class UiManager2 {
     state = new UiState();
     frameCount = 0;
@@ -199,140 +184,21 @@ export class UiManager2 {
     published = initialHud();
     pendingWrites: Array<(hud: HudState) => void> = [];
 
-    // elements other managers own that follow device.touch
-    dom = {
-        debugButton: document.getElementById("ui-debug-button"),
-        emoteButton: document.getElementById("ui-emote-button"),
-        touchStyles: document.getElementById("btn-touch-styles"),
-        aimLine: document.getElementById("btn-game-aim-line"),
-    };
-
     rareLootMessageQueue: string[] = [];
     uiEvents: Array<{ action: string; type: string; data: string | number }> = [];
 
-    eventListeners = [] as EventListeners[];
     clearQueuedItemActions: () => void;
     onKeyUp: (e: KeyboardEvent) => void;
-    // Game-item handling. Game item UIs support two actions:
-    // left-click to use, and right-click to drop.
-    itemActions = [] as Array<{
-        action: string;
-        type: string;
-        data: string | number;
-        div: HTMLElement;
-        actionQueued: boolean;
-        actionTime: number;
-        touchOsId?: number;
-    }>;
 
     constructor(
         public localization: Localization,
         public inputBinds: InputBinds,
     ) {
-        const setEventListener = <
-            T extends keyof HTMLElementEventMap = keyof HTMLElementEventMap,
-        >(
-            event: T,
-            elem: HTMLElement,
-            fn: (e: HTMLElementEventMap[T]) => void,
-        ) => {
-            this.eventListeners.push({
-                event,
-                elem,
-                fn,
-            });
-            elem.addEventListener(event, fn);
-        };
-
-        // the HUD components (components/Hud.tsx) are mounted before any game starts
-        const addItemAction = (action: string, type: string, data: string | number, divId: string) => {
-            const div = document.getElementById(divId);
-            if (!div) return;
-            this.itemActions.push({
-                action,
-                type,
-                data,
-                div,
-                actionQueued: false,
-                actionTime: 0,
-            });
-        };
-
-        for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
-            addItemAction("use", "weapon", i, `ui-weapon-id-${i + 1}`);
-            addItemAction("drop", "weapon", i, `ui-weapon-id-${i + 1}`);
-        }
-        for (const scopeType of SCOPE_LEVELS) {
-            addItemAction("use", "scope", scopeType, `ui-scope-${scopeType}`);
-            if (scopeType != "1xscope") {
-                addItemAction("drop", "loot", scopeType, `ui-scope-${scopeType}`);
-            }
-        }
-        for (const lootType of getUiInventoryItemTypes()) {
-            const def = GameObjectDefs.typeToDef(lootType);
-            if (def.type == "heal" || def.type == "boost") {
-                addItemAction("use", "loot", lootType, `ui-loot-${lootType}`);
-            }
-            addItemAction("drop", "loot", lootType, `ui-loot-${lootType}`);
-        }
-        for (const gearType of GEAR_TYPES) {
-            if (gearType != "backpack") {
-                addItemAction("drop", "loot", gearType, `ui-armor-${gearType}`);
-            }
-        }
-        for (let i = 0; i < PERK_UI_COUNT; i++) {
-            addItemAction("drop", "perk", i, `ui-perk-${i}`);
-        }
-        for (let i = 0; i < this.itemActions.length; i++) {
-            const item = this.itemActions[i];
-            setEventListener("mousedown", item.div, (e) => {
-                if (
-                    (item.action == "use" && isLmb(e))
-                    || (item.action == "drop" && isRmb(e))
-                ) {
-                    e.stopPropagation();
-                    item.actionQueued = true;
-                }
-            });
-            setEventListener("mouseup", item.div, (e) => {
-                if (
-                    item.actionQueued
-                    && ((item.action == "use" && isLmb(e))
-                        || (item.action == "drop" && isRmb(e)))
-                ) {
-                    e.stopPropagation();
-                    this.pushAction(item);
-                    item.actionQueued = false;
-                }
-            });
-            setEventListener("touchstart", item.div, (e) => {
-                if (e.changedTouches.length > 0) {
-                    e.stopPropagation();
-                    item.actionQueued = true;
-                    item.actionTime = new Date().getTime();
-                    item.touchOsId = e.changedTouches[0].identifier;
-                }
-            });
-            setEventListener("touchend", item.div, (_e) => {
-                if (
-                    new Date().getTime() - item.actionTime < touchHoldDuration
-                    && item.actionQueued
-                    && item.action == "use"
-                ) {
-                    this.pushAction(item);
-                }
-                item.actionQueued = false;
-            });
-            setEventListener("touchcancel", item.div, (_e) => {
-                item.actionQueued = false;
-            });
-        }
+        setHudUi(this);
 
         const canvas = document.getElementById("cvs")!;
         this.clearQueuedItemActions = () => {
-            for (let i = 0; i < this.itemActions.length; i++) {
-                this.itemActions[i].actionQueued = false;
-            }
+            for (const press of itemPresses) press.queued = false;
 
             // @HACK: Get rid of :hover styling when using touch
             if (device.touch) {
@@ -356,11 +222,6 @@ export class UiManager2 {
     }
 
     m_free() {
-        for (let i = 0; i < this.eventListeners.length; i++) {
-            const e = this.eventListeners[i];
-            e.elem.removeEventListener(e.event, e.fn);
-        }
-
         window.removeEventListener("focus", this.clearQueuedItemActions);
 
         window.removeEventListener("mouseup", this.clearQueuedItemActions);
@@ -394,16 +255,12 @@ export class UiManager2 {
         state.touch = device.touch;
         // Process touch-hold events
         if (state.touch) {
-            for (let i = 0; i < this.itemActions.length; i++) {
-                const itemAction = this.itemActions[i];
-                if (itemAction.actionQueued && itemAction.action == "drop") {
-                    const time = new Date().getTime();
-                    const elapsed = time - itemAction.actionTime;
-                    if (elapsed >= touchHoldDuration) {
-                        this.pushAction(itemAction);
-                        itemAction.actionTime = time;
-                        itemAction.actionQueued = false;
-                    }
+            const time = Date.now();
+            for (const press of itemPresses) {
+                if (press.queued && press.action == "drop" && time - press.time >= TOUCH_HOLD_MS) {
+                    this.pushAction(press);
+                    press.time = time;
+                    press.queued = false;
                 }
             }
         }
@@ -789,14 +646,6 @@ export class UiManager2 {
      * that changed, so frames where nothing changed don't touch the store (or schedule a flush).
      */
     publish(state: UiState) {
-        if (this.frameCount == 0 || state.touch != this.published.touch) {
-            const touchDisplay = (shown: string) => (state.touch ? shown : "none");
-            if (this.dom.touchStyles) this.dom.touchStyles.style.display = touchDisplay("flex");
-            if (this.dom.aimLine) this.dom.aimLine.style.display = touchDisplay("block");
-            if (this.dom.emoteButton) this.dom.emoteButton.style.display = touchDisplay("block");
-            if (this.dom.debugButton) this.dom.debugButton.style.display = touchDisplay("block");
-        }
-
         const m = this.published;
         const pending = this.pendingWrites;
         // the store still shows the previous game: write everything once
@@ -1228,6 +1077,4 @@ export function loadStaticDomImages() {
     setHud((hud) => {
         hud.staticImages = true;
     });
-    (document.getElementById("mag-glass-white") as HTMLImageElement).src = "img/gui/mag-glass.svg";
-    (document.getElementById("ui-minimize-img") as HTMLImageElement).src = "img/gui/minimize.svg";
 }

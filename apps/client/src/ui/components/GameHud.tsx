@@ -1,6 +1,4 @@
-import { render } from "@solidjs/web";
-import { type Component, createEffect, For, Show } from "solid-js";
-import { fadeIn, fadeOut } from "../fade.ts";
+import { For, Show } from "solid-js";
 import { type Display, gameUi, gameView, humanizeTime, type LocalStatsView, px } from "../gameView.ts";
 import { type MessageKey, t, translate } from "../i18n.ts";
 import { DeathScreen, EditorOverlay } from "./DeathScreen.tsx";
@@ -13,7 +11,7 @@ const stop = (e: Event) => e.stopPropagation();
 const shown = (value: boolean | null, display = "block") => (value === null ? undefined : value ? display : "none");
 const inline = (display: Display) => display || undefined;
 
-function RoleMenu() {
+export function RoleMenu() {
     return (
         <div id="ui-role-menu-wrapper" style={{ display: gameView.role.open ? "block" : "none" }}>
             <div
@@ -93,7 +91,7 @@ function RoleMenu() {
 
 const teamColors = ["yellow", "purple", "cyan", "orange"];
 
-function TeamPanel() {
+export function TeamPanel() {
     return (
         <div id="ui-top-left" class="js-ui-hud-show click-through">
             <div
@@ -141,7 +139,7 @@ function TeamPanel() {
     );
 }
 
-function MapPanel() {
+export function MapPanel() {
     const expand = () => gameUi()?.onMapExpand();
     return (
         <>
@@ -272,7 +270,7 @@ function MapPanel() {
     );
 }
 
-function Leaderboard() {
+export function Leaderboard() {
     return (
         <div id="ui-leaderboard-wrapper">
             <div id="ui-leaderboard" class="js-ui-hud-show">
@@ -302,18 +300,7 @@ function Leaderboard() {
     );
 }
 
-function TopCenter() {
-    let announcement: HTMLElement | undefined;
-    createEffect(
-        () => gameView.announcement.seq,
-        (seq) => {
-            if (!seq || !announcement) return;
-            const el = announcement;
-            fadeIn(el, 400);
-            // like jQuery's fadeIn callback: a later announcement doesn't cancel this one's fade out
-            setTimeout(() => fadeOut(el, 800), 400 + 3000);
-        },
-    );
+export function TopCenter() {
     return (
         <>
             <div
@@ -334,7 +321,10 @@ function TopCenter() {
                 </div>
             </div>
             <div id="ui-upper-center" class="click-through">
-                <div id="ui-announcement" ref={(el) => (announcement = el)}>{gameView.announcement.text}</div>
+                {/* remounts on every announcement, which restarts its fade in, hold and fade out */}
+                <Show when={gameView.announcement.seq} keyed>
+                    {(_seq) => <div id="ui-announcement" class="announce">{gameView.announcement.text}</div>}
+                </Show>
             </div>
         </>
     );
@@ -347,7 +337,7 @@ const localStatRows: { key: keyof LocalStatsView; label: MessageKey }[] = [
     { key: "timeAlive", label: "game-survived" },
 ];
 
-function SpectateOptions() {
+export function SpectateOptions() {
     return (
         <div id="ui-spectate-options-wrapper" style={{ top: px(gameView.spectate.optionsTop) }}>
             <div
@@ -415,26 +405,4 @@ function SpectateOptions() {
             </div>
         </div>
     );
-}
-
-/**
- * Fills the in-game UI's mount points in index.html (`data-game-view`; UiManager's class-wide
- * display toggles skip them). Each island sits where its markup was, between the parts that
- * ui2.ts, touch.ts and emote.ts own.
- */
-export function mountGameView() {
-    const islands: [string, Component][] = [
-        ["ui-role-menu-ui", RoleMenu],
-        ["ui-game-menu-ui", GameMenu],
-        ["ui-top-left-ui", TeamPanel],
-        ["ui-map-ui", MapPanel],
-        ["ui-leaderboard-ui", Leaderboard],
-        ["ui-top-center-ui", TopCenter],
-        ["ui-spectate-ui", SpectateOptions],
-        ["ui-stats-ui", DeathScreen],
-        ["ui-editor-ui", EditorOverlay],
-    ];
-    for (const [id, View] of islands) {
-        render(() => <View />, document.getElementById(id)!);
-    }
 }

@@ -1,17 +1,6 @@
-import { createEffect, For, Match, Show, Switch } from "solid-js";
-import { cancelFade, fadeIn } from "../fade.ts";
+import { For, Match, Show, Switch } from "solid-js";
 import { gameUi, gameView, humanizeTime, px, type StatsPlayerView } from "../gameView.ts";
 import { type MessageKey, t, translate } from "../i18n.ts";
-
-/** one "label / value" row of a player column */
-function StatsInfo(props: { label: MessageKey; value: string | number }) {
-    return (
-        <div class="ui-stats-info">
-            <div>{t(props.label)}</div>
-            <div>{props.value}</div>
-        </div>
-    );
-}
 
 /** "<label> " + value, the header's overview entries */
 function HeaderStat(props: { class?: string; label: string; value: string | number }) {
@@ -57,153 +46,143 @@ function Overview() {
     );
 }
 
-function PlayerColumn(props: { player: StatsPlayerView }) {
+/**
+ * The screen fades in (CSS `.fade-in`) after `stats.delay`: the background and contents, then
+ * each player column and its rows one after another, then the buttons.
+ */
+const ROW_FADE_MS = 500;
+const fadeIn = (delay: number, ms = ROW_FADE_MS) => ({ "--fade-delay": `${delay}ms`, "--fade": `${ms}ms` });
+
+/** a column's rows: name, 4 stats and maybe a badge */
+const rowCount = (player: StatsPlayerView) => 5 + (player.badge ? 1 : 0);
+
+/** one "label / value" row of a player column */
+function StatsInfo(props: { label: MessageKey; value: string | number; delay: number }) {
+    return (
+        <div class="ui-stats-info fade-in" style={fadeIn(props.delay)}>
+            <div>{t(props.label)}</div>
+            <div>{props.value}</div>
+        </div>
+    );
+}
+
+function PlayerColumn(props: { player: StatsPlayerView; start: number; step: number }) {
+    const row = (idx: number) => props.start + ROW_FADE_MS + idx * props.step;
     return (
         <div
-            class={["ui-stats-info-player", { "ui-stats-info-status": props.player.dead }]}
-            style={{ left: px(props.player.left) }}
+            class={["ui-stats-info-player fade-in", { "ui-stats-info-status": props.player.dead }]}
+            style={{ left: px(props.player.left), ...fadeIn(props.start) }}
         >
-            <div class="ui-stats-info-player-name">{props.player.name}</div>
-            <StatsInfo label="game-kills" value={props.player.kills} />
-            <StatsInfo label="game-damage-dealt" value={props.player.damageDealt} />
-            <StatsInfo label="game-damage-taken" value={props.player.damageTaken} />
-            <StatsInfo label="game-survived" value={humanizeTime(props.player.timeAlive)} />
+            <div class="ui-stats-info-player-name fade-in" style={fadeIn(row(0))}>{props.player.name}</div>
+            <StatsInfo label="game-kills" value={props.player.kills} delay={row(1)} />
+            <StatsInfo label="game-damage-dealt" value={props.player.damageDealt} delay={row(2)} />
+            <StatsInfo label="game-damage-taken" value={props.player.damageTaken} delay={row(3)} />
+            <StatsInfo label="game-survived" value={humanizeTime(props.player.timeAlive)} delay={row(4)} />
             <Show when={props.player.badge}>
-                <div class={`ui-stats-info-player-badge ${props.player.badge}`}></div>
+                <div class={`ui-stats-info-player-badge ${props.player.badge} fade-in`} style={fadeIn(row(5))} />
             </Show>
         </div>
     );
 }
 
-const fadeFrom0 = (el: Element, delay: number, duration: number) =>
-    el.animate([{ opacity: 0 }, { opacity: 1 }], { delay, duration, easing: "ease-in-out", fill: "backwards" });
-
-/**
- * #ui-stats: the death / victory screen. It fades in after `stats.delay`: the background and
- * contents, then each player column and its rows, then the buttons (jQuery's timings).
- */
+/** #ui-stats: the death / victory screen */
 export function DeathScreen() {
-    let bg: HTMLElement | undefined;
-    let inner: HTMLElement | undefined;
-    let infoBox: HTMLElement | undefined;
-    let options: HTMLElement | undefined;
-
-    createEffect(
-        () => ({
-            seq: gameView.stats.seq,
-            contents: gameView.stats.contents,
-            delay: gameView.stats.delay,
-            teamAd: gameView.stats.teamAd,
-            playerCount: gameView.stats.players.length,
-        }),
-        (screen) => {
-            if (!screen.contents || !bg || !inner || !infoBox || !options) return;
-            const anims = [fadeFrom0(bg, screen.delay, 1000), fadeFrom0(inner, screen.delay, 1000)];
-            const timers: ReturnType<typeof setTimeout>[] = [];
-            const buttons = [...options.children].filter((el) => el instanceof HTMLElement);
-            const showButton = (el: HTMLElement, delay: number, duration: number) => {
-                el.style.display = "none";
-                timers.push(setTimeout(() => fadeIn(el, duration), delay));
-            };
-
-            let elemIdx = 0;
-            if (screen.teamAd) {
-                buttons.forEach((el, idx) => {
-                    showButton(el, 4100 + (elemIdx + idx) * 300 + 300, 750);
-                    elemIdx++;
-                });
-            } else {
-                const elemFadeTime = 500;
-                const elemDelay = 250 / Math.max(1, screen.playerCount);
-                const baseDelay = 750 / Math.max(1, screen.playerCount);
-                [...infoBox.children].forEach((column, idx) => {
-                    const start = screen.delay + baseDelay + (elemIdx + idx) * elemDelay;
-                    anims.push(fadeFrom0(column, start, elemFadeTime));
-                    // each row once its column is in
-                    [...column.children].forEach((row, rowIdx) => {
-                        anims.push(fadeFrom0(row, start + elemFadeTime + rowIdx * elemDelay, elemFadeTime));
-                        elemIdx++;
-                    });
-                    elemIdx++;
-                });
-                buttons.forEach((el, idx) => {
-                    showButton(el, screen.delay + baseDelay + (elemIdx + idx) * elemDelay + 500, elemFadeTime);
-                    elemIdx++;
-                });
-            }
-
-            return () => {
-                for (const anim of anims) anim.cancel();
-                for (const timer of timers) clearTimeout(timer);
-                for (const el of buttons) cancelFade(el);
-            };
-        },
-    );
+    const players = () => Math.max(1, gameView.stats.players.length);
+    const step = () => 250 / players();
+    const base = () => gameView.stats.delay + 750 / players();
+    /** each column's start: columns and their rows fade in one after another */
+    const columnStarts = () => {
+        let elemIdx = 0;
+        return gameView.stats.players.map((player, idx) => {
+            const start = base() + (elemIdx + idx) * step();
+            elemIdx += rowCount(player) + 1;
+            return start;
+        });
+    };
+    const rowsBefore = () => gameView.stats.players.reduce((sum, player) => sum + rowCount(player) + 1, 0);
+    /** the play-again / spectate buttons, after the columns (or late on a team game's ad screen) */
+    const button = (idx: number) =>
+        gameView.stats.teamAd
+            ? fadeIn(4100 + idx * 600 + 300, 750)
+            : fadeIn(base() + (rowsBefore() + idx * 2) * step() + 500);
 
     return (
         <div id="ui-stats" style={{ display: gameView.stats.open ? "block" : "none" }}>
-            <div
-                id="ui-stats-bg"
-                ref={(el) => (bg = el)}
-                style={{
-                    display: gameView.stats.contents ? "block" : "none",
-                    opacity: gameView.stats.contents ? 1 : 0,
-                }}
-            >
-            </div>
-            <div id="ui-stats-contents" style={{ top: gameView.stats.teamAd ? "10%" : undefined }}>
-                <div
-                    id="ui-stats-contents-inner"
-                    ref={(el) => (inner = el)}
-                    style={{
-                        display: gameView.stats.contents ? "block" : "none",
-                        opacity: gameView.stats.contents ? 1 : 0,
-                    }}
-                >
-                    <div id="ui-stats-header">
-                        <Show when={gameView.stats.filled}>
-                            <div>
-                                <div class="ui-stats-header-title">{gameView.stats.title}</div>
-                                <div class="ui-stats-header-overview">
-                                    <Overview />
+            {/* remounts each time the screen opens, which restarts the fade-ins */}
+            <Show when={gameView.stats.seq} keyed>
+                {(_seq) => (
+                    <>
+                        <div
+                            id="ui-stats-bg"
+                            class="fade-in"
+                            style={{
+                                display: gameView.stats.contents ? "block" : "none",
+                                opacity: gameView.stats.contents ? 1 : 0,
+                                ...fadeIn(gameView.stats.delay, 1000),
+                            }}
+                        >
+                        </div>
+                        <div id="ui-stats-contents" style={{ top: gameView.stats.teamAd ? "10%" : undefined }}>
+                            <div
+                                id="ui-stats-contents-inner"
+                                class="fade-in"
+                                style={{
+                                    display: gameView.stats.contents ? "block" : "none",
+                                    opacity: gameView.stats.contents ? 1 : 0,
+                                    ...fadeIn(gameView.stats.delay, 1000),
+                                }}
+                            >
+                                <div id="ui-stats-header">
+                                    <Show when={gameView.stats.filled}>
+                                        <div>
+                                            <div class="ui-stats-header-title">{gameView.stats.title}</div>
+                                            <div class="ui-stats-header-overview">
+                                                <Overview />
+                                            </div>
+                                        </div>
+                                    </Show>
+                                </div>
+                                <div
+                                    id="ui-stats-info-box"
+                                    style={{ height: gameView.stats.teamAd ? "0px" : undefined }}
+                                >
+                                    <For each={gameView.stats.players}>
+                                        {(player, idx) => (
+                                            <PlayerColumn player={player} start={columnStarts()[idx()]} step={step()} />
+                                        )}
+                                    </For>
+                                </div>
+                                <div id="ui-stats-options">
+                                    <Show when={gameView.stats.filled}>
+                                        <a
+                                            class="ui-stats-restart btn-green btn-darken menu-option fade-in"
+                                            style={{
+                                                width: px(gameView.stats.restartWidth),
+                                                left: px(gameView.stats.restartLeft),
+                                                ...button(0),
+                                            }}
+                                            onClick={() => gameUi()?.quitGame()}
+                                        >
+                                            {t("game-play-new-game")}
+                                        </a>
+                                        <Show when={gameView.stats.spectateButton}>
+                                            <a
+                                                class="btn-green btn-darken menu-option ui-stats-spectate fade-in"
+                                                style={button(1)}
+                                                onClick={() => gameUi()?.beginSpectating()}
+                                            >
+                                                {t("game-spectate")}
+                                            </a>
+                                        </Show>
+                                    </Show>
+                                </div>
+                                <div id="ui-stats-logo" style={{ display: gameView.stats.teamAd ? "none" : "block" }}>
                                 </div>
                             </div>
-                        </Show>
-                    </div>
-                    <div
-                        id="ui-stats-info-box"
-                        ref={(el) => (infoBox = el)}
-                        style={{ height: gameView.stats.teamAd ? "0px" : undefined }}
-                    >
-                        <For each={gameView.stats.players}>
-                            {(player) => <PlayerColumn player={player} />}
-                        </For>
-                    </div>
-                    <div id="ui-stats-options" ref={(el) => (options = el)}>
-                        <Show when={gameView.stats.filled}>
-                            <a
-                                class="ui-stats-restart btn-green btn-darken menu-option"
-                                style={{
-                                    width: px(gameView.stats.restartWidth),
-                                    left: px(gameView.stats.restartLeft),
-                                }}
-                                onClick={() => gameUi()?.quitGame()}
-                            >
-                                {t("game-play-new-game")}
-                            </a>
-                            <Show when={gameView.stats.spectateButton}>
-                                <a
-                                    class="btn-green btn-darken menu-option ui-stats-spectate"
-                                    onClick={() => gameUi()?.beginSpectating()}
-                                >
-                                    {t("game-spectate")}
-                                </a>
-                            </Show>
-                        </Show>
-                    </div>
-                    <div id="ui-stats-logo" style={{ display: gameView.stats.teamAd ? "none" : "block" }}></div>
-                </div>
-            </div>
+                        </div>
+                    </>
+                )}
+            </Show>
         </div>
     );
 }

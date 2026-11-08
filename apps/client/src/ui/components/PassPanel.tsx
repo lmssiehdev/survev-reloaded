@@ -1,4 +1,4 @@
-import { type JSX, render } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
 import type { EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
 import type { HealEffectDef } from "@survev/shared/defs/gameObjects/healEffectDefs.ts";
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
@@ -7,26 +7,12 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { createMemo, createSignal, For } from "solid-js";
 import { helpers } from "../../helpers.ts";
 import { t, translate } from "../i18n.ts";
-import { type Fade, passView, type QuestView } from "../passView.ts";
+import { type PassPanelProps, passView, type QuestView } from "../passView.ts";
 import { profileUi } from "../profile.ts";
 import { startMenu } from "../startMenu.ts";
 import { RightColumnToggle } from "./StartMenu.tsx";
 
-export interface PassPanelProps {
-    getCategory(gameType: string): { loadoutType: string; categoryImage: string } | null;
-    onRefresh(idx: number): void;
-    onRefreshConfirm(idx: number): void;
-    onRefreshCancel(idx: number): void;
-}
-
 const QUEST_SLOTS = [0, 1];
-
-function fadeStyle(fade: Fade): JSX.CSSProperties {
-    return {
-        opacity: String(fade.opacity),
-        transition: fade.ms ? `opacity ${fade.ms}ms` : undefined,
-    };
-}
 
 function display(visible: boolean) {
     return visible ? "block" : "none";
@@ -55,8 +41,13 @@ function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelP
     return (
         <div
             id={`pass-quest-${props.idx}`}
-            class={["pass-quest", { "pass-bg-pulse": !!props.quest?.pulse }]}
-            style={props.quest ? { display: "block", ...fadeStyle(props.quest.main) } : undefined}
+            class={["pass-quest", {
+                "pass-bg-pulse": !!props.quest?.pulse,
+                "pass-quest-completing": !!props.quest?.completing,
+                // back in with its refresh timer
+                "fade-in": !!props.quest?.showTimer,
+            }]}
+            style={props.quest ? { display: "block", "--fade": "250ms" } : undefined}
         >
             <div class="pass-quest-timer" style={{ display: display(!!props.quest?.showTimer) }}>
                 {props.quest?.timerText}
@@ -98,7 +89,7 @@ function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelP
                             : undefined}
                     />{" "}
                     <span class="pass-quest-desc" style={{ "font-size": props.quest ? descFontSize() : undefined }}>
-                        {props.quest?.completeText ? "QUEST COMPLETE!" : title()}
+                        {props.quest?.completing ? "QUEST COMPLETE!" : title()}
                     </span>
                 </div>
                 <div
@@ -111,7 +102,6 @@ function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelP
                     class={["pass-quest-refresh", {
                         "pass-quest-refresh-disabled": !!props.quest && !props.quest.refreshEnabled,
                     }]}
-                    style={props.quest ? fadeStyle(props.quest.refresh) : undefined}
                     onClick={() => props.onRefresh(props.idx)}
                 />
                 <div class="pass-quest-progress">
@@ -121,7 +111,7 @@ function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelP
                             style={props.quest ? { width: `${props.quest.barPct}%` } : undefined}
                         />
                     </div>{" "}
-                    <div class="pass-quest-counter" style={props.quest ? fadeStyle(props.quest.counter) : undefined}>
+                    <div class="pass-quest-counter">
                         <span class="pass-quest-counter-current">{props.quest?.current}</span> <span>/</span>{" "}
                         <span class="pass-quest-counter-target">{props.quest?.target}</span>
                     </div>
@@ -190,7 +180,10 @@ export function PassPanel(props: PassPanelProps) {
                     </div>
                     <div
                         id="pass-progress-unlock-wrapper"
-                        class={{ "pass-unlock-pulse": passView.unlockPulse }}
+                        class={{
+                            "pass-unlock-pulse": passView.unlockPulse,
+                            "pass-unlock-hidden": passView.unlockHidden,
+                        }}
                         onMouseEnter={() => setHovered(true)}
                         onMouseLeave={() => setHovered(false)}
                     >
@@ -203,7 +196,6 @@ export function PassPanel(props: PassPanelProps) {
                                 style={{
                                     "background-image": unlock().image,
                                     filter: unlock().filter || undefined,
-                                    ...fadeStyle(passView.unlockImages),
                                 }}
                             />
                         </div>
@@ -216,7 +208,6 @@ export function PassPanel(props: PassPanelProps) {
                                     id="pass-progress-unlock-type-image"
                                     style={{
                                         "background-image": unlock().typeImage || undefined,
-                                        ...fadeStyle(passView.unlockImages),
                                     }}
                                 />
                             </div>
@@ -245,9 +236,4 @@ export function PassPanel(props: PassPanelProps) {
             </div>
         </>
     );
-}
-
-/** fills #pass-wrapper in index.html */
-export function mountPassPanel(el: HTMLElement, props: PassPanelProps) {
-    return render(() => <PassPanel {...props} />, el);
 }

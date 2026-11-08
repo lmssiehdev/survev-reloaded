@@ -5,9 +5,8 @@ import { math } from "@survev/shared/utils/math.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import type { Account } from "../account.ts";
-import { mountPassPanel } from "./components/PassPanel.tsx";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
-import { assignLeaves, type Fade, opaque, type QuestView, setPassView } from "./passView.ts";
+import { type QuestView, setPassPanel, setPassView } from "./passView.ts";
 
 function getNextPassUnlockItemId(passType: string, currentLevel: number) {
     const passDef = PassDefs[passType];
@@ -91,7 +90,7 @@ export class Pass {
     ) {
         this.account.addEventListener("request", this.onRequest.bind(this));
         this.account.addEventListener("pass", this.onPass.bind(this));
-        mountPassPanel(document.getElementById("pass-wrapper")!, {
+        setPassPanel({
             getCategory: (gameType) => this.loadoutMenu.getCategory(gameType),
             onRefresh: (idx) => this.onRefreshClick(idx),
             onRefreshConfirm: (idx) => this.onRefreshConfirm(idx),
@@ -102,7 +101,7 @@ export class Pass {
 
     setQuestView(idx: number, view: Partial<QuestView>) {
         setPassView((s) => {
-            assignLeaves(s.quests[idx], view);
+            Object.assign(s.quests[idx], view);
         });
     }
 
@@ -206,13 +205,10 @@ export class Pass {
                     loading: false,
                     showTimer: old?.showTimer ?? false,
                     timerText: old?.timerText ?? "",
-                    completeText: false,
+                    completing: false,
                     pulse: false,
-                    main: opaque(),
-                    refresh: opaque(),
-                    counter: opaque(),
                 };
-                if (old) assignLeaves(old, next);
+                if (old) Object.assign(old, next);
                 else s.quests[quest.data.idx] = next;
             });
             this.setQuestRefreshEnabled(quest);
@@ -298,14 +294,13 @@ export class Pass {
     }
 
     animatePassLevelUp() {
-        const fade = (opacity: number): Fade => ({ opacity, ms: 250 });
         setPassView((s) => {
             s.level = this.pass.currentLevel;
             s.unlockPulse = true;
         });
         this.after([], 750, () => {
             setPassView((s) => {
-                assignLeaves(s.unlockImages, fade(0));
+                s.unlockHidden = true;
             });
         });
         this.after([], 1000, () => {
@@ -316,24 +311,14 @@ export class Pass {
             setPassView((s) => {
                 s.unlockItem = nextUnlockItemId;
                 s.unlockPulse = false;
-                assignLeaves(s.unlockImages, fade(1));
+                s.unlockHidden = false;
             });
         });
     }
 
     animateQuestComplete(quest: (typeof this.quests)[number]) {
         const idx = quest.data.idx;
-        const fade = (opacity: number, ms = 250): Fade => ({ opacity, ms });
-        this.setQuestView(idx, {
-            pulse: true,
-            // the disabled class forces opacity 0.25; fade from there
-            refreshEnabled: true,
-            refresh: fade(0.25),
-            counter: fade(0),
-            completeText: true,
-        });
-        this.after(quest.timers, 250, () => this.setQuestView(idx, { refresh: fade(0) }));
-        this.after(quest.timers, 1000, () => this.setQuestView(idx, { main: fade(0, 750) }));
+        this.setQuestView(idx, { pulse: true, refreshEnabled: true, completing: true });
     }
 
     update(dt: number) {
@@ -434,7 +419,7 @@ export class Pass {
                 fixedQuest.timer.displayed = showRefreshTimer;
                 this.setQuestView(fixedQuest.data.idx, {
                     pulse: false,
-                    main: { opacity: 1, ms: 250 },
+                    completing: false,
                     showTimer: showRefreshTimer,
                 });
             }

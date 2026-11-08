@@ -1,4 +1,3 @@
-import { render } from "@solidjs/web";
 import { For, Show } from "solid-js";
 import { t, translate } from "../i18n.ts";
 import type { ItemRef, LoadoutMenu } from "../loadoutMenu.ts";
@@ -271,7 +270,7 @@ function EmotePanel(props: { menu: LoadoutMenu }) {
 }
 
 /** the loadout / customize modal, opened from the start menu */
-function CustomizeModal(props: { menu: LoadoutMenu }) {
+export function CustomizeModal(props: { menu: LoadoutMenu }) {
     const title = () => {
         const cat = loadoutView.categories[loadoutView.catIdx];
         return cat ? translate(`loadout-title-${cat.loadoutType}`).toUpperCase() : "";
@@ -279,7 +278,7 @@ function CustomizeModal(props: { menu: LoadoutMenu }) {
     return (
         <div
             id="modal-customize"
-            class="modal"
+            class={["modal", props.menu.modal.classes()]}
             ref={(el) => props.menu.modal.attach(el)}
             style={{ cursor: loadoutView.cursorReset ? "initial" : undefined }}
         >
@@ -354,11 +353,15 @@ function CustomizeModal(props: { menu: LoadoutMenu }) {
 }
 
 /** "You got a new item!", shown over a dark screen block when the loadout opens */
-function ItemConfirmModal(props: { menu: LoadoutMenu }) {
+export function ItemConfirmModal(props: { menu: LoadoutMenu }) {
     const modal = props.menu.confirmItemModal;
     return (
-        <div id="modal-screen-block" ref={(el) => (props.menu.dom.screenBlock = el)}>
-            <div id="modal-item-confirm" class="modal" ref={(el) => modal.attach(el)}>
+        <div
+            id="modal-screen-block"
+            class={["fade", { faded: !loadoutView.screenBlock }]}
+            style={{ "--fade": loadoutView.screenBlock ? "200ms" : "300ms" }}
+        >
+            <div id="modal-item-confirm" class={["modal", modal.classes()]} ref={(el) => modal.attach(el)}>
                 <div class="modal-content modal-close">
                     <div class="modal-header modal-header-name">
                         <h2>You got a new item!</h2>
@@ -388,10 +391,4 @@ function ItemConfirmModal(props: { menu: LoadoutMenu }) {
             </div>
         </div>
     );
-}
-
-/** fills the #loadout-modal and #loadout-item-confirm mount points in index.html */
-export function mountLoadout(menu: LoadoutMenu) {
-    render(() => <CustomizeModal menu={menu} />, document.getElementById("loadout-modal")!);
-    render(() => <ItemConfirmModal menu={menu} />, document.getElementById("loadout-item-confirm")!);
 }

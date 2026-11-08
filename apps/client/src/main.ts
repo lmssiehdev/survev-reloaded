@@ -25,12 +25,8 @@ import { ResourceManager } from "./resources.ts";
 import { SiteInfo } from "./siteInfo.ts";
 import { teamCodeFromPath } from "./teamLink.ts";
 import { notificationModal, showIpBan, showNotification, showRefresh } from "./ui/appModals.ts";
-import { mountAccount } from "./ui/components/Account.tsx";
-import { mountAppModals } from "./ui/components/AppModals.tsx";
-import { mountEmoteWheels } from "./ui/components/EmoteWheel.tsx";
-import { mountGameView } from "./ui/components/GameHud.tsx";
-import { mountHud } from "./ui/components/Hud.tsx";
-import { currentNewsTime, mountStartMenu } from "./ui/components/StartMenu.tsx";
+import { mountApp } from "./ui/components/App.tsx";
+import { currentNewsTime } from "./ui/components/StartMenu.tsx";
 import { LoadoutMenu } from "./ui/loadoutMenu.ts";
 import { Localization } from "./ui/localization.ts";
 import Menu from "./ui/menu.ts";
@@ -42,8 +38,6 @@ import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 
 export class Application {
-    startMenuWrapper = document.getElementById("start-menu-wrapper")!;
-    gameAreaWrapper = document.getElementById("game-area-wrapper")!;
     config = appConfig;
     localization = new Localization();
 
@@ -420,9 +414,6 @@ export class Application {
     }
 
     refreshUi() {
-        this.startMenuWrapper.style.display = this.active ? "flex" : "none";
-        this.gameAreaWrapper.style.display = this.active ? "none" : "block";
-        this.gameAreaWrapper.style.opacity = this.active ? "0" : "1";
         document.body.classList.toggle("user-select-none", !this.active);
         if (this.active) {
             document.removeEventListener("contextmenu", this.contextListener);
@@ -755,13 +746,8 @@ export class Application {
 const sharedTeamCode = teamCodeFromPath(window.location.pathname);
 if (sharedTeamCode) window.history.replaceState("", "", `/#${sharedTeamCode}`);
 
-// islands mount before Application, whose classes look their elements up by id
-mountAppModals();
-mountStartMenu();
-mountAccount();
-mountGameView();
-mountHud();
-mountEmoteWheels();
+// the UI mounts before Application, whose game classes look some of its elements up by id
+mountApp();
 const App = new Application();
 setApp(App);
 

@@ -1,4 +1,3 @@
-import { render } from "@solidjs/web";
 import { For } from "solid-js";
 import { appModals, ipBanModal, notificationModal, refreshModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
@@ -22,7 +21,7 @@ function Lines(props: { text: string }) {
     );
 }
 
-function AppModals() {
+export function AppModals() {
     return (
         <>
             <KeybindModal />
@@ -67,9 +66,4 @@ function AppModals() {
             <CreateAccountModal />
         </>
     );
-}
-
-/** the start menu's modals; fills the #app-modals mount point in index.html */
-export function mountAppModals() {
-    render(() => <AppModals />, document.getElementById("app-modals")!);
 }

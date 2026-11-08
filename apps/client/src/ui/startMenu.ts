@@ -34,7 +34,7 @@ export const [startMenu, setStartMenu] = createStore({
     youtube: null as SiteInfoRes["youtube"] | null,
 
     /** the start menu is showing (not in a game) */
-    active: false,
+    active: true,
     errorMessage: "",
     /** the quick play button showing a spinner, -1 for none */
     pendingModeIdx: -1,

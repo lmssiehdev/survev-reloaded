@@ -12,11 +12,14 @@ const styleIcon = (style: AimStyle | undefined) => ({
  * The in-game menu's touch toggles. UiManager2 shows `#btn-touch-styles` and `#btn-game-aim-line`
  * on touch devices (it sets their display).
  */
+/** shown on touch devices once a game runs */
+const touchOnly = (display: string) => (touchControls.touch ? display : "none");
+
 export function TouchControls() {
     const container = () => (touchControls.touch ? "inline-block" : undefined);
     return (
         <>
-            <div id="btn-touch-styles" class="btns-game-double-row">
+            <div id="btn-touch-styles" class="btns-game-double-row" style={{ display: touchOnly("flex") }}>
                 <div class="btn-game-container" style={{ display: container() }}>
                     <a
                         id="btn-game-move-style"
@@ -44,6 +47,7 @@ export function TouchControls() {
                         "aim-line-off-icon": touchControls.aimLine === false,
                     },
                 ]}
+                style={{ display: touchOnly("block") }}
                 ref={onNative("touchstart", () => touchRef()?.toggleAimLine())}
             >
                 {t("game-aim-line")}

@@ -5452,3 +5452,25 @@ span.ui-stats-header-value {
         transform: scale(0.7);
     }
 }
+
+/* fades in, holds for 3 s, fades out */
+#ui-announcement.announce {
+    animation: announce 4200ms ease-in-out forwards;
+    display: block;
+}
+
+@keyframes announce {
+    0% {
+        opacity: 0;
+    }
+    9.5% {
+        opacity: 1;
+    }
+    81% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        visibility: hidden;
+    }
+}

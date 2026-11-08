@@ -72,10 +72,6 @@ export class SiteInfo {
         if (mapDef) {
             this.config.set("clientTheme", info.clientTheme);
             this.config.set("cachedBgImg", mapDef.desc.backgroundImg);
-            const bg = document.getElementById("background");
-            if (bg) {
-                bg.style.backgroundImage = `url(${mapDef.desc.backgroundImg})`;
-            }
         }
     }
 }
