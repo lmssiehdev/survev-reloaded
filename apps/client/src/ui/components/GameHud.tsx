@@ -134,9 +134,7 @@ export function TeamPanel() {
                                     class={["ui-bar-inner ui-health-actual", { "ui-bar-danger": member.healthDanger }]}
                                     style={{
                                         // --team-health-bar: the bar's full width (game.css)
-                                        width: member.health === null
-                                            ? undefined
-                                            : member.healthEmpty
+                                        width: member.healthEmpty
                                             ? "0px"
                                             : `max(1px, calc(var(--team-health-bar) * ${member.health}))`,
                                         "background-color": member.healthColor || undefined,
@@ -259,14 +257,11 @@ export function MapPanel() {
                     style={tabletLandscape() ? { right: "144px" } : undefined}
                 >
                     <div id="ui-kill-leader-name">
-                        {gameView.killLeader.playerId === null
-                            ? "Waiting for new leader"
-                            : gameView.killLeader.playerId
-                            ? gameView.killLeader.name
-                            : t(gameView.killLeader.hunted ? "game-waiting-for-hunted" : "game-waiting-for-new-leader")}
+                        {gameView.killLeader?.name
+                            ?? t(gameView.killLeaderHunted ? "game-waiting-for-hunted" : "game-waiting-for-new-leader")}
                     </div>{" "}
                     <div id="ui-kill-leader-icon"></div>{" "}
-                    <div id="ui-kill-leader-count">{gameView.killLeader.playerId ? gameView.killLeader.kills : 0}</div>
+                    <div id="ui-kill-leader-count">{gameView.killLeader?.kills ?? 0}</div>
                 </div>
             </div>
         </>

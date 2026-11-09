@@ -2,24 +2,17 @@ import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import { createStore } from "solid-js";
+import { createSignal, createStore } from "solid-js";
 import { api } from "./api.ts";
 import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
+import { showNotification } from "./ui/appModals.ts";
 
 import { type Treaty, treaty } from "@elysia/eden";
 import type { UserRouterApp } from "@survev/api/types";
 
 type UserRouter = ReturnType<typeof treaty<UserRouterApp>>["api"]["user"];
 type UserRoute = Exclude<keyof UserRouter, "~path">;
-
-type AccountEventMap = {
-    login: (account: Account) => void;
-    loadout: (loadout: Loadout) => void;
-    items: (items: Item[]) => void;
-    error: (error: string, reason?: string) => void;
-    pass: (pass: PassState, quests: QuestState[], resetRefresh: boolean) => void;
-};
 
 /** unknown: before site_info says whether there is a login to ask about */
 export type AccountStatus = "unknown" | "loggingIn" | "loggedIn" | "loggedOut";
@@ -37,15 +30,29 @@ export const [accountView, setAccountView] = createStore({
     itemAlert: false,
 });
 
+/*
+ * What game classes follow (ui/controller.ts `follow`). Account keeps the truth in its fields, since
+ * a signal read returns the old value until the next flush; these get a new value on every change.
+ */
+export const [accountLoadout, setAccountLoadout] = createSignal<Loadout>(loadouts.defaultLoadout());
+export const [accountItems, setAccountItems] = createSignal<Item[]>([]);
+/** resetRefresh: the quests' refresh timers start over */
+export const [accountPass, setAccountPass] = createSignal<
+    null | { pass: PassState; quests: QuestState[]; resetRefresh: boolean }
+>(null);
+
+const serverError = "Operation failed, please try again later.";
+
 export class Account {
-    events: Record<string, Array<(...args: any[]) => void>> = {};
     requestsInFlight = 0;
-    /** site_info said whether to ask for the profile */
-    loginChecked = false;
+    status: AccountStatus = "unknown";
+
+    get loggedIn() {
+        return this.status == "loggedIn";
+    }
+
     /** resolves the `settled()` promises once no request is in flight */
     private onSettled: Array<() => void> = [];
-    loggingIn = false;
-    loggedIn = false;
     profile = {
         linked: false,
         usernameSet: false,
@@ -109,15 +116,8 @@ export class Account {
 
     /** copies what the views show into accountView */
     publish() {
-        const status: AccountStatus = this.loggingIn
-            ? "loggingIn"
-            : this.loggedIn
-            ? "loggedIn"
-            : this.loginChecked
-            ? "loggedOut"
-            : "unknown";
         setAccountView((v) => {
-            v.status = status;
+            v.status = this.status;
             v.requests = this.requestsInFlight;
             v.username = this.profile.username || "";
             v.usernameChangeTime = this.profile.usernameChangeTime;
@@ -126,51 +126,35 @@ export class Account {
         });
     }
 
-    addEventListener<E extends keyof AccountEventMap>(
-        event: E,
-        callback: AccountEventMap[E],
-    ) {
-        this.events[event] = this.events[event] || [];
-        this.events[event].push(callback);
-    }
-
-    removeEventListener<E extends keyof AccountEventMap>(
-        event: E,
-        callback: AccountEventMap[E],
-    ) {
-        const listeners = this.events[event] || [];
-        for (let i = listeners.length - 1; i >= 0; i--) {
-            if (listeners[i] == callback) {
-                listeners.splice(i, 1);
-            }
-        }
-    }
-
-    emit<E extends keyof AccountEventMap>(event: E, ...args: Parameters<AccountEventMap[E]>): void {
+    /** a new loadout, or the same one changed */
+    private loadoutChanged() {
+        setAccountLoadout({ ...this.loadout });
         this.publish();
-        const listenersCopy = (this.events[event] || []).slice(0);
-        for (let i = 0; i < listenersCopy.length; i++) {
-            listenersCopy[i](...args);
-        }
+    }
+
+    /** the items, or one's status, changed */
+    private itemsChanged() {
+        setAccountItems([...this.items]);
+        this.publish();
     }
 
     init() {
         // logged out players use their local loadout until the profile says otherwise
         const storedLoadout = this.config.get("loadout")!;
         this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
-        this.emit("loadout", this.loadout);
+        this.loadoutChanged();
     }
 
     /** once site_info says which logins the API has */
     initLogin() {
-        this.loginChecked = true;
+        this.status = "loggedOut";
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
         if (api.anyLoginSupported()) {
             this.loadProfile();
             return;
         }
 
-        this.emit("items", []);
+        this.itemsChanged();
     }
 
     logout() {
@@ -182,20 +166,20 @@ export class Account {
     }
 
     loadProfile() {
-        this.loggingIn = !this.loggedIn;
+        // a reload while logged in stays logged in until the answer
+        if (!this.loggedIn) this.status = "loggingIn";
         this.publish();
         this.fetchApi("profile", {}, (err, data) => {
-            const wasLogginIn = this.loggingIn;
-            this.loggingIn = false;
-            this.loggedIn = false;
+            const wasLoggingIn = this.status == "loggingIn";
+            this.status = "loggedOut";
             this.profile = {} as this["profile"];
             this.items = [];
             if (err) {
                 // leave the profile logged out
             } else if (data.banned) {
-                this.emit("error", "account_banned", data.reason);
+                showNotification(`Account banned: ${data.reason}`);
             } else if (data.success) {
-                this.loggedIn = true;
+                this.status = "loggedIn";
                 this.profile = data.profile;
                 this.items = data.items;
                 this.loadout = data.loadout;
@@ -203,19 +187,18 @@ export class Account {
                 profile.slug = data.profile.slug;
                 this.config.set("profile", profile);
             }
-            if (wasLogginIn && this.loggedIn) {
-                this.emit("login", this);
+            if (wasLoggingIn && this.loggedIn) {
                 this.getPass(true);
             }
-            this.emit("items", this.items);
-            this.emit("loadout", this.loadout);
+            this.itemsChanged();
+            this.loadoutChanged();
         });
     }
 
     resetStats() {
         this.fetchApi("reset_stats", {}, (err) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
             }
         });
     }
@@ -223,7 +206,7 @@ export class Account {
     deleteAccount() {
         this.fetchApi("delete", {}, (err) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
                 return;
             }
             this.config.set("profile", null);
@@ -250,21 +233,21 @@ export class Account {
         // Preemptively set the new loadout and revert if the call fail
         const loadoutPrev = this.loadout;
         this.loadout = loadout;
-        this.emit("loadout", this.loadout);
+        this.loadoutChanged();
         this.config.set("loadout", loadout);
 
         if (!this.loggedIn) return;
 
         this.fetchApi("loadout", { loadout }, (err, res) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
             }
             if (err || !res.loadout) {
                 this.loadout = loadoutPrev;
             } else {
                 this.loadout = res.loadout;
             }
-            this.emit("loadout", this.loadout);
+            this.loadoutChanged();
         });
     }
 
@@ -280,7 +263,7 @@ export class Account {
                 }
             }
 
-            this.emit("items", this.items);
+            this.itemsChanged();
             this.fetchApi("set_item_status", {
                 status,
                 itemTypes,
@@ -300,7 +283,7 @@ export class Account {
                 this.quests.sort((a, b) => {
                     return a.idx - b.idx;
                 });
-                this.emit("pass", this.pass, this.quests, true);
+                setAccountPass({ pass: this.pass, quests: this.quests, resetRefresh: true });
                 if (this.pass?.newItems) {
                     this.loadProfile();
                 }
@@ -327,7 +310,7 @@ export class Account {
                 this.getPass(false);
             } else {
                 // Give the pass UI a chance to update quests
-                this.emit("pass", this.pass!, this.quests, false);
+                setAccountPass({ pass: this.pass, quests: this.quests, resetRefresh: false });
             }
         });
     }

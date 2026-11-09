@@ -205,11 +205,8 @@ export class AudioManager {
             const baseVolume = this.baseVolume * 1 * this.getTypeVolume(a.type) * options.volumeScale;
             const diffLayer = options.layer !== undefined
                 && !util.sameAudioLayer(options.layer, this.activeLayer);
-            const filter = options.filter
-                ? diffLayer || options.forceFilter
-                    ? options.filter
-                    : "reverb"
-                : "none";
+            let filter = "none";
+            if (options.filter) filter = diffLayer || options.forceFilter ? options.filter : "reverb";
             if (options.channel != "activePlayer" && options.soundPos) {
                 const diff = v2.sub(this.cameraPos, options.soundPos);
                 const dist = v2.length(diff);

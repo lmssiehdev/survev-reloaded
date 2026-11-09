@@ -503,15 +503,10 @@ export class Map {
         if (def.map && "shapes" in def.map && def.map.shapes) {
             shapes = def.map.shapes;
         } else {
-            let col = null;
-            if (
-                (col = def.type == "obstacle"
-                    ? def.collision
-                    : def.ceiling.zoomRegions.length > 0
-                            && def.ceiling.zoomRegions[0].zoomIn
-                    ? def.ceiling.zoomRegions[0].zoomIn
-                    : mapHelpers.getBoundingCollider(obj.type))
-            ) {
+            const col = def.type == "obstacle"
+                ? def.collision
+                : def.ceiling.zoomRegions[0]?.zoomIn || mapHelpers.getBoundingCollider(obj.type);
+            if (col) {
                 shapes.push({
                     collider: collider.copy(col),
                     scale: def.map!.scale || 1,
@@ -712,14 +707,8 @@ export class Map {
             if (type == "water") {
                 const mapColors = this.getMapDef().biome.colors;
                 const isLake = data.river?.looped ?? false;
-                data.waterColor = data.waterColor !== undefined
-                    ? data.waterColor
-                    : isLake
-                    ? (mapColors.lakeWater ?? mapColors.water)
-                    : mapColors.water;
-                data.rippleColor = data.rippleColor !== undefined
-                    ? data.rippleColor
-                    : isLake
+                data.waterColor ??= isLake ? (mapColors.lakeWater ?? mapColors.water) : mapColors.water;
+                data.rippleColor ??= isLake
                     ? (mapColors.lakeWaterRipple ?? mapColors.waterRipple)
                     : mapColors.waterRipple;
             }
@@ -792,16 +781,11 @@ export class Map {
             }
         }
         // Check terrain
-        return groundSurface(
+        if (math.pointInsidePolygon(pos, this.terrain!.grass)) {
             // Use a stone step sound if we're in the main-spring def
-            math.pointInsidePolygon(pos, this.terrain!.grass)
-                ? onRiverShore
-                    ? this.mapDef.biome.sound.riverShore
-                    : "grass"
-                : math.pointInsidePolygon(pos, this.terrain!.shore)
-                ? "sand"
-                : "water",
-        );
+            return groundSurface(onRiverShore ? this.mapDef.biome.sound.riverShore : "grass");
+        }
+        return groundSurface(math.pointInsidePolygon(pos, this.terrain!.shore) ? "sand" : "water");
     }
 
     isInOcean(pos: Vec2) {

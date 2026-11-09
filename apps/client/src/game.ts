@@ -672,12 +672,12 @@ export class Game {
                             dropMsg.item = Q.type;
                         }
                     } else {
-                        const item = uiEvent.data == "helmet"
-                            ? this.m_activePlayer.m_netData.m_helmet
-                            : uiEvent.data == "chest"
-                            ? this.m_activePlayer.m_netData.m_chest
-                            : uiEvent.data;
-                        dropMsg.item = item as string;
+                        // "helmet" and "chest" name a slot, not an item
+                        const netData = this.m_activePlayer.m_netData;
+                        let item = uiEvent.data as string;
+                        if (item == "helmet") item = netData.m_helmet;
+                        else if (item == "chest") item = netData.m_chest;
+                        dropMsg.item = item;
                     }
                     if (dropMsg.item != "") {
                         this.m_sendMessage(net.MsgType.DropItem, dropMsg, 128);

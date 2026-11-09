@@ -818,11 +818,10 @@ export class UiManager2 {
             case DamageType.Airdrop: {
                 const mapObj = MapObjectDefs.typeToDefSafe(sourceType) as ObstacleDef;
                 const killName = this.localization.translate("game-the-air-drop");
-                const killTxt = downed
-                    ? this.localization.translate("game-knocked-out")
-                    : mapObj && !mapObj.airdropCrate
-                    ? this.localization.translate("game-killed")
-                    : this.localization.translate("game-crushed");
+                // the plane dropped something that isn't a crate
+                let killKey = mapObj && !mapObj.airdropCrate ? "game-killed" : "game-crushed";
+                if (downed) killKey = "game-knocked-out";
+                const killTxt = this.localization.translate(killKey);
                 return `${killName} ${killTxt} ${targetName}`;
             }
             case DamageType.Airstrike: {
@@ -925,17 +924,15 @@ export class UiManager2 {
         const youTxt = spectating
             ? killerName
             : this.localization.translate("game-you").toUpperCase();
-        const killKey = knockedOut
-            ? "game-knocked-out"
-            : completeKill
-            ? "game-killed"
-            : "game-finally-killed";
+        let killKey = completeKill ? "game-killed" : "game-finally-killed";
+        if (knockedOut) killKey = "game-knocked-out";
         const killTxt = this.localization.translate(killKey);
-        const targetTxt = suicide
-            ? spectating
+        let targetTxt = targetName;
+        if (suicide) {
+            targetTxt = spectating
                 ? this.localization.translate("game-themselves")
-                : this.localization.translate("game-yourself").toUpperCase()
-            : targetName;
+                : this.localization.translate("game-yourself").toUpperCase();
+        }
         const damageTxt = this.localization.translate(
             damageType == GameConfig.DamageType.Airstrike
                 ? "game-an-air-strike"

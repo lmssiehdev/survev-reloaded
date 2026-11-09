@@ -24,7 +24,9 @@ export const itemPresses = new Set<ItemPress>();
 /** the game's HUD manager, which turns the actions into input */
 export const [hudUi, setHudUi] = controller<UiManager2>();
 
-const buttonAction = (e: MouseEvent) => (e.button == 0 ? "use" : e.button == 2 ? "drop" : undefined);
+/** left click uses, right click drops */
+const BUTTON_ACTIONS: Partial<Record<number, "use" | "drop">> = { 0: "use", 2: "drop" };
+const buttonAction = (e: MouseEvent) => BUTTON_ACTIONS[e.button];
 
 /**
  * Event handlers for a HUD slot (`<div {...itemActions(...)}>`), called in the slot's component.

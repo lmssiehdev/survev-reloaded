@@ -26,7 +26,8 @@ export function iosGameStyle() {
             : { height: "90%", top: "32px" };
     }
     if (standalone && !device.tablet) return { height: "95%" };
-    return { height: device.tablet ? "100%" : layout.landscape ? "86%" : "82%" };
+    if (device.tablet) return { height: "100%" };
+    return { height: layout.landscape ? "86%" : "82%" };
 }
 
 /** the top HUD rows clear the iOS browser's address bar */

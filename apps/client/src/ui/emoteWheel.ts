@@ -15,23 +15,22 @@ export type WheelName = "emotes" | "pings";
 /** what EmoteBarn has set on a wedge; undefined until it first sets it (stylesheet value) */
 export interface WedgeView {
     opacity: number | undefined;
-    highlight: boolean | undefined;
+    highlight: boolean;
     /** the `.ui-emote-image` svg */
     image: string | undefined;
 }
 
 export interface WheelView<K extends string> {
-    /** undefined until first opened or closed (the stylesheet hides it) */
-    open: boolean | undefined;
+    open: boolean;
     left: number | undefined;
     top: number | undefined;
     wedges: Record<K, WedgeView>;
 }
 
-const wedge = (): WedgeView => ({ opacity: undefined, highlight: undefined, image: undefined });
+const wedge = (): WedgeView => ({ opacity: undefined, highlight: false, image: undefined });
 
 const wheel = <K extends string>(wedges: Record<K, WedgeView>): WheelView<K> => ({
-    open: undefined,
+    open: false,
     left: undefined,
     top: undefined,
     wedges,

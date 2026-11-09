@@ -24,9 +24,17 @@ const popScale = (width: number) => {
 
 // ---- inventory (right center) ----
 
+/** armor level text colors; lower levels use the default */
+const LEVEL_COLORS: Partial<Record<number, string>> = { 3: "#ff9900", 4: "#b30000" };
+
 function LootItem(props: { type: string; children: JSX.Element; ammo?: boolean; overlay?: string; img: string }) {
     const loot = () => hud.loot[props.type];
     const special = () => !!(GameObjectDefs.typeToDef(props.type) as AmmoDef).special;
+    /** a special ammo type is hidden until the player has some */
+    const opacity = () => {
+        if (loot().count > 0) return 1;
+        return special() ? 0 : 0.25;
+    };
     const scale = () => popScale(loot().width);
     const def = GameObjectDefs.typeToDef(props.type);
     const actions: ItemAction[] = [{ action: "drop", type: "loot", data: props.type }];
@@ -39,7 +47,7 @@ function LootItem(props: { type: string; children: JSX.Element; ammo?: boolean; 
                 ? "ui-outline-hover ui-ammo tooltip"
                 : "ui-loot ui-outline-hover ui-scale-hover ui-medical tooltip"}
             style={{
-                opacity: String(special() && loot().count == 0 ? 0 : loot().count > 0 ? 1 : 0.25),
+                opacity: String(opacity()),
                 color: loot().count === loot().maximum ? "#ff9900" : "#ffffff",
                 "pointer-events": pointerEvents(loot().selectable),
             }}
@@ -452,7 +460,7 @@ export function Gear() {
                         <div class="ui-armor-counter-inner" />
                         <div
                             class="ui-armor-level"
-                            style={{ color: level() === 4 ? "#b30000" : level() === 3 ? "#ff9900" : "#ffffff" }}
+                            style={{ color: LEVEL_COLORS[level()] ?? "#ffffff" }}
                         >
                             {translate(`game-level-${level()}`)}
                         </div>

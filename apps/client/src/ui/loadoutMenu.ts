@@ -8,10 +8,11 @@ import type { Item, LoadoutItemDef } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { flush, reconcile } from "solid-js";
-import type { Account } from "../account.ts";
+import { type Account, accountItems, accountLoadout } from "../account.ts";
 import { crosshair } from "../crosshair.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
+import { follow } from "./controller.ts";
 import { translate } from "./i18n.ts";
 import {
     EMOTE_SLOT_COUNT,
@@ -266,8 +267,8 @@ export class LoadoutMenu {
             }
             this.confirmNextItem();
         });
-        account.addEventListener("loadout", this.onLoadout.bind(this));
-        account.addEventListener("items", this.onItems.bind(this));
+        follow(accountLoadout, (l) => this.onLoadout(l));
+        follow(accountItems, (items) => this.onItems(items));
         setLoadoutMenu(() => this);
     }
 

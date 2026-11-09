@@ -301,7 +301,7 @@ export class UiManager {
 
         // Reset team member health bar widths
         setGameView((v) => {
-            for (const member of v.team) member.health = null;
+            for (const member of v.team) member.health = 1;
         });
 
         this.inputBinds.menuHovered = false;
@@ -653,17 +653,14 @@ export class UiManager {
                 tint = playerBarn.getTeamColor(playerInfo.teamId);
             }
             const dotScale = device.uiLayout == device.UiLayout.Sm ? 0.15 : 0.2;
+            // the player's own group is drawn larger; dead, downed and custom icons stand out
             let scale = dotScale;
-
-            scale = sameGroup
-                ? playerStatus.dead
-                    ? dotScale * 1.5
-                    : customMapIcon
-                    ? dotScale * 1.25
-                    : dotScale * 1
-                : playerStatus.dead || playerStatus.downed || customMapIcon
-                ? dotScale * 1.25
-                : dotScale * 0.75;
+            if (sameGroup) {
+                if (playerStatus.dead) scale *= 1.5;
+                else if (customMapIcon) scale *= 1.25;
+            } else {
+                scale *= playerStatus.dead || playerStatus.downed || customMapIcon ? 1.25 : 0.75;
+            }
 
             addSprite(
                 playerStatus.pos,
@@ -1208,11 +1205,9 @@ export class UiManager {
         gameMode: MapDef["gameMode"],
     ) {
         setGameView((v) => {
-            const leader = v.killLeader;
-            leader.playerId = playerId;
-            leader.name = playerName;
-            leader.kills = kills;
-            leader.hunted = !!gameMode?.sniperMode;
+            // playerId 0: no leader yet
+            v.killLeader = playerId ? { name: playerName, kills } : null;
+            v.killLeaderHunted = !!gameMode?.sniperMode;
         });
     }
 

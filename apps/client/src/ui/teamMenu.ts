@@ -119,11 +119,7 @@ export class TeamMenu {
                 this.ws?.close();
             };
             this.ws.onclose = () => {
-                let errMsg: TeamMenuErrorType | undefined = undefined;
-                if (!this.joiningGame) {
-                    errMsg = this.joined ? "lost_conn" : this.create ? "create_failed" : "join_failed";
-                }
-                this.leave(errMsg);
+                this.leave(this.joiningGame ? undefined : this.closeError());
             };
             this.ws.onopen = () => {
                 if (this.create) {
@@ -147,6 +143,12 @@ export class TeamMenu {
         } catch (_e) {
             this.leave(this.create ? "create_failed" : "join_failed");
         }
+    }
+
+    /** why the team socket closed, when the menu didn't close it to join a game */
+    closeError(): TeamMenuErrorType {
+        if (this.joined) return "lost_conn";
+        return this.create ? "create_failed" : "join_failed";
     }
 
     leave(errType?: TeamMenuErrorType) {

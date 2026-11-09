@@ -14,8 +14,8 @@ export interface TeamMemberView {
     name: string;
     /** off-screen marker at the screen edge (#ui-team-indicators); null: hidden */
     indicator: { left: number; top: number; transform: string } | null;
-    /** health bar fill, 0..1 of the bar (at least a sliver while alive); null: full */
-    health: number | null;
+    /** health bar fill, 0..1 of the bar (at least a sliver while alive) */
+    health: number;
     /** a dead teammate's bar is empty */
     healthEmpty: boolean;
     /** health bar color; "" for the stylesheet's */
@@ -74,7 +74,7 @@ const teamMember = (): TeamMemberView => ({
     displayed: false,
     name: "",
     indicator: null,
-    health: null,
+    health: 1,
     healthEmpty: false,
     healthColor: "",
     healthDanger: false,
@@ -135,14 +135,10 @@ export const [gameView, setGameView] = createStore({
     },
     kills: 0,
 
-    killLeader: {
-        /** null before the first update: the markup's untranslated placeholder */
-        playerId: null as number | null,
-        name: "",
-        kills: 0,
-        /** waiting text for sniper (hunted) mode */
-        hunted: false,
-    },
+    /** null while there is no leader */
+    killLeader: null as null | { name: string; kills: number },
+    /** sniper (hunted) mode's waiting text */
+    killLeaderHunted: false,
     /** the map has a kill leader */
     killLeaderEnabled: true,
     /** the debug editor hides the kill leader */
