@@ -52,18 +52,14 @@ export const [loadoutView, setLoadoutView] = createStore({
     itemRarityColor: "",
     itemSource: "",
     itemLore: "",
-    /** phone portrait layout shortens the grid */
-    listHeight: "",
     /** set once the modal has been closed (it closes with cursor: initial) */
     cursorReset: false,
     /** the modal is open: the start menu and its background fade out */
     open: false,
     /** the dark screen behind the "new item" modal */
     screenBlock: false,
+    /** the crosshair editor shows (crosshairs that are a mouse cursor have none) */
     crosshairPanel: false,
-    crosshairParent: false,
-    emotePanel: false,
-    emoteParent: false,
     /** background image of each emote slot, "" before the slot is first filled */
     slotImages: Array.from({ length: EMOTE_SLOT_COUNT }, () => ""),
     /** the slots' drop highlights */

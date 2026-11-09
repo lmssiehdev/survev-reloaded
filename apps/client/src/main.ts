@@ -242,7 +242,6 @@ export class Application {
 
     onResize() {
         device.onResize();
-        this.loadoutMenu.onResize();
         this.pixi?.renderer.resize(device.screenWidth, device.screenHeight);
         if (this.game?.initialized) {
             this.game.resize();
@@ -423,7 +422,6 @@ export class Application {
             m.active = this.active;
             m.errorMessage = this.errorMessage;
             m.pendingModeIdx = this.quickPlayPendingModeIdx;
-            m.landscape = device.isLandscape;
         });
     }
 

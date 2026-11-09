@@ -327,16 +327,6 @@ export class LoadoutMenu {
         });
     }
 
-    onResize() {
-        // Adjust the emote modal content on mobile
-        if (device.mobile) {
-            const isEmote = this.categories[this.selectedCatIdx].loadoutType == "emote";
-            setLoadoutView((s) => {
-                s.listHeight = isEmote || device.isLandscape ? "" : "380px";
-            });
-        }
-    }
-
     onLoadout(_loadout: Loadout) {
         this.loadout = loadout.validate(_loadout);
         crosshair.setGameCrosshair(_loadout.crosshair);
@@ -910,9 +900,6 @@ export class LoadoutMenu {
             s.subcatSort = displaySubcatSort;
             s.sort = sortType;
             s.crosshairPanel = category.loadoutType == "crosshair";
-            s.emotePanel = category.loadoutType == "emote";
-            s.emoteParent = category.loadoutType == "emote";
-            s.crosshairParent = category.loadoutType == "crosshair";
             s.itemName = "";
             s.itemSource = "";
             s.itemLore = "";
@@ -957,8 +944,6 @@ export class LoadoutMenu {
             flush();
             this.scrollToSelected();
         }
-
-        this.onResize();
     }
 
     setCategoryAlerts() {
