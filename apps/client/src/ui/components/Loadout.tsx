@@ -1,4 +1,5 @@
 import { For, Show } from "solid-js";
+import { accountView } from "../../account.ts";
 import { t, translate } from "../i18n.ts";
 import type { ItemRef, LoadoutMenu } from "../loadoutMenu.ts";
 import { loadoutView } from "../loadoutView.ts";
@@ -110,7 +111,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                         <input
                             type="text"
                             id="color-picker-hex"
-                            ref={(el) => (props.menu.dom.hex = el)}
                             value={loadoutView.crosshairHex}
                             onInput={(e) => props.menu.onHexInput(e.currentTarget.value)}
                             onKeyUp={(e) => props.menu.onHexInput(e.currentTarget.value)}
@@ -128,7 +128,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                             step="0.025"
                             class="crosshair-slider"
                             id="crosshair-size"
-                            ref={(el) => (props.menu.dom.size = el)}
                             value={loadoutView.crosshairSize}
                             onInput={(e) => props.menu.onCrosshairSize(e.currentTarget.value)}
                         />
@@ -142,7 +141,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                             step="0.025"
                             class="crosshair-slider"
                             id="crosshair-stroke"
-                            ref={(el) => (props.menu.dom.stroke = el)}
                             value={loadoutView.crosshairStroke}
                             onInput={(e) => props.menu.onCrosshairStroke(e.currentTarget.value)}
                         />
@@ -314,7 +312,6 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                         <div id="modal-customize-item-header">
                             <div
                                 id="modal-customize-item-name"
-                                ref={(el) => (props.menu.dom.itemName = el)}
                                 onClick={() => props.menu.scrollToSelected()}
                             >
                                 {loadoutView.itemName}
@@ -328,12 +325,11 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                             <div id="modal-customize-loading-container">
                                 <div
                                     id="modal-customize-loading"
+                                    // spins until the account is known, then while a request is in flight
                                     style={{
-                                        opacity: loadoutView.loading === null
-                                            ? undefined
-                                            : loadoutView.loading
-                                            ? "1"
-                                            : "0",
+                                        opacity: accountView.status == "unknown" || accountView.requests > 0
+                                            ? 1
+                                            : 0,
                                     }}
                                 />
                             </div>

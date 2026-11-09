@@ -242,7 +242,6 @@ export class Application {
 
     onResize() {
         device.onResize();
-        Menu.onResize();
         this.loadoutMenu.onResize();
         this.pixi?.renderer.resize(device.screenWidth, device.screenHeight);
         if (this.game?.initialized) {
@@ -433,15 +432,8 @@ export class Application {
             cb();
         } else {
             // Wait some maximum amount of time for pending account requests
-            const timeout = setTimeout(() => {
-                runOnce();
-            }, 2500);
-            const runOnce = () => {
-                cb();
-                clearTimeout(timeout);
-                this.account.removeEventListener("requestsComplete", runOnce);
-            };
-            this.account.addEventListener("requestsComplete", runOnce);
+            const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2500));
+            Promise.race([this.account.settled(), timeout]).then(cb);
         }
     }
 

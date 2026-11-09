@@ -146,11 +146,7 @@ interface ColorPicker {
 /** elements the controller measures or drives directly; components/Loadout.tsx fills it */
 export interface LoadoutDom {
     list?: HTMLElement;
-    itemName?: HTMLElement;
     picker?: HTMLElement;
-    hex?: HTMLInputElement;
-    size?: HTMLInputElement;
-    stroke?: HTMLInputElement;
 }
 
 const RARITY_NAMES = ["stock", "common", "uncommon", "rare", "epic", "mythic"];
@@ -222,6 +218,7 @@ export class LoadoutMenu {
     highlightOpacityMin = 0.4;
 
     picker: ColorPicker | null = null;
+    crosshairInputs = { hex: "", size: "0.5", stroke: "0.0" };
     readonly dom: LoadoutDom = {};
 
     modal = new MenuModal();
@@ -269,7 +266,6 @@ export class LoadoutMenu {
             }
             this.confirmNextItem();
         });
-        account.addEventListener("request", this.onRequest.bind(this));
         account.addEventListener("loadout", this.onLoadout.bind(this));
         account.addEventListener("items", this.onItems.bind(this));
         setLoadoutMenu(() => this);
@@ -282,11 +278,9 @@ export class LoadoutMenu {
             const picker: ColorPicker = new window.CP(container, false, container);
             picker.self.classList.add("static");
             picker.on("change", (color: string) => {
-                setLoadoutView((s) => {
-                    s.crosshairHex = color;
-                });
+                this.setCrosshairInputs({ hex: color });
                 if (this.loadout?.crosshair) {
-                    this.updateLoadoutFromDOM();
+                    this.updateLoadoutFromInputs();
                 }
             });
             this.picker = picker;
@@ -341,12 +335,6 @@ export class LoadoutMenu {
                 s.listHeight = isEmote || device.isLandscape ? "" : "380px";
             });
         }
-    }
-
-    onRequest() {
-        setLoadoutView((s) => {
-            s.loading = this.account.requestsInFlight > 0;
-        });
     }
 
     onLoadout(_loadout: Loadout) {
@@ -506,14 +494,25 @@ export class LoadoutMenu {
         });
     }
 
+    /** what the crosshair inputs show; the loadout's crosshair is made from it */
+    setCrosshairInputs(values: Partial<LoadoutMenu["crosshairInputs"]>) {
+        Object.assign(this.crosshairInputs, values);
+        const { hex, size, stroke } = this.crosshairInputs;
+        setLoadoutView((s) => {
+            s.crosshairHex = hex;
+            s.crosshairSize = size;
+            s.crosshairStroke = stroke;
+        });
+    }
+
     /** the crosshair panel shows the loadout's crosshair */
     syncCrosshairInputs() {
         const crosshairHex = util.intToHex(this.loadout.crosshair.color);
         this.picker?.set(crosshairHex);
-        setLoadoutView((s) => {
-            s.crosshairHex = crosshairHex.slice(1);
-            s.crosshairSize = String(this.loadout.crosshair.size);
-            s.crosshairStroke = String(this.loadout.crosshair.stroke);
+        this.setCrosshairInputs({
+            hex: crosshairHex.slice(1),
+            size: String(this.loadout.crosshair.size),
+            stroke: String(this.loadout.crosshair.stroke),
         });
     }
 
@@ -525,7 +524,7 @@ export class LoadoutMenu {
 
     onListItemMouseUp(key: number) {
         this.selectItem({ key });
-        this.updateLoadoutFromDOM();
+        this.updateLoadoutFromInputs();
     }
 
     onSlotMouseUp(slot: number) {
@@ -534,7 +533,7 @@ export class LoadoutMenu {
             return;
         }
         this.selectItem({ slot });
-        this.updateLoadoutFromDOM();
+        this.updateLoadoutFromInputs();
     }
 
     /** with an item picked up, pressing on a slot puts it there */
@@ -542,20 +541,20 @@ export class LoadoutMenu {
         if (this.itemSelected) {
             e.stopPropagation();
             this.updateSlot(slot, this.selectedItem.img, this.selectedItem.type);
-            this.updateLoadoutFromDOM();
+            this.updateLoadoutFromInputs();
         }
     }
 
     onSlotDrop(slot: number) {
         this.updateSlot(slot, this.selectedItem.img, this.selectedItem.type);
-        this.updateLoadoutFromDOM();
+        this.updateLoadoutFromInputs();
         this.deselectItem();
     }
 
     /** the auto emotes' trash button empties the slot */
     onTrash(slot: number) {
         this.updateSlot(slot, "", "");
-        this.updateLoadoutFromDOM();
+        this.updateLoadoutFromInputs();
     }
 
     onDragStart(ref: ItemRef, e: DragEvent) {
@@ -578,9 +577,7 @@ export class LoadoutMenu {
     }
 
     onHexInput(value: string) {
-        setLoadoutView((s) => {
-            s.crosshairHex = value;
-        });
+        this.setCrosshairInputs({ hex: value });
         const picker = this.picker;
         if (!picker || !value.length) return;
         // Only accept 6 digit hex or 7 digit with a hash
@@ -594,17 +591,13 @@ export class LoadoutMenu {
     }
 
     onCrosshairSize(value: string) {
-        setLoadoutView((s) => {
-            s.crosshairSize = value;
-        });
-        this.updateLoadoutFromDOM();
+        this.setCrosshairInputs({ size: value });
+        this.updateLoadoutFromInputs();
     }
 
     onCrosshairStroke(value: string) {
-        setLoadoutView((s) => {
-            s.crosshairStroke = value;
-        });
-        this.updateLoadoutFromDOM();
+        this.setCrosshairInputs({ stroke: value });
+        this.updateLoadoutFromInputs();
     }
 
     /** the item name scrolls the grid to the selected tile */
@@ -619,7 +612,7 @@ export class LoadoutMenu {
         }
     }
 
-    updateLoadoutFromDOM() {
+    updateLoadoutFromInputs() {
         const loadoutType = this.categories[this.selectedCatIdx].loadoutType;
         if (loadoutType == "emote") {
             for (let t = 0; t < EmoteSlot.Count; t++) {
@@ -631,11 +624,9 @@ export class LoadoutMenu {
                 }
             }
         } else if (loadoutType == "crosshair") {
-            // the inputs' own (sanitized) values, as the player sees them
-            flush();
-            const size = parseFloat(this.dom.size?.value ?? "");
-            const color = this.dom.hex?.value ?? "";
-            const stroke = parseFloat(this.dom.stroke?.value ?? "");
+            const size = parseFloat(this.crosshairInputs.size);
+            const color = this.crosshairInputs.hex;
+            const stroke = parseFloat(this.crosshairInputs.stroke);
             this.loadout.crosshair = {
                 type: this.selectedItem.type ?? "",
                 color: util.hexToInt(color),
@@ -962,9 +953,9 @@ export class LoadoutMenu {
             if (category.loadoutType == "crosshair") {
                 this.setSelectedCrosshair();
             }
-            // (a real click, as jQuery's trigger("click") was: it also reaches document listeners)
+            // the selected tile has to be in the grid before it can scroll into view
             flush();
-            this.dom.itemName?.click();
+            this.scrollToSelected();
         }
 
         this.onResize();

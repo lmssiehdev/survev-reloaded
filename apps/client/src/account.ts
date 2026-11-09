@@ -2,6 +2,7 @@ import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
+import { createStore } from "solid-js";
 import { api } from "./api.ts";
 import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
@@ -13,8 +14,6 @@ type UserRouter = ReturnType<typeof treaty<UserRouterApp>>["api"]["user"];
 type UserRoute = Exclude<keyof UserRouter, "~path">;
 
 type AccountEventMap = {
-    request: (account: Account) => void;
-    requestsComplete: () => void;
     login: (account: Account) => void;
     loadout: (loadout: Loadout) => void;
     items: (items: Item[]) => void;
@@ -22,9 +21,29 @@ type AccountEventMap = {
     pass: (pass: PassState, quests: QuestState[], resetRefresh: boolean) => void;
 };
 
+/** unknown: before site_info says whether there is a login to ask about */
+export type AccountStatus = "unknown" | "loggingIn" | "loggedIn" | "loggedOut";
+
+/** what views show of the account; Account writes it whenever it changes */
+export const [accountView, setAccountView] = createStore({
+    status: "unknown" as AccountStatus,
+    /** account requests in flight */
+    requests: 0,
+    username: "",
+    /** seconds until the name can change again; 0 when it can */
+    usernameChangeTime: 0,
+    playerIcon: "",
+    /** some items are new or unconfirmed */
+    itemAlert: false,
+});
+
 export class Account {
     events: Record<string, Array<(...args: any[]) => void>> = {};
     requestsInFlight = 0;
+    /** site_info said whether to ask for the profile */
+    loginChecked = false;
+    /** resolves the `settled()` promises once no request is in flight */
+    private onSettled: Array<() => void> = [];
     loggingIn = false;
     loggedIn = false;
     profile = {
@@ -61,7 +80,7 @@ export class Account {
         ) => void,
     ): Promise<void> {
         this.requestsInFlight++;
-        this.emit("request", this);
+        this.publish();
 
         try {
             const { data, error, response } = await this.router[path].post(body as any);
@@ -76,10 +95,35 @@ export class Account {
         }
 
         this.requestsInFlight--;
-        this.emit("request", this);
+        this.publish();
         if (this.requestsInFlight == 0) {
-            this.emit("requestsComplete");
+            for (const resolve of this.onSettled.splice(0)) resolve();
         }
+    }
+
+    /** once no account request is in flight */
+    settled() {
+        if (this.requestsInFlight == 0) return Promise.resolve();
+        return new Promise<void>((resolve) => this.onSettled.push(resolve));
+    }
+
+    /** copies what the views show into accountView */
+    publish() {
+        const status: AccountStatus = this.loggingIn
+            ? "loggingIn"
+            : this.loggedIn
+            ? "loggedIn"
+            : this.loginChecked
+            ? "loggedOut"
+            : "unknown";
+        setAccountView((v) => {
+            v.status = status;
+            v.requests = this.requestsInFlight;
+            v.username = this.profile.username || "";
+            v.usernameChangeTime = this.profile.usernameChangeTime;
+            v.playerIcon = this.loadout.player_icon;
+            v.itemAlert = this.items.some((item) => item.status! < loadouts.ItemStatus.Ackd);
+        });
     }
 
     addEventListener<E extends keyof AccountEventMap>(
@@ -103,6 +147,7 @@ export class Account {
     }
 
     emit<E extends keyof AccountEventMap>(event: E, ...args: Parameters<AccountEventMap[E]>): void {
+        this.publish();
         const listenersCopy = (this.events[event] || []).slice(0);
         for (let i = 0; i < listenersCopy.length; i++) {
             listenersCopy[i](...args);
@@ -118,13 +163,13 @@ export class Account {
 
     /** once site_info says which logins the API has */
     initLogin() {
+        this.loginChecked = true;
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
         if (api.anyLoginSupported()) {
             this.loadProfile();
             return;
         }
 
-        this.emit("request", this);
         this.emit("items", []);
     }
 
@@ -138,6 +183,7 @@ export class Account {
 
     loadProfile() {
         this.loggingIn = !this.loggedIn;
+        this.publish();
         this.fetchApi("profile", {}, (err, data) => {
             const wasLogginIn = this.loggingIn;
             this.loggingIn = false;

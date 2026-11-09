@@ -11,7 +11,6 @@ import {
     type WheelView,
 } from "../emoteWheel.ts";
 import { onNative } from "../nativeEvent.ts";
-import { touchControls } from "../touchControls.ts";
 
 type AnyWedge = EmoteWedge | PingWedge;
 
@@ -115,7 +114,7 @@ export function EmoteButton() {
         <div
             id="ui-emote-button"
             style={{
-                display: touchControls.touch ? "block" : "none",
+                display: device.touch ? "block" : "none",
                 "pointer-events": touchEvents(),
             }}
             ref={onNative("touchstart", (e) => {

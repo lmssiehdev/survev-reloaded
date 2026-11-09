@@ -75,6 +75,11 @@ const AMMO = [
     { type: "556mm", overlay: "rgba(3, 123, 0, 0.75)" },
 ];
 
+/** phones held upright list the ammo in another order */
+const AMMO_PORTRAIT = ["9mm", "12gauge", "762mm", "556mm", "50AE", "308sub", "flare", "45acp"].map(
+    (type) => AMMO.find((item) => item.type == type)!,
+);
+
 export function Inventory() {
     return (
         <>
@@ -89,7 +94,7 @@ export function Inventory() {
                 </For>
             </div>
             <div id="ui-ammo-interactive">
-                <For each={AMMO}>
+                <For each={device.tablet || layout.landscape ? AMMO : AMMO_PORTRAIT}>
                     {(item) => (
                         <LootItem type={item.type} ammo overlay={item.overlay} img="img/loot/loot-ammo-box.svg">
                             <span>{translate(`game-${item.type}-tooltip`)}</span>

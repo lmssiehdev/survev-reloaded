@@ -1,6 +1,7 @@
 import { For } from "solid-js";
 import { config } from "../../appConfig.ts";
 import type { ConfigKey } from "../../config.ts";
+import { device, layout } from "../../device.ts";
 import { settingsModal } from "../appModals.ts";
 import { isLocale, locale, Locales, locales, type MessageKey, t } from "../i18n.ts";
 import { Modal } from "./Modal.tsx";
@@ -68,7 +69,11 @@ export function SettingsModal() {
             </For>
             <For each={sliders}>
                 {(slider) => (
-                    <div class="modal-settings-item slider-container main-volume-slider">
+                    <div
+                        class="modal-settings-item slider-container main-volume-slider"
+                        // wider beside the iPhone X notch
+                        style={device.model == "iphonex" && layout.landscape ? { width: "90%" } : undefined}
+                    >
                         <p class="modal-slider-text">{t(slider.label)}</p>
                         <input
                             type="range"

@@ -74,6 +74,7 @@ class Device {
             : this.UiLayout.Lg;
         setLayout((l) => {
             l.small = this.small;
+            l.landscape = this.isLandscape;
             l.width = this.screenWidth;
             l.height = this.screenHeight;
         });
@@ -84,6 +85,6 @@ class Device {
  * The screen as views see it: `device` written into a store on every resize. Game code reads
  * `device` itself.
  */
-export const [layout, setLayout] = createStore({ small: false, width: 0, height: 0 });
+export const [layout, setLayout] = createStore({ small: false, landscape: true, width: 0, height: 0 });
 
 export const device = new Device();

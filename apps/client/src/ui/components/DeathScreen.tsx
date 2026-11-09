@@ -147,7 +147,16 @@ function StatsContents(props: { stats: StatsScreen }) {
                 style={{ display: "block", opacity: 1, ...fadeIn(stats.delay, 1000) }}
             >
             </div>
-            <div id="ui-stats-contents" style={{ top: stats.teamAd ? "10%" : undefined }}>
+            <div
+                id="ui-stats-contents"
+                style={{
+                    top: stats.teamAd ? "10%" : undefined,
+                    // a bit smaller below the iPhone X notch
+                    ...(device.model == "iphonex"
+                        ? { transform: "translate(-50%) scale(0.95)", "transform-origin": "top" }
+                        : {}),
+                }}
+            >
                 <div
                     id="ui-stats-contents-inner"
                     class="fade-in"

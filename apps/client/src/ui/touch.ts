@@ -16,7 +16,7 @@ import type { InputHandler } from "../input.ts";
 import type { Map } from "../map.ts";
 import type { Player } from "../objects/player.ts";
 import type { Renderer } from "../renderer.ts";
-import { setTouchControls, setTouchRef } from "./touchControls.ts";
+import { setTouchRef } from "./touchControls.ts";
 
 interface Pad {
     touched: boolean;
@@ -299,9 +299,6 @@ export class Touch {
     setMoveStyle(style: "locked" | "anywhere") {
         this.moveStyle = style;
         this.config.set("touchMoveStyle", style);
-        setTouchControls((t) => {
-            t.moveStyle = style;
-        });
     }
 
     toggleAimStyle() {
@@ -311,9 +308,6 @@ export class Touch {
     setAimStyle(style: "locked" | "anywhere") {
         this.aimStyle = style;
         this.config.set("touchAimStyle", style);
-        setTouchControls((t) => {
-            t.aimStyle = style;
-        });
     }
 
     toggleAimLine() {
@@ -323,9 +317,6 @@ export class Touch {
     setTouchAimLine(isOn: boolean) {
         this.touchAimLine = isOn;
         this.config.set("touchAimLine", this.touchAimLine);
-        setTouchControls((t) => {
-            t.aimLine = isOn;
-        });
     }
 
     init() {
@@ -397,127 +388,11 @@ export class Touch {
             rightOffset.x,
             device.screenHeight - rightOffset.y,
         );
-
-        this.setMobileStyling(isLandscape);
-    }
-
-    /**
-     * Layout classes and inline styles for the touch / small-screen / tablet / iOS HUD. Only the
-     * touch toggles and the emote button are views of this class (touchControls); the rest of
-     * the elements belong to the HUD markup and are styled in place.
-     */
-    setMobileStyling(isLandscape: boolean) {
-        if (device.touch) {
-            setTouchControls((t) => {
-                t.touch = true;
-            });
-        }
-        const sm = device.uiLayout == device.UiLayout.Sm;
-        toggleClass("ui-map-wrapper", "ui-map-wrapper-mobile", sm);
-        toggleClass("ui-map-wrapper", "ui-map-wrapper-desktop", !sm);
-        css("ui-settings-container-mobile", { display: sm ? "block" : "none" });
-        css("ui-settings-container-desktop", { display: sm ? "none" : "block" });
-        toggleClass("ui-right-center", "ui-right-center-mobile", sm);
-        toggleClass("ui-right-center", "ui-right-center-desktop", !sm);
-        css("ui-leaderboard-wrapper", { display: sm ? "none" : "block" });
-        css("big-map-close", { display: sm ? "block" : "none" });
-        toggleClass("ui-game-menu", "ui-game-menu-desktop", !sm);
-        css("btn-game-tabs", { display: sm ? "none" : "flex" });
-        toggleClass("ui-game-tab-settings", "ui-game-tab-settings-desktop", !sm);
-        for (const el of document.querySelectorAll<HTMLElement>(".ui-ability-key")) {
-            el.style.display = sm ? "none" : "block";
-        }
-
-        if (device.tablet) {
-            if (isLandscape) {
-                if (device.os == "ios") {
-                    toggleClass("ui-bottom-right", "ui-bottom-right-tablet-ipad-browser", true);
-                    toggleClass("ui-right-center", "ui-right-center-tablet-ipad-browser", true);
-                } else {
-                    toggleClass("ui-bottom-right", "ui-bottom-right-tablet", true);
-                    toggleClass("ui-right-center", "ui-right-center-tablet", true);
-                }
-                toggleClass("ui-bottom-center-left", "ui-bottom-center-left-tablet", true);
-                toggleClass("ui-bottom-center-right", "ui-bottom-center-right-tablet", true);
-                toggleClass("ui-top-left", "ui-top-left-tablet", true);
-                toggleClass("ui-spectate-options-wrapper", "ui-spectate-options-wrapper-tablet", true);
-                toggleClass("ui-killfeed-wrapper", "ui-killfeed-wrapper-tablet", true);
-                css("ui-kill-leader-wrapper", { right: "144px" });
-            } else {
-                toggleClass("ui-bottom-left", "ui-bottom-left-tablet", false);
-                toggleClass("ui-bottom-right", "ui-bottom-right-tablet", false);
-                toggleClass("ui-right-center", "ui-right-center-tablet", false);
-                toggleClass("ui-bottom-center-right", "ui-bottom-center-right-tablet", false);
-                toggleClass("ui-top-left", "ui-top-left-tablet", false);
-                toggleClass("ui-spectate-options-wrapper", "ui-spectate-options-wrapper-tablet", false);
-                // (sic) no such element: the killfeed keeps its tablet class
-                toggleClass("ui-killfeed-wrapper-wrapper", "ui-killfeed-wrapper-tablet", false);
-            }
-        }
-        if (device.os == "ios") {
-            if (device.model == "iphonex") {
-                css("ui-game", {
-                    height: device.isLandscape ? "99%" : "90%",
-                    top: device.isLandscape ? "0px" : "32px",
-                });
-                css("ui-stats-contents", {
-                    transform: "translate(-50%) scale(0.95)",
-                    "transform-origin": "top",
-                });
-                if (isLandscape) {
-                    css("ui-game", {
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: "93%",
-                    });
-                } else {
-                    css("ui-game", {
-                        left: "",
-                        transform: "",
-                        width: "",
-                    });
-                }
-            } else if (window.navigator.standalone && !device.tablet) {
-                css("ui-game", { height: "95%" });
-            } else {
-                let marginBottom = device.isLandscape ? "86%" : "82%";
-                if (device.tablet) {
-                    marginBottom = "100%";
-                }
-                css("ui-game", { height: marginBottom });
-                for (
-                    const id of ["ui-right-center", "ui-top-center-scopes-wrapper", "ui-top-center", "ui-menu-display"]
-                ) {
-                    css(id, { "margin-top": "6px" });
-                }
-            }
-        }
-
-        // Reorder ammo for mobile
-        const ammoOrder = device.tablet || isLandscape
-            ? { before: "556mm", ammo: ["50AE", "9mm", "308sub", "12gauge", "flare", "762mm", "45acp"] }
-            : { before: "45acp", ammo: ["9mm", "12gauge", "762mm", "556mm", "50AE", "308sub", "flare"] };
-        const before = document.getElementById(`ui-loot-${ammoOrder.before}`);
-        for (const ammo of ammoOrder.ammo) {
-            const el = document.getElementById(`ui-loot-${ammo}`);
-            if (el && before) before.before(el);
-        }
     }
 
     hideAll() {
         this.display = false;
     }
-}
-
-function toggleClass(id: string, cls: string, on: boolean) {
-    document.getElementById(id)?.classList.toggle(cls, on);
-}
-
-/** jQuery's `.css({...})` on one element; "" removes the inline value */
-function css(id: string, props: Record<string, string>) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    for (const [name, value] of Object.entries(props)) el.style.setProperty(name, value);
 }
 
 class LineSprites {

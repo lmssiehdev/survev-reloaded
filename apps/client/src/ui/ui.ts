@@ -156,7 +156,6 @@ export class UiManager {
     dead = false;
 
     displayingStats = false;
-    teamMemberHealthBarWidth: number;
 
     teamMemberHeight = 48;
     groupPlayerCount = 0;
@@ -223,10 +222,6 @@ export class UiManager {
             minimapMargin + minimapSize / 2,
             game.m_camera.m_screenHeight - minimapSize / 2 - minimapMargin,
         );
-
-        // the stylesheet's full width (it differs per layout)
-        const healthBar = document.querySelector(".ui-team-member-health .ui-bar-inner");
-        this.teamMemberHealthBarWidth = healthBar ? parseInt(getComputedStyle(healthBar).width) : 0;
 
         for (let i = 0; i < 4; i++) {
             this.teamSelectors.push({
@@ -306,7 +301,7 @@ export class UiManager {
 
         // Reset team member health bar widths
         setGameView((v) => {
-            for (const member of v.team) member.healthWidth = null;
+            for (const member of v.team) member.health = null;
         });
 
         this.inputBinds.menuHovered = false;
@@ -1372,18 +1367,7 @@ export class UiManager {
     }
 
     /** a health bar's width, color (null: unchanged) and danger pulse */
-    getHealthBarStyle(
-        innerWidth: number,
-        status: {
-            health: number;
-            dead: boolean;
-            downed: boolean;
-        },
-    ) {
-        const healthBarWidth = innerWidth;
-        let uiHealth = status.health * 0.01 * healthBarWidth;
-        uiHealth = status.dead ? 0 : math.max(uiHealth, 1);
-
+    getHealthBarStyle(status: { health: number; dead: boolean; downed: boolean }) {
         let color: string | null = null;
         const val = status.health;
         let l = this.healthRed;
@@ -1410,7 +1394,7 @@ export class UiManager {
                 color = `rgba(${h},${d},${u},1)`;
             }
         }
-        return { width: uiHealth, color, danger: val <= 25 };
+        return { color, danger: val <= 25 };
     }
 
     updateTeam(
@@ -1434,7 +1418,7 @@ export class UiManager {
             || statusChange
         ) {
             selector.playerId = playerId;
-            const bar = this.getHealthBarStyle(this.teamMemberHealthBarWidth, {
+            const bar = this.getHealthBarStyle({
                 health,
                 dead: status.dead,
                 downed: status.downed,
@@ -1450,7 +1434,8 @@ export class UiManager {
             setGameView((v) => {
                 const member = v.team[slotIdx];
                 member.name = name;
-                member.healthWidth = bar.width;
+                member.health = health / 100;
+                member.healthEmpty = status.dead;
                 if (bar.color !== null) member.healthColor = bar.color;
                 member.healthDanger = bar.danger;
                 if (statusChange) member.status = memberStatus;

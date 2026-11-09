@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { layout } from "../../device.ts";
 import { gameUi, gameView, humanizeTime, type LocalStatsView, px } from "../gameView.ts";
+import { iosBrowserTop, small, tabletClass, tabletLandscape } from "../hudLayout.ts";
 import { type MessageKey, t, translate } from "../i18n.ts";
 import { DeathScreen, EditorOverlay } from "./DeathScreen.tsx";
 import { GameMenu } from "./GameMenu.tsx";
@@ -93,7 +94,7 @@ const teamColors = ["yellow", "purple", "cyan", "orange"];
 
 export function TeamPanel() {
     return (
-        <div id="ui-top-left" class="js-ui-hud-show click-through">
+        <div id="ui-top-left" class={["js-ui-hud-show click-through", tabletClass("ui-top-left")]}>
             <div
                 id="ui-team"
                 class="js-ui-mobile-map-hidden"
@@ -132,7 +133,12 @@ export function TeamPanel() {
                                 <div
                                     class={["ui-bar-inner ui-health-actual", { "ui-bar-danger": member.healthDanger }]}
                                     style={{
-                                        width: px(member.healthWidth),
+                                        // --team-health-bar: the bar's full width (game.css)
+                                        width: member.health === null
+                                            ? undefined
+                                            : member.healthEmpty
+                                            ? "0px"
+                                            : `max(1px, calc(var(--team-health-bar) * ${member.health}))`,
                                         "background-color": member.healthColor || undefined,
                                     }}
                                 >
@@ -152,7 +158,7 @@ export function MapPanel() {
         <>
             <div
                 id="ui-map-wrapper"
-                class="ui-map-wrapper-desktop click-through"
+                class={["click-through", small() ? "ui-map-wrapper-mobile" : "ui-map-wrapper-desktop"]}
                 style={{ display: gameView.active ? "block" : undefined }}
             >
                 <div
@@ -174,7 +180,11 @@ export function MapPanel() {
                         <div id="ui-spec-counter-icon"></div>{" "}
                         <div id="ui-spec-counter-number">{gameView.map.spectators}</div>
                     </div>
-                    <div id="ui-settings-container-desktop" class="js-ui-desktop-map-hidden">
+                    <div
+                        id="ui-settings-container-desktop"
+                        class="js-ui-desktop-map-hidden"
+                        style={{ display: small() ? "none" : "block" }}
+                    >
                         <div
                             id="ui-map-expand-desktop"
                             class="ui-map-expand ui-settings-button"
@@ -198,6 +208,7 @@ export function MapPanel() {
                     <div
                         id="ui-settings-container-mobile"
                         class="js-ui-mobile-map-hidden"
+                        style={{ display: small() ? "block" : "none" }}
                     >
                         <div id="ui-alive-info">
                             <div id="ui-alive-icon" class="ui-map-icon alive-icon"></div>{" "}
@@ -228,6 +239,7 @@ export function MapPanel() {
                         <div
                             id="ui-menu-display"
                             class="ui-settings-button prop-event"
+                            style={iosBrowserTop}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 gameUi()?.toggleEscMenu();
@@ -244,6 +256,7 @@ export function MapPanel() {
                 <div
                     id="ui-kill-leader-wrapper"
                     class="js-ui-map-hidden js-ui-hud-show hide-on-mobile"
+                    style={tabletLandscape() ? { right: "144px" } : undefined}
                 >
                     <div id="ui-kill-leader-name">
                         {gameView.killLeader.playerId === null
@@ -262,7 +275,7 @@ export function MapPanel() {
 
 export function Leaderboard() {
     return (
-        <div id="ui-leaderboard-wrapper">
+        <div id="ui-leaderboard-wrapper" style={{ display: small() ? "none" : "block" }}>
             <div id="ui-leaderboard" class="js-ui-hud-show">
                 <div
                     id="ui-leaderboard-alive"
@@ -292,6 +305,7 @@ export function TopCenter() {
             <div
                 id="ui-top-center"
                 class="js-ui-map-hidden js-ui-hud-show click-through"
+                style={iosBrowserTop}
             >
                 <div id="ui-waiting-text" class="top-center-text" style={{ display: shown(gameView.waiting) }}>
                     <span>{t("game-waiting-for-players")}</span>...
@@ -324,7 +338,11 @@ const localStatRows: { key: keyof LocalStatsView; label: MessageKey }[] = [
 
 export function SpectateOptions() {
     return (
-        <div id="ui-spectate-options-wrapper" style={{ top: px(gameView.spectate.optionsTop) }}>
+        <div
+            id="ui-spectate-options-wrapper"
+            class={tabletClass("ui-spectate-options-wrapper")}
+            style={{ top: px(gameView.spectate.optionsTop) }}
+        >
             <div
                 id="ui-spectate-options"
                 class="ui-spectate-mode js-ui-hud-show click-through"

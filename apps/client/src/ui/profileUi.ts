@@ -32,15 +32,11 @@ export class ProfileUi {
     ) {
         account.addEventListener("error", this.onError.bind(this));
         account.addEventListener("login", this.onLogin.bind(this));
-        account.addEventListener("loadout", this.sync.bind(this));
-        account.addEventListener("items", this.onItemsUpdated.bind(this));
-        account.addEventListener("request", this.sync.bind(this));
 
         createAccountModal.onHide(() => this.loadoutMenu.hide());
 
         setProfileUi(this);
         this.updateLoginSupport();
-        this.sync();
     }
 
     /** again once site_info says which logins the API has */
@@ -49,18 +45,6 @@ export class ProfileUi {
             p.loginSupported = api.anyLoginSupported();
             p.logins.discord = api.loginSupported("discord");
             p.logins.mock = api.loginSupported("mock");
-        });
-    }
-
-    sync() {
-        const account = this.account;
-        setProfile((p) => {
-            p.loading = account.requestsInFlight > 0;
-            p.loggedIn = account.loggedIn;
-            p.loggingIn = account.loggingIn;
-            p.username = account.profile.username || "";
-            p.usernameChangeTime = account.profile.usernameChangeTime;
-            p.avatar = helpers.getSvgFromGameType(account.loadout.player_icon) || "img/gui/player-gui.svg";
         });
     }
 
@@ -86,21 +70,9 @@ export class ProfileUi {
         }
     }
 
-    onItemsUpdated(items: Item[]) {
-        // new or unconfirmed items light up the loadout button
-        const itemAlert = items.some((item) => item.status < loadout.ItemStatus.Ackd);
-        setProfile((p) => {
-            p.itemAlert = itemAlert;
-        });
-    }
-
     waitOnLogin(cb: () => void) {
         if (this.account.loggingIn && !this.account.loggedIn) {
-            const runOnce = () => {
-                cb();
-                this.account.removeEventListener("requestsComplete", runOnce);
-            };
-            this.account.addEventListener("requestsComplete", runOnce);
+            this.account.settled().then(cb);
         } else {
             cb();
         }

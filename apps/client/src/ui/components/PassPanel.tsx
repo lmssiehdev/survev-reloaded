@@ -5,6 +5,7 @@ import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { createMemo, createSignal, For } from "solid-js";
+import { accountView } from "../../account.ts";
 import { helpers } from "../../helpers.ts";
 import { t, translate } from "../i18n.ts";
 import { type PassPanelProps, passView, type QuestView } from "../passView.ts";
@@ -157,14 +158,21 @@ export function PassPanel(props: PassPanelProps) {
             <div
                 id="pass-loading"
                 class="pass-column menu-block"
-                style={{ display: display(passView.loadingVisible) }}
+                // spins while the account logs in (or isn't known yet), under the pass once it's there
+                style={{
+                    display: display(
+                        passView.phase != "loaded"
+                            && (accountView.status == "loggingIn"
+                                || (passView.phase == "loading" && accountView.status == "unknown")),
+                    ),
+                }}
             >
                 <div id="pass-loading-spinner" />
             </div>
             <div
                 id="pass-block"
                 class="pass-column menu-block"
-                style={passView.blockRaised ? { "z-index": "1" } : undefined}
+                style={passView.phase != "loading" ? { "z-index": "1" } : undefined}
             >
                 <div id="pass-name">
                     <span id="pass-name-text">{translate(passView.type).toUpperCase()}</span>
@@ -216,7 +224,7 @@ export function PassPanel(props: PassPanelProps) {
                     </div>
                 </div>
                 <div id="pass-quest-wrapper">
-                    <div id="pass-locked" style={{ display: display(passView.lockedVisible) }}>
+                    <div id="pass-locked" style={{ display: display(passView.phase == "locked") }}>
                         <div
                             id="btn-pass-locked"
                             class="menu-option btn-darken"

@@ -80,7 +80,8 @@ export class Pass {
     }> = [];
 
     loaded = false;
-    lockDisplayed = false;
+    /** a logged out player sees the pass locked */
+    locked = false;
     updatePass = false;
     updatePassTicker = 0;
 
@@ -88,7 +89,6 @@ export class Pass {
         public account: Account,
         public loadoutMenu: LoadoutMenu,
     ) {
-        this.account.addEventListener("request", this.onRequest.bind(this));
         this.account.addEventListener("pass", this.onPass.bind(this));
         setPassPanel({
             getCategory: (gameType) => this.loadoutMenu.getCategory(gameType),
@@ -259,9 +259,7 @@ export class Pass {
             this.pass.currentLevel,
         );
         setPassView((s) => {
-            s.blockRaised = true;
-            s.lockedVisible = false;
-            s.loadingVisible = false;
+            s.phase = "loaded";
             s.unlockItem = unlockItemId;
             s.type = pass.type;
             s.level = this.pass.currentLevel;
@@ -270,12 +268,6 @@ export class Pass {
             s.barPct = (this.pass.currentXp / this.pass.levelXp) * 100;
         });
         this.loaded = true;
-    }
-
-    onRequest(account: Account) {
-        setPassView((s) => {
-            s.loadingVisible = account.loggingIn;
-        });
     }
 
     scheduleUpdatePass(delay: number) {
@@ -460,13 +452,11 @@ export class Pass {
                 this.pass.ticker -= 3;
             }
         }
-        if (!this.account.loggingIn && !this.account.loggedIn && !this.lockDisplayed) {
+        if (!this.loaded && !this.locked && !this.account.loggingIn && !this.account.loggedIn) {
+            this.locked = true;
             setPassView((s) => {
-                s.blockRaised = true;
-                s.loadingVisible = false;
-                s.lockedVisible = true;
+                s.phase = "locked";
             });
-            this.lockDisplayed = true;
         }
     }
 

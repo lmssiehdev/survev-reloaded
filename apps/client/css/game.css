@@ -1446,7 +1446,8 @@ img {
     z-index: 1;
     position: absolute;
     border-radius: 4px;
-    width: 200px;
+    --team-health-bar: 200px;
+    width: var(--team-health-bar);
     height: 10px;
     transition: width 0s;
     transition-property: width;
@@ -3810,7 +3811,8 @@ span.ui-stats-header-value {
         z-index: 1;
         position: absolute;
         border-radius: 4px;
-        width: 110px;
+        --team-health-bar: 110px;
+        width: var(--team-health-bar);
         height: 5px;
         transition: width 0s;
         transition-property: width;

@@ -3,6 +3,7 @@ import { For, Show } from "solid-js";
 import { config } from "../../appConfig.ts";
 import { layout } from "../../device.ts";
 import { gameUi, gameView, px } from "../gameView.ts";
+import { iosBrowserTop, iosGameStyle, small, tabletClass } from "../hudLayout.ts";
 import { loadoutMenu, loadoutView } from "../loadoutView.ts";
 import { startMenu } from "../startMenu.ts";
 import { removeToast, toasts } from "../toast.ts";
@@ -75,6 +76,7 @@ function GameArea() {
                 data-small={layout.small || undefined}
                 data-minimap-hidden={!gameView.map.minimap || undefined}
                 style={{
+                    ...iosGameStyle(),
                     display: gameView.hidden ? "none" : undefined,
                     // a dragged weapon slot follows the mouse anywhere
                     "pointer-events": gameView.weaponDrag.dragging ? "initial" : undefined,
@@ -87,20 +89,29 @@ function GameArea() {
                 <TeamIndicators />
                 <div
                     id="ui-right-center"
-                    class="ui-right-center-desktop js-ui-map-hidden"
+                    class={[
+                        "js-ui-map-hidden",
+                        small() ? "ui-right-center-mobile" : "ui-right-center-desktop",
+                        tabletClass("ui-right-center", true),
+                    ]}
+                    style={iosBrowserTop}
                 >
                     <Inventory />
                     <EmoteButton />
                 </div>
                 <TeamPanel />
                 <MapPanel />
-                <div id="ui-killfeed-wrapper" style={{ top: gameView.killfeedTop || undefined }}>
+                <div
+                    id="ui-killfeed-wrapper"
+                    class={tabletClass("ui-killfeed-wrapper")}
+                    style={{ top: gameView.killfeedTop || undefined }}
+                >
                     <div id="ui-killfeed" class="js-ui-map-hidden js-ui-hud-show">
                         <KillFeed />
                     </div>
                 </div>
                 <Leaderboard />
-                <div id="ui-top-center-scopes-wrapper">
+                <div id="ui-top-center-scopes-wrapper" style={iosBrowserTop}>
                     <Scopes />
                 </div>
                 <TopCenter />
@@ -125,13 +136,13 @@ function GameArea() {
                 >
                     <HealthAndBoost />
                 </div>
-                <div id="ui-bottom-center-left" class="js-ui-map-hidden">
+                <div id="ui-bottom-center-left" class={["js-ui-map-hidden", tabletClass("ui-bottom-center-left")]}>
                     <Perks />
                 </div>
-                <div id="ui-bottom-center-right" class="js-ui-map-hidden">
+                <div id="ui-bottom-center-right" class={["js-ui-map-hidden", tabletClass("ui-bottom-center-right")]}>
                     <Gear />
                 </div>
-                <div id="ui-bottom-right" class="js-ui-map-hidden">
+                <div id="ui-bottom-right" class={["js-ui-map-hidden", tabletClass("ui-bottom-right", true)]}>
                     <Weapons />
                 </div>
                 <SpectateOptions />

@@ -52,8 +52,6 @@ export const [loadoutView, setLoadoutView] = createStore({
     itemRarityColor: "",
     itemSource: "",
     itemLore: "",
-    /** account request spinner; null until the first request */
-    loading: null as boolean | null,
     /** phone portrait layout shortens the grid */
     listHeight: "",
     /** set once the modal has been closed (it closes with cursor: initial) */

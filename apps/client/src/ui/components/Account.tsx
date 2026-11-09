@@ -1,5 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { createSignal, Show } from "solid-js";
+import { accountView } from "../../account.ts";
+import { helpers } from "../../helpers.ts";
 import { keybindModal, settingsModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
 import type { MenuModal } from "../menuModal.ts";
@@ -273,7 +275,7 @@ function AccountSettings(props: { class?: string; myStats?: boolean }) {
                 <div
                     class={[
                         "btn-account-change-name btn-account-turq menu-option btn-darken btn-standard",
-                        { "btn-account-disabled": profile.usernameChangeTime > 0 },
+                        { "btn-account-disabled": accountView.usernameChangeTime > 0 },
                     ]}
                     onClick={action(() => profileUi()?.changeName())}
                 >
@@ -341,6 +343,9 @@ export function MobileAccountModal() {
 }
 
 /** the top-right corner of the start menu: loadout/stats/leaderboard, the name, its menus */
+/** the player icon, or the default silhouette */
+const avatar = () => helpers.getSvgFromGameType(accountView.playerIcon) || "img/gui/player-gui.svg";
+
 export function StartTopRight() {
     // the row above the name hides while a menu under the name is open
     const menuOpen = () =>
@@ -366,7 +371,7 @@ export function StartTopRight() {
                                 <div
                                     id="loadout-alert-main"
                                     class="account-alert-main account-alert"
-                                    style={{ display: profile.itemAlert ? "block" : "none" }}
+                                    style={{ display: accountView.itemAlert ? "block" : "none" }}
                                 />
                                 <div
                                     class="account-link account-loadout-link"
@@ -404,23 +409,23 @@ export function StartTopRight() {
                         onClick={link(() => profileUi()?.toggleAccountMenu())}
                     >
                         <div class="account-details">
-                            <div class="account-avatar" style={{ "background-image": `url(${profile.avatar})` }} />
+                            <div class="account-avatar" style={{ "background-image": `url(${avatar()})` }} />
                             <div
                                 id="account-login"
                                 class="account-player-name account-name account-name-user"
-                                style={{ display: profile.loggedIn ? "none" : "block" }}
+                                style={{ display: accountView.status == "loggedIn" ? "none" : "block" }}
                             >
                                 {t("index-log-in-desc")}
                             </div>
                             <div
                                 id="account-player-name"
                                 class="account-player-name account-name account-name-user"
-                                style={{ display: profile.loggedIn ? "block" : "none" }}
+                                style={{ display: accountView.status == "loggedIn" ? "block" : "none" }}
                             >
-                                {profile.username}
+                                {accountView.username}
                             </div>
                             <div class="account-loading-container">
-                                <div class="account-loading" style={{ opacity: profile.loading ? 1 : 0 }} />
+                                <div class="account-loading" style={{ opacity: accountView.requests > 0 ? 1 : 0 }} />
                             </div>
                         </div>
                     </div>

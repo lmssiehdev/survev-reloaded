@@ -14,8 +14,10 @@ export interface TeamMemberView {
     name: string;
     /** off-screen marker at the screen edge (#ui-team-indicators); null: hidden */
     indicator: { left: number; top: number; transform: string } | null;
-    /** health bar width in px; null: the stylesheet's */
-    healthWidth: number | null;
+    /** health bar fill, 0..1 of the bar (at least a sliver while alive); null: full */
+    health: number | null;
+    /** a dead teammate's bar is empty */
+    healthEmpty: boolean;
     /** health bar color; "" for the stylesheet's */
     healthColor: string;
     healthDanger: boolean;
@@ -72,7 +74,8 @@ const teamMember = (): TeamMemberView => ({
     displayed: false,
     name: "",
     indicator: null,
-    healthWidth: null,
+    health: null,
+    healthEmpty: false,
     healthColor: "",
     healthDanger: false,
     status: "",
