@@ -7,7 +7,7 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { createMemo, For } from "solid-js";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
 import { gameUi, gameView } from "../gameView.ts";
 import { hud, InteractionType, MAX_KILL_FEED_LINES, PERK_UI_COUNT } from "../hudView.ts";
@@ -112,7 +112,7 @@ export function KillFeed() {
                 {(i) => {
                     const line = () => hud.killFeed[i];
                     const top = () => {
-                        const lineHeight = device.uiLayout != device.UiLayout.Sm || device.tablet ? 35 : 15;
+                        const lineHeight = !layout.small || device.tablet ? 35 : 15;
                         return `${Math.floor(line().offset * lineHeight)}px`;
                     };
                     return (

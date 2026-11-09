@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
-import { type Display, gameUi, gameView, humanizeTime, type LocalStatsView, px } from "../gameView.ts";
+import { layout } from "../../device.ts";
+import { gameUi, gameView, humanizeTime, type LocalStatsView, px } from "../gameView.ts";
 import { type MessageKey, t, translate } from "../i18n.ts";
 import { DeathScreen, EditorOverlay } from "./DeathScreen.tsx";
 import { GameMenu } from "./GameMenu.tsx";
@@ -7,9 +8,7 @@ import { GameMenu } from "./GameMenu.tsx";
 /** the game reads mouse buttons on window: clicks on the HUD must not shoot */
 const stop = (e: Event) => e.stopPropagation();
 
-/** an inline display that UiManager hasn't written yet leaves the stylesheet's */
-const shown = (value: boolean | null, display = "block") => (value === null ? undefined : value ? display : "none");
-const inline = (display: Display) => display || undefined;
+const shown = (value: boolean, display = "block") => (value ? display : "none");
 
 export function RoleMenu() {
     return (
@@ -17,9 +16,10 @@ export function RoleMenu() {
             <div
                 id="ui-role-menu"
                 style={{
-                    transform: gameView.role.scale === null
-                        ? undefined
-                        : `translateX(-50%) translateY(-50%) scale(${gameView.role.scale})`,
+                    // fits the screen, never larger than 1200x900
+                    transform: `translateX(-50%) translateY(-50%) scale(${
+                        Math.min(1, layout.width / 1200, layout.height / 900)
+                    })`,
                     "border-color": gameView.role.borderColor || undefined,
                 }}
             >
@@ -97,7 +97,7 @@ export function TeamPanel() {
             <div
                 id="ui-team"
                 class="js-ui-mobile-map-hidden"
-                style={{ display: inline(gameView.map.mobileHidden) ?? (gameView.active ? "block" : undefined) }}
+                style={{ display: gameView.active ? "block" : undefined }}
             >
                 <For each={gameView.team}>
                     {(member, i) => (
@@ -105,7 +105,14 @@ export function TeamPanel() {
                             class="ui-team-member ui-bg-standard"
                             style={{ display: member.displayed ? "block" : "none" }}
                         >
-                            <div class="ui-team-member-name" style={{ opacity: member.nameOpacity ?? undefined }}>
+                            <div
+                                class="ui-team-member-name"
+                                style={{
+                                    opacity: member.status == "dead" || member.status == "disconnected"
+                                        ? 0.3
+                                        : undefined,
+                                }}
+                            >
                                 {member.name}
                             </div>
                             <div class={`ui-team-member-color ui-background-${teamColors[i()]}`}></div>
@@ -150,15 +157,11 @@ export function MapPanel() {
             >
                 <div
                     id="ui-map-container"
-                    style={{
-                        transform: gameView.map.scale === null ? undefined : `scale(${gameView.map.scale})`,
-                        bottom: px(gameView.map.bottom),
-                    }}
+                    style={{ "--map-scale": gameView.map.scale }}
                 >
                     <div
                         id="ui-map-info"
                         class={["js-ui-map-hidden js-ui-hud-show", { "icon-pulse": gameView.map.gasMoving }]}
-                        style={{ display: inline(gameView.map.hidden), bottom: gameView.map.infoBottom || undefined }}
                     >
                         <div id="ui-gas-icon" class={gameView.map.gasMoving ? "danger-icon" : "gas-icon"}></div>{" "}
                         <div id="ui-gas-timer">{gameView.map.gasTime}</div>
@@ -166,14 +169,10 @@ export function MapPanel() {
                     <div
                         id="ui-spec-counter"
                         class="js-ui-map-hidden js-ui-hud-show"
-                        style={{
-                            display: shown(gameView.map.spectators.displayed),
-                            bottom: px(gameView.map.spectators.bottom),
-                            left: px(gameView.map.spectators.left),
-                        }}
+                        style={{ display: shown(gameView.map.spectators > 0) }}
                     >
                         <div id="ui-spec-counter-icon"></div>{" "}
-                        <div id="ui-spec-counter-number">{gameView.map.spectators.text}</div>
+                        <div id="ui-spec-counter-number">{gameView.map.spectators}</div>
                     </div>
                     <div id="ui-settings-container-desktop" class="js-ui-desktop-map-hidden">
                         <div
@@ -187,7 +186,6 @@ export function MapPanel() {
                         <div
                             id="ui-map-minimize"
                             class="ui-settings-button js-ui-map-hidden"
-                            style={{ display: inline(gameView.map.hidden) }}
                             onMouseDown={stop}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -200,26 +198,19 @@ export function MapPanel() {
                     <div
                         id="ui-settings-container-mobile"
                         class="js-ui-mobile-map-hidden"
-                        style={{ display: inline(gameView.map.mobileHidden) }}
                     >
                         <div id="ui-alive-info">
                             <div id="ui-alive-icon" class="ui-map-icon alive-icon"></div>{" "}
                             <div
                                 id="ui-map-counter-default"
                                 class="js-ui-players-alive"
-                                style={{
-                                    display: gameView.alive.mapFaction === null
-                                        ? undefined
-                                        : gameView.alive.mapFaction
-                                        ? "none"
-                                        : "inline-block",
-                                }}
+                                style={{ display: gameView.alive.kind == "faction" ? "none" : undefined }}
                             >
                                 {gameView.alive.count}
                             </div>{" "}
                             <div
                                 id="ui-map-counter-faction"
-                                style={{ display: shown(gameView.alive.mapFaction, "inline-block") }}
+                                style={{ display: shown(gameView.alive.kind == "faction", "inline-block") }}
                             >
                                 <span class="ui-players-alive-red js-ui-players-alive-red">{gameView.alive.red}
                                 </span>:<span class="ui-players-alive-blue js-ui-players-alive-blue">
@@ -248,12 +239,11 @@ export function MapPanel() {
             </div>
             <div
                 id="ui-kill-leader-container"
-                style={{ display: gameView.editor ? "none" : shown(gameView.killLeaderEnabled) }}
+                style={{ display: shown(gameView.killLeaderEnabled && !gameView.editor) }}
             >
                 <div
                     id="ui-kill-leader-wrapper"
                     class="js-ui-map-hidden js-ui-hud-show hide-on-mobile"
-                    style={{ display: inline(gameView.map.hidden) }}
                 >
                     <div id="ui-kill-leader-name">
                         {gameView.killLeader.playerId === null
@@ -276,21 +266,17 @@ export function Leaderboard() {
             <div id="ui-leaderboard" class="js-ui-hud-show">
                 <div
                     id="ui-leaderboard-alive"
-                    style={{
-                        display: shown(
-                            gameView.alive.leaderboardFaction === null ? null : !gameView.alive.leaderboardFaction,
-                        ),
-                    }}
+                    style={{ display: shown(gameView.alive.kind == "players") }}
                 >
                     <span class="ui-players-alive js-ui-players-alive">{gameView.alive.count}</span>
                 </div>
-                <div id="ui-leaderboard-alive-faction" style={{ display: shown(gameView.alive.leaderboardFaction) }}>
+                <div id="ui-leaderboard-alive-faction" style={{ display: shown(gameView.alive.kind == "faction") }}>
                     <span class="ui-players-alive-red js-ui-players-alive-red">{gameView.alive.red}</span>{" "}
                     <span class="ui-players-alive-blue js-ui-players-alive-blue">{gameView.alive.blue}</span>
                 </div>
                 <div class="ui-leaderboard-header">{t("game-alive")}</div>
             </div>
-            <div id="ui-kill-counter-wrapper" class="js-ui-map-show" style={{ display: inline(gameView.map.show) }}>
+            <div id="ui-kill-counter-wrapper" class="js-ui-map-show">
                 <div id="ui-kill-counter">
                     <span class="ui-player-kills js-ui-player-kills">{gameView.kills}</span>
                 </div>
@@ -306,7 +292,6 @@ export function TopCenter() {
             <div
                 id="ui-top-center"
                 class="js-ui-map-hidden js-ui-hud-show click-through"
-                style={{ display: inline(gameView.map.hidden) }}
             >
                 <div id="ui-waiting-text" class="top-center-text" style={{ display: shown(gameView.waiting) }}>
                     <span>{t("game-waiting-for-players")}</span>...
@@ -322,8 +307,8 @@ export function TopCenter() {
             </div>
             <div id="ui-upper-center" class="click-through">
                 {/* remounts on every announcement, which restarts its fade in, hold and fade out */}
-                <Show when={gameView.announcement.seq} keyed>
-                    {(_seq) => <div id="ui-announcement" class="announce">{gameView.announcement.text}</div>}
+                <Show when={gameView.announcement} keyed>
+                    {(announcement) => <div id="ui-announcement" class="announce">{announcement.text}</div>}
                 </Show>
             </div>
         </>

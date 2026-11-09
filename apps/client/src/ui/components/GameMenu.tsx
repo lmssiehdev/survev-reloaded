@@ -1,6 +1,6 @@
 import { For } from "solid-js";
 import { config } from "../../appConfig.ts";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { gameTabs, gameUi, gameView, px } from "../gameView.ts";
 import { type MessageKey, t } from "../i18n.ts";
 import { GameKeybindsTab } from "./Keybinds.tsx";
@@ -123,13 +123,11 @@ export function GameMenu() {
                     </a>
                 </div>
             </div>
-            <div id="big-map" class="js-ui-map-show" style={{ display: gameView.map.show || undefined }}>
+            <div id="big-map" class="js-ui-map-show">
+                {/* on touch screens, the rotated screen */}
                 <div
                     id="big-map-collision"
-                    style={{
-                        width: px(gameView.map.collisionWidth),
-                        height: px(gameView.map.collisionHeight),
-                    }}
+                    style={device.touch ? { width: px(layout.height), height: px(layout.width) } : undefined}
                 >
                 </div>
                 <div

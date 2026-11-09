@@ -1984,7 +1984,9 @@ img {
  */
 #ui-map-container {
     position: absolute;
-    bottom: 52px;
+    /* --map-scale: the minimap's scale with the screen */
+    bottom: calc(52px * var(--map-scale, 1));
+    transform: scale(var(--map-scale, 1));
 }
 
 #ui-map-info {
