@@ -2,42 +2,82 @@ import type { AABB, Collider } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { bitIndex } from "./idBitset.ts";
+import { Interest } from "./interest.ts";
 import type { Loot } from "./objects/loot.ts";
 
 interface GameObject {
+    __id: number;
     __gridBounds: { min: Vec2; max: Vec2 };
     __onGrid: boolean;
-    __gridQueryId: number;
     bounds: AABB;
     pos: Vec2;
 }
 
+/** one past the largest object id ObjectRegister hands out */
+const ID_LIMIT = 65536;
+
 /**
  * A Grid to filter collision detection of game objects
+ *
+ * Each cell is an insertion-ordered array of object ids, kept in the order a Set of the objects
+ * would iterate in: removal shifts the rest down, re-adding appends. Queries resolve ids through
+ * the ObjectRegister's idToObj and dedupe with a per-id query stamp.
  */
 export class Grid<T extends GameObject = GameObject> {
     readonly width: number;
     readonly height: number;
     readonly cellSize = 16;
 
-    //                        X     Y     Object
-    //                      __^__ __^__   __^__
-    private readonly _grid: Array<Array<Set<T>>>;
+    /** cell (x, y) is cells[x * (height + 1) + y] */
+    readonly cells: number[][];
+    private readonly _stride: number;
 
+    /** set by ObjectRegister; ids in cells always resolve to a live object */
+    idToObj: Array<T | null> = [];
+
+    private readonly _queryStamp = new Uint32Array(ID_LIMIT);
     private nextQueryId = 1;
+
+    /** which clients' cameras cover which objects; every cell change below keeps it in sync */
+    readonly interest: Interest;
 
     constructor(width: number, height: number) {
         this.width = Math.floor(width / this.cellSize);
         this.height = Math.floor(height / this.cellSize);
 
-        this._grid = Array.from(
-            { length: this.width + 1 },
-            () => Array.from({ length: this.height + 1 }, () => new Set()),
-        );
+        this._stride = this.height + 1;
+        this.cells = Array.from({ length: (this.width + 1) * this._stride }, () => []);
+        this.interest = new Interest(this, this.cells.length, this._stride, ID_LIMIT);
     }
 
+    /** ids in cell (x, y), in query order; x in [0, width], y in [0, height]. Don't mutate. */
+    cellIds(x: number, y: number): readonly number[] {
+        return this.cells[x * this._stride + y];
+    }
+
+    cellX(x: number): number {
+        return math.clamp(Math.floor(x / this.cellSize), 0, this.width);
+    }
+
+    cellY(y: number): number {
+        return math.clamp(Math.floor(y / this.cellSize), 0, this.height);
+    }
+
+    /**
+     * Called by ObjectRegister.register once the object has an id. Objects that called
+     * updateObject before they had an id (obstacles do in their constructor) get inserted here;
+     * nothing touches the grid in between, so cell order matches inserting them back then.
+     */
     addObject(obj: T): void {
         this.updateObject(obj);
+        if (!obj.__onGrid) {
+            const b = obj.__gridBounds;
+            this._insert(obj.__id, b.min.x, b.min.y, b.max.x, b.max.y);
+            obj.__onGrid = true;
+            // clients whose camera covers its cells start seeing it
+            this.interest.objectMoved(obj.__id, b.min.x, b.min.y, b.max.x, b.max.y);
+        }
     }
 
     /**
@@ -49,46 +89,116 @@ export class Grid<T extends GameObject = GameObject> {
         const aabb = obj.bounds;
         // Get the bounds of the hitbox
         // Round it to the grid cells
-        const min = this._roundToCells(v2.add(aabb.min, obj.pos));
-        const max = this._roundToCells(v2.add(aabb.max, obj.pos));
+        const minX = this.cellX(aabb.min.x + obj.pos.x);
+        const minY = this.cellY(aabb.min.y + obj.pos.y);
+        const maxX = this.cellX(aabb.max.x + obj.pos.x);
+        const maxY = this.cellY(aabb.max.y + obj.pos.y);
 
         if (
-            objBounds.min.x === min.x && objBounds.min.y === min.y && objBounds.max.x === max.x
-            && objBounds.max.y === max.y
+            objBounds.min.x === minX && objBounds.min.y === minY && objBounds.max.x === maxX
+            && objBounds.max.y === maxY
         ) {
             return;
         }
 
-        this.remove(obj);
+        // not remove(): interest compares its old and new cells in one go once it's inserted below
+        if (obj.__onGrid) this._removeFromCells(obj);
+
+        objBounds.min.x = minX;
+        objBounds.min.y = minY;
+        objBounds.max.x = maxX;
+        objBounds.max.y = maxY;
+
+        // not registered yet: addObject inserts it
+        if (!obj.__id) return;
 
         // Add it to all grid cells that it intersects
-        for (let x = min.x; x <= max.x; x++) {
-            const xRow = this._grid[x];
-            for (let y = min.y; y <= max.y; y++) {
-                xRow[y].add(obj);
+        this._insert(obj.__id, minX, minY, maxX, maxY);
+        obj.__onGrid = true;
+        // only clients whose camera covered its old cells but not its new ones, or the reverse, get told
+        this.interest.objectMoved(obj.__id, minX, minY, maxX, maxY);
+    }
+
+    private _insert(id: number, minX: number, minY: number, maxX: number, maxY: number): void {
+        const cells = this.cells;
+        const stride = this._stride;
+        for (let x = minX; x <= maxX; x++) {
+            const row = x * stride;
+            for (let y = minY; y <= maxY; y++) {
+                cells[row + y].push(id);
             }
         }
-        v2.set(objBounds.min, min);
-        v2.set(objBounds.max, max);
-        obj.__onGrid = true;
     }
 
     /**
      * Remove an object from the grid system
      */
     remove(obj: T): void {
+        // like upstream: an object that isn't on the grid keeps its bounds
         if (!obj.__onGrid) return;
+        this._removeFromCells(obj);
+        // every client that saw it stops seeing it
+        this.interest.objectRemoved(obj.__id);
+    }
 
+    /** takes the object out of its cells without telling interest; callers do that */
+    private _removeFromCells(obj: T): void {
         const { min, max } = obj.__gridBounds;
+        const id = obj.__id;
+        const cells = this.cells;
+        const stride = this._stride;
         for (let x = min.x; x <= max.x; x++) {
-            const xRow = this._grid[x];
+            const row = x * stride;
             for (let y = min.y; y <= max.y; y++) {
-                xRow[y].delete(obj);
+                const cell = cells[row + y];
+                const len = cell.length;
+                let i = cell.indexOf(id);
+                if (i < 0) continue;
+                for (; i < len - 1; i++) cell[i] = cell[i + 1];
+                cell.length = len - 1;
             }
         }
-        v2.set(min, v2.create(-1, -1));
-        v2.set(max, v2.create(-1, -1));
+        min.x =
+            min.y =
+            max.x =
+            max.y =
+                -1;
         obj.__onGrid = false;
+    }
+
+    private _newQuery(): number {
+        let queryId = this.nextQueryId++;
+        if (queryId === 0xffffffff) {
+            this._queryStamp.fill(0);
+            queryId = 1;
+            this.nextQueryId = 2;
+        }
+        return queryId;
+    }
+
+    /** appends the deduped objects of cells [minX, maxX] x [minY, maxY], x-major */
+    private _collect(minX: number, minY: number, maxX: number, maxY: number, out: T[]): T[] {
+        out.length = 0;
+        const queryId = this._newQuery();
+        const stamp = this._queryStamp;
+        const idToObj = this.idToObj;
+        const cells = this.cells;
+        const stride = this._stride;
+
+        for (let x = minX; x <= maxX; x++) {
+            const row = x * stride;
+            for (let y = minY; y <= maxY; y++) {
+                const cell = cells[row + y];
+                for (let i = 0; i < cell.length; i++) {
+                    const id = cell[i];
+                    if (stamp[id] === queryId) continue;
+                    stamp[id] = queryId;
+                    out.push(idToObj[id]!);
+                }
+            }
+        }
+
+        return out;
     }
 
     /**
@@ -96,31 +206,19 @@ export class Grid<T extends GameObject = GameObject> {
      * This transforms the collider into a rectangle
      * and gets all objects intersecting it after rounding it to grid cells
      * @param coll The collider
+     * @param out optional reused result array, cleared first
      * @return An array with the objects near this collider
      */
-    intersectCollider(coll: Collider): T[] {
+    intersectCollider(coll: Collider, out: T[] = []): T[] {
         const aabb = collider.toAabb(coll);
 
-        const min = this._roundToCells(aabb.min);
-        const max = this._roundToCells(aabb.max);
-
-        const objects: T[] = [];
-
-        const queryId = this.nextQueryId++;
-
-        for (let x = min.x; x <= max.x; x++) {
-            const xRow = this._grid[x];
-            for (let y = min.y; y <= max.y; y++) {
-                const cell = xRow[y];
-                for (const object of cell) {
-                    if (object.__gridQueryId === queryId) continue;
-                    object.__gridQueryId = queryId;
-                    objects.push(object);
-                }
-            }
-        }
-
-        return objects;
+        return this._collect(
+            this.cellX(aabb.min.x),
+            this.cellY(aabb.min.y),
+            this.cellX(aabb.max.x),
+            this.cellY(aabb.max.y),
+            out,
+        );
     }
 
     /**
@@ -128,40 +226,33 @@ export class Grid<T extends GameObject = GameObject> {
      * @param obj The game object. NOTE: it must already be inside the grid
      * @return An array with the objects near this collider
      */
-    intersectGameObject(obj: GameObject): T[] {
-        const objects: T[] = [];
-
-        const queryId = this.nextQueryId++;
-
+    intersectGameObject(obj: GameObject, out: T[] = []): T[] {
         const { min, max } = obj.__gridBounds;
-
-        for (let x = min.x; x <= max.x; x++) {
-            const xRow = this._grid[x];
-            for (let y = min.y; y <= max.y; y++) {
-                const cell = xRow[y];
-                for (const object of cell) {
-                    if (object.__gridQueryId === queryId) continue;
-                    object.__gridQueryId = queryId;
-                    objects.push(object);
-                }
-            }
-        }
-
-        return objects;
+        return this._collect(min.x, min.y, max.x, max.y, out);
     }
 
     intersectAABBSet(aabb: AABB): Set<T> {
-        const min = this._roundToCells(aabb.min);
-        const max = this._roundToCells(aabb.max);
+        const minX = this.cellX(aabb.min.x);
+        const minY = this.cellY(aabb.min.y);
+        const maxX = this.cellX(aabb.max.x);
+        const maxY = this.cellY(aabb.max.y);
 
         const objects = new Set<T>();
+        const queryId = this._newQuery();
+        const stamp = this._queryStamp;
+        const idToObj = this.idToObj;
+        const cells = this.cells;
+        const stride = this._stride;
 
-        for (let x = min.x; x <= max.x; x++) {
-            const xRow = this._grid[x];
-            for (let y = min.y; y <= max.y; y++) {
-                const cell = xRow[y];
-                for (const object of cell) {
-                    objects.add(object);
+        for (let x = minX; x <= maxX; x++) {
+            const row = x * stride;
+            for (let y = minY; y <= maxY; y++) {
+                const cell = cells[row + y];
+                for (let i = 0; i < cell.length; i++) {
+                    const id = cell[i];
+                    if (stamp[id] === queryId) continue;
+                    stamp[id] = queryId;
+                    objects.add(idToObj[id]!);
                 }
             }
         }
@@ -169,12 +260,17 @@ export class Grid<T extends GameObject = GameObject> {
         return objects;
     }
 
-    intersectPos(pos: Vec2) {
-        pos = this._roundToCells(pos);
-        return [...this._grid[pos.x][pos.y]];
+    /** @param out optional reused result array, cleared first */
+    intersectPos(pos: Vec2, out: T[] = []): T[] {
+        const cell = this.cells[this.cellX(pos.x) * this._stride + this.cellY(pos.y)];
+        const idToObj = this.idToObj;
+        out.length = 0;
+        for (let i = 0; i < cell.length; i++) out.push(idToObj[cell[i]]!);
+        return out;
     }
 
-    intersectLineSegment(lineStart: Vec2, lineEnd: Vec2): T[] {
+    /** @param out optional reused result array, cleared first */
+    intersectLineSegment(lineStart: Vec2, lineEnd: Vec2, out: T[] = []): T[] {
         const start = this._roundToCells(lineStart);
         const end = this._roundToCells(lineEnd);
 
@@ -196,17 +292,21 @@ export class Grid<T extends GameObject = GameObject> {
         let x = deltaX * (gridDeltaX > 0 ? 1 - relativeX : relativeX);
         let y = deltaY * (gridDeltaY > 0 ? 1 - relativeY : relativeY);
 
-        const objects: T[] = [];
-        const queryId = this.nextQueryId++;
+        const objects = out;
+        objects.length = 0;
+        const queryId = this._newQuery();
+        const stamp = this._queryStamp;
+        const idToObj = this.idToObj;
 
         while (true) {
-            const cell = this._grid[start.x][start.y];
+            const cell = this.cells[start.x * this._stride + start.y];
 
-            for (const object of cell) {
-                if (object.__gridQueryId === queryId) continue;
+            for (let i = 0; i < cell.length; i++) {
+                const id = cell[i];
+                if (stamp[id] === queryId) continue;
 
-                object.__gridQueryId = queryId;
-                objects.push(object);
+                stamp[id] = queryId;
+                objects.push(idToObj[id]!);
             }
             if (start.x == end.x && start.y == end.y) {
                 break;
@@ -234,8 +334,8 @@ export class Grid<T extends GameObject = GameObject> {
      */
     private _roundToCells(vector: Vec2): Vec2 {
         return {
-            x: math.clamp(Math.floor(vector.x / this.cellSize), 0, this.width),
-            y: math.clamp(Math.floor(vector.y / this.cellSize), 0, this.height),
+            x: this.cellX(vector.x),
+            y: this.cellY(vector.y),
         };
     }
 }
@@ -255,7 +355,10 @@ export class HashGrid<T extends Loot = Loot> {
 
     rows: number;
     cols: number;
-    grid: Array<Array<Array<T>>>;
+    /** cell (x, y) is cells[y * cols + x]; only cells inside rows x cols, the only ones ever checked */
+    private readonly cells: T[][];
+    /** one bit per cell filled this check; walking the words in order visits filled cells row-major */
+    private readonly touched: Uint32Array;
 
     constructor(width: number, height: number, cellSize: number) {
         this.width = width;
@@ -266,21 +369,16 @@ export class HashGrid<T extends Loot = Loot> {
         this.rows = Math.ceil(this.height / this.cellSize);
         this.cols = Math.ceil(this.width / this.cellSize);
 
-        this.grid = [];
-    }
-
-    /**
-     * Cleans the partitioning grid.
-     */
-    private _resetGrid() {
-        for (let y = 0; y < this.rows; y++) {
-            if (!this.grid[y]) continue;
-            this.grid[y].length = 0;
-        }
+        this.cells = Array.from({ length: this.rows * this.cols }, () => []);
+        this.touched = new Uint32Array((this.rows * this.cols + 31) >>> 5);
     }
 
     /**
      * Checks for collision using spatial grid hashing.
+     *
+     * Visits only the cells some loot landed in, in the same row-major order and with the same
+     * per-cell insertion order as walking every cell, so the same pairs resolve in the same order.
+     * Cells outside rows x cols were never checked, so loot isn't stored there at all.
      *
      * @param loots thie list of particles to check collisions.
      * @param comparator the function that, given two objects, return if they are colliding or not.
@@ -292,39 +390,37 @@ export class HashGrid<T extends Loot = Loot> {
         resolver: (a: T, b: T) => void,
     ) {
         const length = loots.length;
-
-        this._resetGrid();
+        const { cells, touched, rows, cols, cellSize } = this;
 
         for (let i = 0; i < length; i++) {
             const loot = loots[i];
             if (loot.destroyed) continue;
 
-            const xMin = ((loot.pos.x - loot.lootRad) / this.cellSize) << 0;
-            const xMax = ((loot.pos.x + loot.lootRad) / this.cellSize) << 0;
-            const yMin = ((loot.pos.y - loot.lootRad) / this.cellSize) << 0;
-            const yMax = ((loot.pos.y + loot.lootRad) / this.cellSize) << 0;
+            const xMin = Math.max(((loot.pos.x - loot.lootRad) / cellSize) << 0, 0);
+            const xMax = Math.min(((loot.pos.x + loot.lootRad) / cellSize) << 0, cols - 1);
+            const yMin = Math.max(((loot.pos.y - loot.lootRad) / cellSize) << 0, 0);
+            const yMax = Math.min(((loot.pos.y + loot.lootRad) / cellSize) << 0, rows - 1);
 
             for (let y = yMin; y <= yMax; y++) {
-                let row = this.grid[y];
-                if (!row) row = this.grid[y] = [];
-
                 for (let x = xMin; x <= xMax; x++) {
-                    let col = row[x];
-                    if (!col) col = this.grid[y][x] = [];
-                    col.push(loot);
+                    const idx = y * cols + x;
+                    const cell = cells[idx];
+                    touched[idx >>> 5] |= 1 << (idx & 31);
+                    cell.push(loot);
                 }
             }
         }
 
-        for (let y = 0; y < this.rows; y++) {
-            let row = this.grid[y];
-            if (!row) continue;
-
-            for (let x = 0; x < this.cols; x++) {
-                let col = row[x];
-                if (!col) continue;
-
-                this.bruteForceCheck(col, comparator, resolver);
+        for (let w = 0; w < touched.length; w++) {
+            let bits = touched[w];
+            if (bits === 0) continue;
+            touched[w] = 0;
+            while (bits !== 0) {
+                const bit = bits & -bits;
+                bits ^= bit;
+                const cell = cells[(w << 5) | bitIndex(bit)];
+                this.bruteForceCheck(cell, comparator, resolver);
+                cell.length = 0;
             }
         }
     }

@@ -18,9 +18,11 @@ import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { Game } from "./game.ts";
 import type { Group, Team } from "./group.ts";
 import { Building } from "./objects/building.ts";
+import type { GameObject } from "./objects/gameObject.ts";
 import { Obstacle } from "./objects/obstacle.ts";
 import type { Player } from "./objects/player.ts";
 import { Structure } from "./objects/structure.ts";
+import { PolygonBands } from "./polygonBands.ts";
 import { RiverCreator } from "./riverCreator.ts";
 
 // most of this logic is based on the `renderMapBuildingBounds` from client debugHelpers
@@ -174,6 +176,10 @@ export class MapGrid<T extends GridCollider = GridCollider> {
     }
 }
 
+/** scratch results of the single-cell surface queries; their loops only read, never re-enter */
+const SCRATCH_SURFACE_OBJS: GameObject[] = [];
+const SCRATCH_WATER_OBJS: GameObject[] = [];
+
 export class GameMap {
     game: Game;
 
@@ -205,6 +211,9 @@ export class GameMap {
     seed!: number;
     msg!: net.MapMsg;
     terrain!: ReturnType<typeof generateTerrain>;
+    /** shore and river water polygons indexed for the per-tick point-in-polygon checks */
+    shoreBands!: PolygonBands;
+    riverWaterBands: PolygonBands[] = [];
     riverDescs!: Array<
         MapRiverData & {
             noRiverObjs: boolean;
@@ -361,6 +370,8 @@ export class GameMap {
             this.riverDescs,
             this.seed,
         );
+        this.shoreBands = new PolygonBands(this.terrain.shore);
+        this.riverWaterBands = this.terrain.rivers.map((river) => new PolygonBands(river.waterPoly));
         this.timerEnd("Generating terrain");
 
         this.normalRivers = [];
@@ -2286,7 +2297,7 @@ export class GameMap {
             return { type, river };
         };
 
-        const objs = this.game.grid.intersectPos(pos);
+        const objs = this.game.grid.intersectPos(pos, SCRATCH_SURFACE_OBJS);
 
         // Check decals
         for (let i = 0; i < objs.length; i++) {
@@ -2350,7 +2361,7 @@ export class GameMap {
                     && math.pointInsidePolygon(pos, river.shorePoly)
                 ) {
                     onRiverShore = true;
-                    if (math.pointInsidePolygon(pos, river.waterPoly)) {
+                    if (this.riverWaterBands[i].contains(pos.x, pos.y)) {
                         return groundSurface("water", river);
                     }
                 }
@@ -2364,7 +2375,7 @@ export class GameMap {
                 onRiverShore ? this.mapDef.biome.sound.riverShore : "grass",
             );
         }
-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
+        if (this.shoreBands.contains(pos.x, pos.y)) {
             return groundSurface("sand");
         }
         return groundSurface("water");
@@ -2372,7 +2383,7 @@ export class GameMap {
 
     // like getGroundSurface but optimized for water
     isOnWater(pos: Vec2, layer: number) {
-        const objs = this.game.grid.intersectPos(pos);
+        const objs = this.game.grid.intersectPos(pos, SCRATCH_WATER_OBJS);
 
         let surface = null;
         let zIdx = 0;
@@ -2431,14 +2442,14 @@ export class GameMap {
                 const river = rivers[i];
                 if (
                     coldet.testPointAabb(pos, river.aabb.min, river.aabb.max)
-                    && math.pointInsidePolygon(pos, river.waterPoly)
+                    && this.riverWaterBands[i].contains(pos.x, pos.y)
                 ) {
                     return true;
                 }
             }
         }
 
-        if (math.pointInsidePolygon(pos, this.terrain.shore)) {
+        if (this.shoreBands.contains(pos.x, pos.y)) {
             return false;
         }
 

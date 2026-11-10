@@ -44,6 +44,11 @@ export abstract class AbstractMsg {
 }
 
 export class BitStream extends bb.BitStream {
+    /** the bytes of the underlying view, as a plain field (getters are slow on hot copy paths) */
+    private _u8: Uint8Array = this._view.view;
+    /** view over the first `_bytes.length` bytes, kept so copying this stream needs no new view per copy */
+    private _bytes: Uint8Array | undefined = undefined;
+
     writeString(str: string, len?: number) {
         this.writeASCIIString(str, len);
     }
@@ -124,10 +129,18 @@ export class BitStream extends bb.BitStream {
     }
 
     writeBytes(src: BitStream, offset: number, length: number) {
+        /* STRIP_FROM_PROD_SERVER:START */
         assert(this.index % 8 == 0);
-        const data = new Uint8Array(src._view.view.buffer, offset, length);
-        this._view.view.set(data, this.index / 8);
-        this.index += length * 8;
+        /* STRIP_FROM_PROD_SERVER:END */
+        let data = src._bytes;
+        if (offset !== 0) {
+            data = src._u8.subarray(offset, offset + length);
+        } else if (data === undefined || data.length !== length) {
+            // the view tracks the live bytes, so it stays valid when the stream is rewritten
+            data = src._bytes = src._u8.subarray(0, length);
+        }
+        this._u8.set(data, (this._index - this._startIndex) / 8);
+        this._index += length * 8;
     }
 
     writeAlignToNextByte() {
