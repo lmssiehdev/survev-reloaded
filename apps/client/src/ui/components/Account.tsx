@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
+import { loadout } from "@survev/shared/utils/loadout.ts";
 import { createSignal, Show } from "solid-js";
-import { accountView } from "../../account.ts";
+import { accountItems, accountLoadout, accountView } from "../../account.ts";
 import { helpers } from "../../helpers.ts";
 import { keybindModal, settingsModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
@@ -342,10 +343,12 @@ export function MobileAccountModal() {
     );
 }
 
-/** the top-right corner of the start menu: loadout/stats/leaderboard, the name, its menus */
 /** the player icon, or the default silhouette */
-const avatar = () => helpers.getSvgFromGameType(accountView.playerIcon) || "img/gui/player-gui.svg";
+const avatar = () => helpers.getSvgFromGameType(accountLoadout().player_icon) || "img/gui/player-gui.svg";
+/** some items are new or unconfirmed */
+const itemAlert = () => accountItems().some((item) => item.status! < loadout.ItemStatus.Ackd);
 
+/** the top-right corner of the start menu: loadout/stats/leaderboard, the name, its menus */
 export function StartTopRight() {
     // the row above the name hides while a menu under the name is open
     const menuOpen = () =>
@@ -371,7 +374,7 @@ export function StartTopRight() {
                                 <div
                                     id="loadout-alert-main"
                                     class="account-alert-main account-alert"
-                                    style={{ display: accountView.itemAlert ? "block" : "none" }}
+                                    style={{ display: itemAlert() ? "block" : "none" }}
                                 />
                                 <div
                                     class="account-link account-loadout-link"

@@ -25,9 +25,6 @@ export const [accountView, setAccountView] = createStore({
     username: "",
     /** seconds until the name can change again; 0 when it can */
     usernameChangeTime: 0,
-    playerIcon: "",
-    /** some items are new or unconfirmed */
-    itemAlert: false,
 });
 
 /*
@@ -49,6 +46,20 @@ export class Account {
 
     get loggedIn() {
         return this.status == "loggedIn";
+    }
+
+    private setStatus(status: AccountStatus) {
+        this.status = status;
+        setAccountView((v) => {
+            v.status = status;
+        });
+    }
+
+    private setRequests(n: number) {
+        this.requestsInFlight = n;
+        setAccountView((v) => {
+            v.requests = n;
+        });
     }
 
     /** resolves the `settled()` promises once no request is in flight */
@@ -86,8 +97,7 @@ export class Account {
             res: Treaty.Data<UserRouter[Path]["post"]>,
         ) => void,
     ): Promise<void> {
-        this.requestsInFlight++;
-        this.publish();
+        this.setRequests(this.requestsInFlight + 1);
 
         try {
             const { data, error, response } = await this.router[path].post(body as any);
@@ -101,8 +111,7 @@ export class Account {
             cb(err, {} as any);
         }
 
-        this.requestsInFlight--;
-        this.publish();
+        this.setRequests(this.requestsInFlight - 1);
         if (this.requestsInFlight == 0) {
             for (const resolve of this.onSettled.splice(0)) resolve();
         }
@@ -114,28 +123,14 @@ export class Account {
         return new Promise<void>((resolve) => this.onSettled.push(resolve));
     }
 
-    /** copies what the views show into accountView */
-    publish() {
-        setAccountView((v) => {
-            v.status = this.status;
-            v.requests = this.requestsInFlight;
-            v.username = this.profile.username || "";
-            v.usernameChangeTime = this.profile.usernameChangeTime;
-            v.playerIcon = this.loadout.player_icon;
-            v.itemAlert = this.items.some((item) => item.status! < loadouts.ItemStatus.Ackd);
-        });
-    }
-
     /** a new loadout, or the same one changed */
     private loadoutChanged() {
         setAccountLoadout({ ...this.loadout });
-        this.publish();
     }
 
     /** the items, or one's status, changed */
     private itemsChanged() {
         setAccountItems([...this.items]);
-        this.publish();
     }
 
     init() {
@@ -147,7 +142,7 @@ export class Account {
 
     /** once site_info says which logins the API has */
     initLogin() {
-        this.status = "loggedOut";
+        this.setStatus("loggedOut");
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
         if (api.anyLoginSupported()) {
             this.loadProfile();
@@ -167,11 +162,10 @@ export class Account {
 
     loadProfile() {
         // a reload while logged in stays logged in until the answer
-        if (!this.loggedIn) this.status = "loggingIn";
-        this.publish();
+        if (!this.loggedIn) this.setStatus("loggingIn");
         this.fetchApi("profile", {}, (err, data) => {
             const wasLoggingIn = this.status == "loggingIn";
-            this.status = "loggedOut";
+            let status: AccountStatus = "loggedOut";
             this.profile = {} as this["profile"];
             this.items = [];
             if (err) {
@@ -179,7 +173,7 @@ export class Account {
             } else if (data.banned) {
                 showNotification(`Account banned: ${data.reason}`);
             } else if (data.success) {
-                this.status = "loggedIn";
+                status = "loggedIn";
                 this.profile = data.profile;
                 this.items = data.items;
                 this.loadout = data.loadout;
@@ -187,6 +181,11 @@ export class Account {
                 profile.slug = data.profile.slug;
                 this.config.set("profile", profile);
             }
+            setAccountView((v) => {
+                v.username = this.profile.username || "";
+                v.usernameChangeTime = this.profile.usernameChangeTime;
+            });
+            this.setStatus(status);
             if (wasLoggingIn && this.loggedIn) {
                 this.getPass(true);
             }
