@@ -1,4 +1,5 @@
 import type { LootDef } from "./defs/gameObjectDefs.ts";
+import type { MapDefKey } from "./defs/mapDefs.ts";
 
 export enum Action {
     None,
@@ -136,6 +137,20 @@ export enum TeamMode {
     Squad = 4,
 }
 
+/** a play button on the main menu */
+export interface PlayMode {
+    mapName: MapDefKey;
+    teamMode: TeamMode;
+    enabled: boolean;
+}
+
+/** the play buttons until an admin changes them, and when playing without the API */
+export const defaultPlayModes: readonly PlayMode[] = [
+    { mapName: "main", teamMode: TeamMode.Solo, enabled: true },
+    { mapName: "main", teamMode: TeamMode.Duo, enabled: true },
+    { mapName: "main", teamMode: TeamMode.Squad, enabled: true },
+];
+
 export enum FactionTeam {
     Red = 1,
     Blue = 2,
@@ -227,7 +242,6 @@ export const GameConfig = {
         minSpawnRad: 25,
         perkModeRoleSelectDuration: 20,
 
-        /* STRIP_FROM_PROD_CLIENT:START */
         defaultItems: {
             weapons: [
                 { type: "", ammo: 0 },
@@ -269,7 +283,6 @@ export const GameConfig = {
                 "15xscope": 0,
             },
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
     },
     defaultEmoteLoadout: [
         "emote_happyface",

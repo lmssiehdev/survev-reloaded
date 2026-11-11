@@ -8,7 +8,7 @@ import {
 } from "@survev/shared/defs/gameObjects/questDefs.ts";
 import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { MapId } from "@survev/shared/gameConfig.ts";
-import type { Mode } from "../admin/settings.ts";
+import type { PlayMode } from "@survev/shared/gameConfig.ts";
 
 const questTypes = Object.keys(QuestDefs);
 
@@ -32,7 +32,7 @@ const incompatibleQuestMap = new Map(
 
 export const questHelpers = {
     getAvailableQuestsForModes(
-        modes: readonly Mode[],
+        modes: readonly PlayMode[],
         currentQuests: ReadonlySet<string>,
         rerollingId?: string,
     ): string[] {

@@ -56,7 +56,6 @@ const mapDef: PartialMapDef = {
             ],
         },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     lootTable: {
         tier_soviet: [
             { name: "tier_guns", count: 1, weight: 1.75 },
@@ -264,7 +263,6 @@ const mapDef: PartialMapDef = {
         ],
         importantSpawns: ["club_complex_01", "warehouse_complex_01"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Beach = util.mergeDeep({}, Main, mapDef) as MapDef;

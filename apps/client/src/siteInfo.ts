@@ -1,4 +1,4 @@
-import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
+import { MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import { reconcile } from "solid-js";
@@ -28,8 +28,6 @@ export class SiteInfo {
         api.logins = data.logins;
         helpers.turnstileSiteKey = data.turnstileSiteKey;
         if (data.captchaEnabled && data.turnstileSiteKey) helpers.loadTurnstile();
-
-        this.updatePageFromInfo();
     }
 
     getGameModeStyles() {
@@ -37,7 +35,7 @@ export class SiteInfo {
         const modes = this.info.modes || [];
         for (let i = 0; i < modes.length; i++) {
             const mode = modes[i];
-            const mapDef = (MapDefs[mode.mapName as MapDefKey] || MapDefs.main)
+            const mapDef = (MapDefs[mode.mapName] || MapDefs.main)
                 .desc;
             const buttonText = mapDef.buttonText
                 ? mapDef.buttonText
@@ -52,9 +50,15 @@ export class SiteInfo {
         return availableModes;
     }
 
-    /** the start menu's play buttons, regions, streamers and theme */
+    /** the start menu's play buttons, regions, streamers and theme; also when site_info isn't there, so what needs the API hides */
     updatePageFromInfo() {
-        if (!this.loaded) return;
+        if (!this.loaded) {
+            setStartMenu((m) => {
+                m.offline = true;
+                m.supportsTeam = false;
+            });
+            return;
+        }
         const info = this.info;
         setStartMenu((m) => {
             reconcile(this.getGameModeStyles())(m.modes);

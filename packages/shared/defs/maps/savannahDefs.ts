@@ -32,7 +32,6 @@ const mapDef: PartialMapDef = {
         particles: {},
     },
     gameMode: { maxPlayers: 80, sniperMode: true },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             crates: [
@@ -310,7 +309,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Savannah = util.mergeDeep({}, Main, mapDef);

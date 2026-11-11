@@ -158,7 +158,6 @@ export const zTeamPlayGameMsg = z.object({
     data: z.object({
         version: z.number(),
         region: z.string(),
-        zones: z.array(z.string()),
         turnstileToken: z.string().optional(),
     }),
 });

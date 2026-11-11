@@ -115,25 +115,20 @@ export class GameModeManager {
         }
     }
 
+    /** 0 when nobody is left, eg the player of a single player game died */
     getWinningTeamId() {
         switch (this.mode) {
-            case GameMode.Solo: {
-                const winner = this.game.playerBarn.livingPlayers[0];
-                return winner.teamId;
-            }
-            case GameMode.Team: {
-                const winner = this.game.playerBarn.getAliveGroups()[0];
-                return winner.id;
-            }
-            case GameMode.Faction: {
-                const winner = this.game.playerBarn.getAliveTeams()[0];
-                return winner.id;
-            }
+            case GameMode.Solo:
+                return this.game.playerBarn.livingPlayers[0]?.teamId ?? 0;
+            case GameMode.Team:
+                return this.game.playerBarn.getAliveGroups()[0]?.id ?? 0;
+            case GameMode.Faction:
+                return this.game.playerBarn.getAliveTeams()[0]?.id ?? 0;
         }
     }
 
     isGameStarted(): boolean {
-        return this.cantDespawnAliveCount() > 1;
+        return this.cantDespawnAliveCount() >= this.game.options.minPlayers;
     }
 
     updateAliveCounts(aliveCounts: number[]): void {

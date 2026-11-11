@@ -19,7 +19,6 @@ const mapDef: PartialMapDef = {
         },
         particles: { camera: "falling_leaf_summer" },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     mapGen: {
         customSpawnRules: {
             locationSpawns: [
@@ -65,7 +64,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const WoodsSummer = util.mergeDeep({}, Woods, mapDef) as MapDef;

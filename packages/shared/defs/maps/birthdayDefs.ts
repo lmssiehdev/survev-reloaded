@@ -41,7 +41,6 @@ const mapDef: PartialMapDef = {
         maxPlayers: 80,
         killLeaderEnabled: true,
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [],
@@ -181,7 +180,6 @@ const mapDef: PartialMapDef = {
         spawnReplacements: [{}],
         importantSpawns: [],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Birthday = util.mergeDeep({}, Main, mapDef) as MapDef;

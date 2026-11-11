@@ -297,7 +297,6 @@ export class UpdateMsg implements AbstractMsg {
     ack = 0;
 
     serialize(s: BitStream) {
-        /* STRIP_FROM_PROD_CLIENT:START */
         let flags = 0;
         const flagsIdx = s.byteIndex;
         s.writeUint16(flags);
@@ -494,7 +493,6 @@ export class UpdateMsg implements AbstractMsg {
         s.byteIndex = flagsIdx;
         s.writeUint16(flags);
         s.byteIndex = idx;
-        /* STRIP_FROM_PROD_CLIENT:END */
     }
 
     // @ts-expect-error deserialize only accept one argument for now

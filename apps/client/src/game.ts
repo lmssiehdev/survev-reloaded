@@ -141,6 +141,11 @@ export class Game {
     }
 
     tryJoinGame(url: string, joinToken: string, onConnectFail: () => void) {
+        this.joinWith(() => new WebsocketConnection(url), joinToken, onConnectFail);
+    }
+
+    /** joins over any Connection, `connect` is only called if the game isn't already joining */
+    joinWith(connect: () => Connection, joinToken: string, onConnectFail: () => void) {
         if (this.connecting || this.connected || this.initialized) return;
 
         if (this.m_connection) {
@@ -151,7 +156,7 @@ export class Game {
         this.connecting = true;
         this.connected = false;
         try {
-            this.m_connection = new WebsocketConnection(url);
+            this.m_connection = connect();
             this.m_connection.onError = () => {
                 this.m_connection?.close();
             };

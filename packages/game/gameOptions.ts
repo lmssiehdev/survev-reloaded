@@ -83,6 +83,11 @@ export interface GameOptions {
      */
     netSyncTps: number;
     /**
+     * Alive players (groups in duo and squad, teams in factions) needed to start the game, it ends when fewer remain.
+     * 1 makes a single player game that ends when the player dies.
+     */
+    minPlayers: number;
+    /**
      * Limits how many simultaneous connections an IP can have in a game.
      */
     rateLimitsEnabled: boolean;
@@ -92,4 +97,22 @@ export interface GameOptions {
     uniqueInGameNames: boolean;
     defaultItems: DefaultItems;
     debug: GameDebugOptions;
+}
+
+/** a plain game: no rate limits, bots or debug tools; hosts override what they configure */
+export function defaultGameOptions(logger: GameLogger): GameOptions {
+    return {
+        logger,
+        gameTps: 100,
+        netSyncTps: 33,
+        minPlayers: 2,
+        rateLimitsEnabled: false,
+        uniqueInGameNames: true,
+        defaultItems: {},
+        debug: {
+            spawnMode: "default",
+            allowBots: false,
+            allowEditMsg: false,
+        },
+    };
 }

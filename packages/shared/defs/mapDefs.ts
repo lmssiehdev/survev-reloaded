@@ -60,10 +60,8 @@ const _MapDefs = {
     birthday: Birthday,
     beach: Beach,
 
-    /* STRIP_FROM_PROD_CLIENT:START */
     test_normal: testNormal,
     test_faction: testFaction,
-    /* STRIP_FROM_PROD_CLIENT:END */
 } satisfies Record<string, MapDef>;
 
 export type MapDefKey = keyof typeof _MapDefs;

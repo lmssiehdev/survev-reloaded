@@ -10,6 +10,7 @@ import {
     zSaveGameMatchData,
     zSpectateGamePrivateBody,
 } from "@survev/contracts";
+import { HandleState } from "@survev/game/gamePool.ts";
 import { getLogger, installCrashHandlers, logProcessStart, setupServerLogging } from "@survev/logger/node.ts";
 import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import { existsSync } from "node:fs";
@@ -18,7 +19,7 @@ import path from "node:path";
 import { z, type ZodObject } from "zod";
 import pkgJson from "../../../package.json" with { type: "json" };
 import { env } from "./env.ts";
-import { GameProcess, GameProcessManager, ProcState } from "./game/gameProcessManager.ts";
+import { type GameProcess, GameProcessManager } from "./game/gameProcessManager.ts";
 import { apiPrivateRouter } from "./utils/apiRouter.ts";
 import { getIp } from "./utils/ip.ts";
 import { LOST_GAME_DATA_DIR } from "./utils/types.ts";
@@ -217,10 +218,10 @@ const app = Bun.serve({
                 }
 
                 return Response.json({
-                    gameCount: server.manager.processes.length,
-                    games: server.manager.processes.map(p => {
+                    gameCount: server.manager.games.length,
+                    games: server.manager.games.map(p => {
                         return {
-                            state: ProcState[p.state],
+                            state: HandleState[p.state],
                             reusedCount: p.reusedCount,
                             avaliableSlots: p.avaliableSlots,
                             port: p.port,

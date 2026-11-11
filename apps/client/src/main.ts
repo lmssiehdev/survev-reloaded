@@ -1,4 +1,4 @@
-import { GameConfig } from "@survev/shared/gameConfig.ts";
+import { defaultPlayModes, GameConfig } from "@survev/shared/gameConfig.ts";
 import * as net from "@survev/shared/net/net.ts";
 import type {
     FindGameBody,
@@ -33,7 +33,7 @@ import Menu from "./ui/menu.ts";
 import { LoadoutDisplay } from "./ui/opponentDisplay.ts";
 import { Pass } from "./ui/pass.ts";
 import { ProfileUi } from "./ui/profileUi.ts";
-import { setApp, setStartMenu, startMenu } from "./ui/startMenu.ts";
+import { offlineModeIdx, setApp, setStartMenu, startMenu } from "./ui/startMenu.ts";
 import { TeamMenu } from "./ui/teamMenu.ts";
 import { loadStaticDomImages } from "./ui/ui2.ts";
 
@@ -113,6 +113,7 @@ export class Application {
             this.config.set("language", language);
             this.localization.setLocale(language);
             this.siteInfo.load().then(() => {
+                this.siteInfo.updatePageFromInfo();
                 this.pingTest.setRegions(this.siteInfo.info.regions ?? {});
                 this.startPingTest();
                 this.updateLoginSupport();
@@ -476,22 +477,10 @@ export class Application {
                 delay = 0;
             }
 
-            const version = GameConfig.protocolVersion;
-            let region = this.config.get("region")!;
-            const paramRegion = helpers.getParameterByName("region");
-            if (paramRegion !== undefined && paramRegion.length > 0) {
-                region = paramRegion;
-            }
-            let zones = this.pingTest.getZones(region);
-            const paramZone = helpers.getParameterByName("zone");
-            if (paramZone !== undefined && paramZone.length > 0) {
-                zones = [paramZone];
-            }
-
             const matchArgs: FindGameBody = {
-                version,
-                region,
-                zones,
+                version: GameConfig.protocolVersion,
+                // ?region= picks the region by hand, for testing a server
+                region: helpers.getParameterByName("region") || this.config.get("region")!,
                 playerCount: 1,
                 autoFill: true,
                 gameModeIdx,
@@ -572,6 +561,27 @@ export class Application {
                 findGameImpl(0, 2, token);
             },
         );
+    }
+
+    /** the game runs in this page, so there's no region or matchmaking to go through */
+    async playOffline() {
+        if (this.quickPlayPendingModeIdx !== -1) return;
+        this.errorMessage = "";
+        this.quickPlayPendingModeIdx = offlineModeIdx;
+        this.setConfigFromDOM();
+        this.refreshUi();
+
+        const onFail = () => this.onJoinGameError("join_game_failed");
+        try {
+            // loaded on demand, keeps the game code out of the main bundle
+            const { connectLocalGame } = await import("./localGame.ts");
+            const { mapName, teamMode } = defaultPlayModes[0];
+            const joinToken = crypto.randomUUID();
+            this.game!.joinWith(() => connectLocalGame({ mapName, teamMode }, joinToken), joinToken, onFail);
+        } catch (err) {
+            console.error("Failed to start offline game", err);
+            onFail();
+        }
     }
 
     joinGame(matchData: FindGameMatchData) {

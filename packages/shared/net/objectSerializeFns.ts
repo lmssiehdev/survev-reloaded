@@ -193,7 +193,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Player]: {
         serializedPartialSize: 6,
         serializedFullSize: 32, // calculating this one is... yeah...
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
             s.writeUnitVec(data.dir, 8);
@@ -262,7 +261,6 @@ export const ObjectSerializeFns: {
                 });
             }
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
             data.dir = s.readUnitVec(8);
@@ -331,7 +329,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Obstacle]: {
         serializedPartialSize: 6,
         serializedFullSize: 16,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
             s.writeBits(data.ori, 2);
@@ -368,7 +365,6 @@ export const ObjectSerializeFns: {
             s.writeBoolean(data.isSkin);
             if (data.isSkin) s.writeUint16(data.skinPlayerId!);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -412,7 +408,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Building]: {
         serializedPartialSize: 2,
         serializedFullSize: 9,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeBoolean(data.ceilingDead);
             s.writeBoolean(data.occupied);
@@ -429,7 +424,6 @@ export const ObjectSerializeFns: {
             s.writeBits(data.ori, 2);
             s.writeBits(data.layer, 2);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.ceilingDead = s.readBoolean();
@@ -453,7 +447,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Structure]: {
         serializedPartialSize: 0,
         serializedFullSize: 10,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: () => {},
         serializeFull: (s, data) => {
             s.writeMapPos(data.pos);
@@ -465,7 +458,6 @@ export const ObjectSerializeFns: {
                 s.writeUint16(data.layerObjIds[r]);
             }
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: () => {},
         deserializeFull: (s, data) => {
@@ -484,14 +476,12 @@ export const ObjectSerializeFns: {
     [ObjectType.LootSpawner]: {
         serializedPartialSize: 8,
         serializedFullSize: 0,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
             s.writeMapType(data.type);
             s.writeBits(data.layer, 2);
         },
         serializeFull: () => {},
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -503,7 +493,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Loot]: {
         serializedPartialSize: 4,
         serializedFullSize: 5,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
         },
@@ -518,7 +507,6 @@ export const ObjectSerializeFns: {
                 s.writeUint16(data.ownerId);
             }
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -538,7 +526,6 @@ export const ObjectSerializeFns: {
     [ObjectType.DeadBody]: {
         serializedPartialSize: 4,
         serializedFullSize: 3,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
         },
@@ -546,7 +533,6 @@ export const ObjectSerializeFns: {
             s.writeUint8(data.layer);
             s.writeUint16(data.playerId);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -559,7 +545,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Decal]: {
         serializedPartialSize: 0,
         serializedFullSize: 8,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: () => {},
         serializeFull: (s, data) => {
             s.writeMapPos(data.pos);
@@ -574,7 +559,6 @@ export const ObjectSerializeFns: {
             s.writeBits(data.layer, 2);
             s.writeUint8(data.goreKills);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: () => {},
         deserializeFull: (s, data) => {
@@ -593,7 +577,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Projectile]: {
         serializedPartialSize: 8,
         serializedFullSize: 2,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
             s.writeFloat(data.posZ, 0, GameConfig.projectile.maxHeight, 10);
@@ -603,7 +586,6 @@ export const ObjectSerializeFns: {
             s.writeGameType(data.type);
             s.writeBits(data.layer, 2);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -618,7 +600,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Smoke]: {
         serializedPartialSize: 5,
         serializedFullSize: 1,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeMapPos(data.pos);
             s.writeFloat(data.rad, 0, Constants.SmokeMaxRad, 8);
@@ -627,7 +608,6 @@ export const ObjectSerializeFns: {
             s.writeBits(data.layer, 2);
             s.writeBits(data.interior, 6);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.pos = s.readMapPos();
@@ -641,7 +621,6 @@ export const ObjectSerializeFns: {
     [ObjectType.Airdrop]: {
         serializedPartialSize: 1,
         serializedFullSize: 4,
-        /* STRIP_FROM_PROD_CLIENT:START */
         serializePart: (s, data) => {
             s.writeFloat(data.fallT, 0, 1, 7);
             s.writeBoolean(data.landed);
@@ -649,7 +628,6 @@ export const ObjectSerializeFns: {
         serializeFull: (s, data) => {
             s.writeMapPos(data.pos);
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
 
         deserializePart: (s, data) => {
             data.fallT = s.readFloat(0, 1, 7);

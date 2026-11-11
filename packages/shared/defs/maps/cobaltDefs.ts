@@ -34,7 +34,6 @@ const mapDef: PartialMapDef = {
         },
         particles: {},
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             crates: [
@@ -191,7 +190,6 @@ const mapDef: PartialMapDef = {
             "bunker_structure_09",
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
     gameMode: {
         maxPlayers: 80,
         perkMode: true,

@@ -38,7 +38,6 @@ const mapDef: PartialMapDef = {
             },
         },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     lootTable: {
         tier_throwables: [
             { name: "frag", count: 3, weight: 1 },
@@ -140,7 +139,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const WoodsSnow = util.mergeDeep({}, Woods, mapDef) as MapDef;

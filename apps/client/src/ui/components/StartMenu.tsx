@@ -9,7 +9,16 @@ import { t, translate } from "../i18n.ts";
 import newsHtml from "../news.html?raw";
 import { passPanel } from "../passView.ts";
 import { profile, profileUi } from "../profile.ts";
-import { app, type RegionView, setStartMenu, setTeam, startMenu, team, teamMenu } from "../startMenu.ts";
+import {
+    app,
+    offlineModeIdx,
+    type RegionView,
+    setStartMenu,
+    setTeam,
+    startMenu,
+    team,
+    teamMenu,
+} from "../startMenu.ts";
 import { showToast } from "../toast.ts";
 import { PassPanel } from "./PassPanel.tsx";
 import { LanguageSelect } from "./SettingsModal.tsx";
@@ -236,21 +245,34 @@ function StartMenuColumn() {
                     >
                     </a>
                 </div>
-                <RegionSelect
-                    id="server-select-main"
-                    optgroupId="server-opts"
-                    class="server-select menu-option btn-hollow btn-hollow-selected"
-                    value={startMenu.region}
-                    onChange={(region) => {
-                        setStartMenu((m) => void (m.region = region));
-                        config.set("region", region);
-                    }}
-                />
-                <QuickPlayButton idx={0} />
-                <div id="btns-quick-start">
-                    <QuickPlayButton idx={1} />
-                    <QuickPlayButton idx={2} />
-                </div>
+                <Show when={!startMenu.offline}>
+                    <RegionSelect
+                        id="server-select-main"
+                        optgroupId="server-opts"
+                        class="server-select menu-option btn-hollow btn-hollow-selected"
+                        value={startMenu.region}
+                        onChange={(region) => {
+                            setStartMenu((m) => void (m.region = region));
+                            config.set("region", region);
+                        }}
+                    />
+                </Show>
+                <Show when={!startMenu.offline}>
+                    <QuickPlayButton idx={0} />
+                    <div id="btns-quick-start">
+                        <QuickPlayButton idx={1} />
+                        <QuickPlayButton idx={2} />
+                    </div>
+                </Show>
+                <a
+                    class="btn-green btn-darken menu-option"
+                    id="btn-play-offline"
+                    onClick={() => app()?.playOffline()}
+                >
+                    {startMenu.pendingModeIdx === offlineModeIdx
+                        ? <div class="ui-spinner"></div>
+                        : t("index-play-offline")}
+                </a>
                 <div class="btns-double-row" style={{ display: startMenu.supportsTeam ? undefined : "none" }}>
                     <a
                         class="btn-darken menu-option btn-team-option"

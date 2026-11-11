@@ -37,7 +37,6 @@ const mapDef: PartialMapDef = {
         sound: { riverShore: "stone" },
         particles: { camera: "falling_leaf_spring" },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     lootTable: {
         // this override is not from the leak!
         tier_chrys_case: [
@@ -118,7 +117,6 @@ const mapDef: PartialMapDef = {
         ],
         importantSpawns: ["logging_complex_01sp", "logging_complex_02sp"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const WoodsSpring = util.mergeDeep({}, Woods, mapDef) as MapDef;

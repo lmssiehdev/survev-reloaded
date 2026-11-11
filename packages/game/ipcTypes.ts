@@ -1,26 +1,6 @@
 import type { FindGamePrivateBody } from "@survev/contracts";
-import type { SpectateTokenData } from "@survev/game/game.ts";
-import type { GameMode } from "@survev/game/gameOptions.ts";
-import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
-import type { TeamMode } from "@survev/shared/gameConfig.ts";
-
-export interface GameData {
-    id: string;
-    teamMode: TeamMode;
-    mapName: MapDefKey;
-    canJoin: boolean;
-    aliveCount: number;
-    startedTime: number;
-    stopped: boolean;
-    timeRunning: number;
-
-    livingPlayers: Array<{
-        id: number;
-        userId: string | null;
-        name: string;
-        disconnected: boolean;
-    }>;
-}
+import type { GameData, SpectateTokenData } from "./game.ts";
+import type { GameMode } from "./gameOptions.ts";
 
 export enum ProcessMsgType {
     Create,

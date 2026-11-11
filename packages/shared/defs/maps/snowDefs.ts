@@ -38,7 +38,6 @@ const mapDef: PartialMapDef = {
             airdropImg: "map-chute-01x.img",
         },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -292,7 +291,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Snow = util.mergeDeep({}, Main, mapDef) as MapDef;
