@@ -1,21 +1,13 @@
-import $ from "jquery";
-
-import type { EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
-import type { HealEffectDef } from "@survev/shared/defs/gameObjects/healEffectDefs.ts";
-import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
-import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
-import { PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
-import { activePassType } from "@survev/shared/defs/gameObjects/passDefs.ts";
+import { activePassType, PassDefs } from "@survev/shared/defs/gameObjects/passDefs.ts";
 import { QuestDefs } from "@survev/shared/defs/gameObjects/questDefs.ts";
-import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import type { Account } from "../account.ts";
-import { helpers } from "../helpers.ts";
+import { mountPassPanel } from "./components/PassPanel.tsx";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
-import type { Localization } from "./localization.ts";
+import { assignLeaves, type Fade, opaque, type QuestView, setPassView } from "./passView.ts";
 
 function getNextPassUnlockItemId(passType: string, currentLevel: number) {
     const passDef = PassDefs[passType];
@@ -56,7 +48,6 @@ export class Pass {
             levelXp: number;
             targetLevel: number;
         }>,
-        elems: {},
     };
 
     quests: Array<{
@@ -85,23 +76,8 @@ export class Pass {
             displayed?: boolean;
         };
         iconTicker: number;
-        elems: {
-            main: JQuery<HTMLElement>;
-            xp: JQuery<HTMLElement>;
-            info: JQuery<HTMLElement>;
-            icon: JQuery<HTMLElement>;
-            desc: JQuery<HTMLElement>;
-            cur: JQuery<HTMLElement>;
-            target: JQuery<HTMLElement>;
-            refresh: JQuery<HTMLElement>;
-            refreshPrompt: JQuery<HTMLElement>;
-            refreshConfirm: JQuery<HTMLElement>;
-            refreshCancel: JQuery<HTMLElement>;
-            counter: JQuery<HTMLElement>;
-            barFill: JQuery<HTMLElement>;
-            timer: JQuery<HTMLElement>;
-            loading: JQuery<HTMLElement>;
-        };
+        /** pending animation steps, cancelled when new quest data arrives */
+        timers: number[];
     }> = [];
 
     loaded = false;
@@ -112,18 +88,44 @@ export class Pass {
     constructor(
         public account: Account,
         public loadoutMenu: LoadoutMenu,
-        public localization: Localization,
     ) {
         this.account.addEventListener("request", this.onRequest.bind(this));
         this.account.addEventListener("pass", this.onPass.bind(this));
+        mountPassPanel(document.getElementById("pass-wrapper")!, {
+            getCategory: (gameType) => this.loadoutMenu.getCategory(gameType),
+            onRefresh: (idx) => this.onRefreshClick(idx),
+            onRefreshConfirm: (idx) => this.onRefreshConfirm(idx),
+            onRefreshCancel: (idx) => this.setQuestView(idx, { promptOpen: false }),
+        });
         this.loadPlaceholders();
-        $("#pass-progress-unlock-wrapper")
-            .on("mouseenter", () => {
-                $("#pass-unlock-tooltip").fadeIn(50);
-            })
-            .on("mouseleave", () => {
-                $("#pass-unlock-tooltip").fadeOut(50);
-            });
+    }
+
+    setQuestView(idx: number, view: Partial<QuestView>) {
+        setPassView((s) => {
+            assignLeaves(s.quests[idx], view);
+        });
+    }
+
+    findQuest(idx: number) {
+        return this.quests.find((q) => q.data.idx == idx);
+    }
+
+    onRefreshClick(idx: number) {
+        if (this.findQuest(idx)?.refreshEnabled) {
+            this.setQuestView(idx, { promptOpen: true });
+        }
+    }
+
+    onRefreshConfirm(idx: number) {
+        if (this.findQuest(idx)?.refreshEnabled) {
+            this.setQuestView(idx, { loading: true, promptOpen: false });
+            this.account.refreshQuest(idx);
+        }
+    }
+
+    /** jQuery .queue()/.delay() replacement */
+    after(timers: number[], ms: number, fn: () => void) {
+        timers.push(window.setTimeout(fn, ms));
     }
 
     onPass(pass: PassState, quests: QuestState[], resetRefresh: boolean) {
@@ -151,7 +153,7 @@ export class Pass {
                     str: "",
                 },
                 iconTicker: 0,
-                elems: {} as QuestData["elems"],
+                timers: [],
             };
             const curQuest = this.quests.find((existingQuest) => {
                 return (
@@ -171,53 +173,12 @@ export class Pass {
             if (quest.data.progress > quest.current) {
                 questAnimCount++;
             }
-            const fixedQuestElem = $(`#pass-quest-${quest.data.idx}`);
-            quest.elems = {
-                main: fixedQuestElem,
-                xp: fixedQuestElem.find(".pass-quest-xp"),
-                info: fixedQuestElem.find(".pass-quest-info"),
-                icon: fixedQuestElem.find(".pass-quest-icon"),
-                desc: fixedQuestElem.find(".pass-quest-desc"),
-                cur: fixedQuestElem.find(".pass-quest-counter-current"),
-                target: fixedQuestElem.find(".pass-quest-counter-target"),
-                refresh: fixedQuestElem.find(".pass-quest-refresh"),
-                refreshPrompt: fixedQuestElem.find(".pass-quest-refresh-prompt"),
-                refreshConfirm: fixedQuestElem.find(".pass-quest-refresh-confirm"),
-                refreshCancel: fixedQuestElem.find(".pass-quest-refresh-cancel"),
-                counter: fixedQuestElem.find(".pass-quest-counter"),
-                barFill: fixedQuestElem.find(".pass-quest-bar-fill"),
-                timer: fixedQuestElem.find(".pass-quest-timer"),
-                loading: fixedQuestElem.find(".pass-quest-spinner"),
-            };
-            quest.elems.barFill.clearQueue();
-            quest.elems.main.removeClass("pass-bg-pulse");
-            quest.elems.main.stop().css({
-                opacity: 1,
-            });
-            quest.elems.xp.removeClass("pass-text-pulse");
-            quest.elems.refresh.stop().css({
-                opacity: 1,
-            });
-            quest.elems.counter.stop().css({
-                opacity: 1,
-            });
+            if (curQuest) {
+                for (const timer of curQuest.timers) clearTimeout(timer);
+            }
 
             // Initialize quest UI
             const questDef = QuestDefs[quest.data.type];
-            const title = this.localization.translate(`${quest.data.type}`) || quest.data.type;
-            const pct = (quest.current / quest.data.target) * 100;
-            quest.elems.main.css("display", "block");
-            quest.elems.desc.html(title);
-            quest.elems.desc.css({
-                "font-size": helpers.measureText(title, "16px Phantom Guardians") > 155 ? "14px" : "16px",
-            });
-            quest.elems.cur.html(Math.round(quest.current));
-            quest.elems.xp.html(`${questDef.xp} XP`);
-            quest.elems.xp.attr("data-xp", questDef.xp);
-            quest.elems.barFill.css({
-                width: `${pct}%`,
-            });
-            quest.elems.loading.css("display", "none");
 
             // Humanize time for survival quests
             let targetText: string | number = quest.data.target;
@@ -225,16 +186,35 @@ export class Pass {
                 targetText = humanizeTime(targetText);
             }
 
-            quest.elems.target.html(targetText);
-
-            quest.elems.icon.toggle(!!questDef.icon);
-            if (questDef.icon) {
-                quest.elems.icon.css({
-                    "transform": `rotate(${math.rad2deg(questDef.icon.rot ?? 0)}deg) scale(${
-                        questDef.icon.scale ?? 1
-                    })`,
-                });
-            }
+            setPassView((s) => {
+                const old = s.quests[quest.data.idx];
+                const next: QuestView = {
+                    type: quest.data.type,
+                    xp: questDef.xp,
+                    current: String(Math.round(quest.current)),
+                    target: String(targetText),
+                    barPct: (quest.current / quest.data.target) * 100,
+                    hasIcon: !!questDef.icon,
+                    iconRot: math.rad2deg(questDef.icon?.rot ?? 0),
+                    iconScale: questDef.icon?.scale ?? 1,
+                    iconUrl1: old?.iconUrl1 ?? "",
+                    iconUrl2: old?.iconUrl2 ?? "",
+                    iconAlpha1: old?.iconAlpha1 ?? 1,
+                    iconAlpha2: old?.iconAlpha2 ?? 0,
+                    refreshEnabled: old?.refreshEnabled ?? false,
+                    promptOpen: old?.promptOpen ?? false,
+                    loading: false,
+                    showTimer: old?.showTimer ?? false,
+                    timerText: old?.timerText ?? "",
+                    completeText: false,
+                    pulse: false,
+                    main: opaque(),
+                    refresh: opaque(),
+                    counter: opaque(),
+                };
+                if (old) assignLeaves(old, next);
+                else s.quests[quest.data.idx] = next;
+            });
             this.setQuestRefreshEnabled(quest);
             newQuests.push(quest);
         }
@@ -278,28 +258,28 @@ export class Pass {
             levelXp,
             targetLevel: level,
         });
-        $("#pass-block").css("z-index", "1");
-        $("#pass-locked").css("display", "none");
-        $("#pass-loading").css("display", "none");
         const unlockItemId = getNextPassUnlockItemId(
             this.pass.data.type,
             this.pass.currentLevel,
         );
-        this.setPassUnlockImage(unlockItemId);
-        const passNameText = this.localization.translate(pass.type).toUpperCase();
-        $("#pass-name-text").html(passNameText);
-        $("#pass-progress-level").html(this.pass.currentLevel);
-        $("#pass-progress-xp-current").html(this.pass.currentXp);
-        $("#pass-progress-xp-target").html(this.pass.levelXp);
-        const pct = (this.pass.currentXp / this.pass.levelXp) * 100;
-        $("#pass-progress-bar-fill").css({
-            width: `${pct}%`,
+        setPassView((s) => {
+            s.blockRaised = true;
+            s.lockedVisible = false;
+            s.loadingVisible = false;
+            s.unlockItem = unlockItemId;
+            s.type = pass.type;
+            s.level = this.pass.currentLevel;
+            s.xpCurrent = this.pass.currentXp;
+            s.xpTarget = this.pass.levelXp;
+            s.barPct = (this.pass.currentXp / this.pass.levelXp) * 100;
         });
         this.loaded = true;
     }
 
     onRequest(account: Account) {
-        $("#pass-loading").css("display", account.loggingIn ? "block" : "none");
+        setPassView((s) => {
+            s.loadingVisible = account.loggingIn;
+        });
     }
 
     scheduleUpdatePass(delay: number) {
@@ -313,156 +293,47 @@ export class Pass {
         if (shouldEnableRefresh != quest.refreshEnabled || !quest.refreshSet) {
             quest.refreshEnabled = shouldEnableRefresh;
             quest.refreshSet = true;
-            quest.elems.refresh.off("click");
-            quest.elems.refreshConfirm.off("click");
-            quest.elems.refreshCancel.off("click");
-            if (quest.refreshEnabled) {
-                quest.elems.refreshConfirm.on("click", () => {
-                    quest.elems.loading.css("display", "block");
-                    quest.elems.refreshPrompt.css("display", "none");
-                    this.account.refreshQuest(quest.data.idx);
-                });
-                quest.elems.refreshCancel.on("click", () => {
-                    quest.elems.refreshPrompt.css("display", "none");
-                    quest.elems.info.css("display", "block");
-                });
-                quest.elems.refresh.on("click", () => {
-                    quest.elems.refreshPrompt.css("display", "block");
-                    quest.elems.info.css("display", "none");
-                });
-                quest.elems.refresh.removeClass("pass-quest-refresh-disabled");
-            } else {
-                quest.elems.refresh.addClass("pass-quest-refresh-disabled");
-            }
+            this.setQuestView(quest.data.idx, { refreshEnabled: shouldEnableRefresh });
         }
     }
 
-    setPassUnlockImage(item: string) {
-        const def = GameObjectDefs.typeToDefSafe(item) as OutfitDef | EmoteDef | MeleeDef | HealEffectDef;
-        const unlockImagePath = def
-            ? helpers.getSvgFromGameType(item)
-            : "img/emotes/surviv.svg";
-        const unlockImageUrl = `url(${unlockImagePath})`;
-        const unlockImageTransform = helpers.getCssTransformFromGameType(item);
-        $("#pass-progress-unlock").css({
-            opacity: def ? 1 : 0.15,
-            transform: `translate(-50%, -50%) ${unlockImageTransform}`,
-        });
-        $("#pass-progress-unlock-image").css({
-            "background-image": unlockImageUrl,
-            filter: def?.type === "outfit" ? helpers.getSvgFilterForTint(def.lootImg.tint) : "",
-        });
-        const unlockTypeTitle = def
-            ? this.localization
-                .translate(
-                    `loadout-title-${this.loadoutMenu.getCategory(def.type)!.loadoutType}`,
-                )
-                .toUpperCase()
-            : "";
-        const tooltipElem = $("#pass-unlock-tooltip");
-        tooltipElem.css("opacity", def ? 1 : 0);
-        tooltipElem.find(".tooltip-pass-title").html(unlockTypeTitle);
-        tooltipElem.find(".tooltip-pass-desc").html(def ? def.name! : "");
-        const unlockTypeImageUrl = def
-            ? `url(${this.loadoutMenu.getCategory(def.type)!.categoryImage})`
-            : "";
-        $("#pass-progress-unlock-type-image").css({
-            "background-image": unlockTypeImageUrl,
-        });
-        $("#pass-progress-unlock-type-wrapper").css({
-            display: def ? "block" : "none",
-        });
-    }
-
     animatePassLevelUp() {
-        const passProgressBarFill = $("#pass-progress-bar-fill");
-        const passProgressLevel = $("#pass-progress-level");
-        const passProgressUnlockWrapperEle = $("#pass-progress-unlock-wrapper");
-        const passProgressUnlockImageEle = $("#pass-progress-unlock-image");
-        const passProgressUnlockTypeImageEle = $("#pass-progress-unlock-type-image");
-        passProgressLevel.html(this.pass.currentLevel);
-        passProgressBarFill
-            .queue((next) => {
-                passProgressUnlockWrapperEle.addClass("pass-unlock-pulse");
-                $(next).dequeue();
-            })
-            .delay(750)
-            .queue((next) => {
-                passProgressUnlockImageEle.animate(
-                    {
-                        opacity: 0,
-                    },
-                    250,
-                );
-                passProgressUnlockTypeImageEle.animate(
-                    {
-                        opacity: 0,
-                    },
-                    250,
-                );
-                $(next).dequeue();
-            })
-            .delay(250)
-            .queue((next) => {
-                const nextUnlockItemId = getNextPassUnlockItemId(
-                    this.pass.data.type,
-                    this.pass.currentLevel,
-                );
-                this.setPassUnlockImage(nextUnlockItemId);
-                passProgressUnlockWrapperEle.removeClass("pass-unlock-pulse");
-                passProgressUnlockImageEle.animate(
-                    {
-                        opacity: 1,
-                    },
-                    250,
-                );
-                passProgressUnlockTypeImageEle.animate(
-                    {
-                        opacity: 1,
-                    },
-                    250,
-                );
-                $(next).dequeue();
+        const fade = (opacity: number): Fade => ({ opacity, ms: 250 });
+        setPassView((s) => {
+            s.level = this.pass.currentLevel;
+            s.unlockPulse = true;
+        });
+        this.after([], 750, () => {
+            setPassView((s) => {
+                assignLeaves(s.unlockImages, fade(0));
             });
+        });
+        this.after([], 1000, () => {
+            const nextUnlockItemId = getNextPassUnlockItemId(
+                this.pass.data.type,
+                this.pass.currentLevel,
+            );
+            setPassView((s) => {
+                s.unlockItem = nextUnlockItemId;
+                s.unlockPulse = false;
+                assignLeaves(s.unlockImages, fade(1));
+            });
+        });
     }
 
     animateQuestComplete(quest: (typeof this.quests)[number]) {
-        quest.elems.barFill
-            .queue((el) => {
-                quest.elems.main.addClass("pass-bg-pulse");
-                quest.elems.xp.addClass("pass-text-pulse");
-                quest.elems.refresh.animate(
-                    {
-                        opacity: 0.25,
-                    },
-                    250,
-                );
-                quest.elems.refresh.removeClass("pass-quest-refresh-disabled");
-                quest.elems.refresh.animate(
-                    {
-                        opacity: 0,
-                    },
-                    250,
-                );
-                quest.elems.counter.animate(
-                    {
-                        opacity: 0,
-                    },
-                    250,
-                );
-                quest.elems.desc.html("QUEST COMPLETE!");
-                $(el).dequeue();
-            })
-            .delay(1000)
-            .queue((el) => {
-                quest.elems.main.animate(
-                    {
-                        opacity: 0,
-                    },
-                    750,
-                );
-                $(el).dequeue();
-            });
+        const idx = quest.data.idx;
+        const fade = (opacity: number, ms = 250): Fade => ({ opacity, ms });
+        this.setQuestView(idx, {
+            pulse: true,
+            // the disabled class forces opacity 0.25; fade from there
+            refreshEnabled: true,
+            refresh: fade(0.25),
+            counter: fade(0),
+            completeText: true,
+        });
+        this.after(quest.timers, 250, () => this.setQuestView(idx, { refresh: fade(0) }));
+        this.after(quest.timers, 1000, () => this.setQuestView(idx, { main: fade(0, 750) }));
     }
 
     update(dt: number) {
@@ -496,18 +367,18 @@ export class Pass {
                         swapIcons ? iconIdx - 1 : iconIdx,
                     );
 
-                    fixedQuest.elems.icon.css({
-                        "--img-url-1": `url(../${icon1})`,
-                        "--img-url-2": `url(../${icon2})`,
-                        "--img-alpha-1": swapIcons ? 1 : 0,
-                        "--img-alpha-2": swapIcons ? 0 : 1,
+                    this.setQuestView(fixedQuest.data.idx, {
+                        iconUrl1: `url(../${icon1})`,
+                        iconUrl2: `url(../${icon2})`,
+                        iconAlpha1: swapIcons ? 1 : 0,
+                        iconAlpha2: swapIcons ? 0 : 1,
                     });
                 } else if (questDef.icon?.urls) {
-                    fixedQuest.elems.icon.css({
-                        "--img-url-1": `url(../${questDef.icon.urls[0]})`,
-                        "--img-url-2": "",
-                        "--img-alpha-1": 1,
-                        "--img-alpha-2": 0,
+                    this.setQuestView(fixedQuest.data.idx, {
+                        iconUrl1: `url(../${questDef.icon.urls[0]})`,
+                        iconUrl2: "",
+                        iconAlpha1: 1,
+                        iconAlpha2: 0,
                     });
                 }
             }
@@ -530,9 +401,9 @@ export class Pass {
                 if (questDef.timed) {
                     currentText = humanizeTime(currentText, true);
                 }
-                fixedQuest.elems.cur.html(currentText);
-                fixedQuest.elems.barFill.css({
-                    width: `${pctComplete}%`,
+                this.setQuestView(fixedQuest.data.idx, {
+                    current: String(currentText),
+                    barPct: pctComplete,
                 });
                 if (progressT >= 1) {
                     fixedQuest.progressAnimFinished = true;
@@ -561,22 +432,11 @@ export class Pass {
             const showRefreshTimer = fixedQuest.data.complete && completionPhaseReady;
             if (showRefreshTimer != fixedQuest.timer.displayed) {
                 fixedQuest.timer.displayed = showRefreshTimer;
-                fixedQuest.elems.main.removeClass("pass-bg-pulse");
-                fixedQuest.elems.main.stop().animate(
-                    {
-                        opacity: 1,
-                    },
-                    250,
-                );
-                const isRefreshPromptVisible = fixedQuest.elems.refreshPrompt.css("display") == "block";
-                fixedQuest.elems.info.css(
-                    "display",
-                    showRefreshTimer || isRefreshPromptVisible ? "none" : "block",
-                );
-                fixedQuest.elems.timer.css(
-                    "display",
-                    showRefreshTimer ? "block" : "none",
-                );
+                this.setQuestView(fixedQuest.data.idx, {
+                    pulse: false,
+                    main: { opacity: 1, ms: 250 },
+                    showTimer: showRefreshTimer,
+                });
             }
             if (showRefreshTimer) {
                 const refreshTimeRemainingMs = Math.max(
@@ -586,7 +446,7 @@ export class Pass {
                 const refreshTimeText = humanizeTime(refreshTimeRemainingMs / 1000);
                 if (refreshTimeText != fixedQuest.timer.str) {
                     fixedQuest.timer.str = refreshTimeText;
-                    fixedQuest.elems.timer.html(refreshTimeText);
+                    this.setQuestView(fixedQuest.data.idx, { timerText: refreshTimeText });
                 }
             }
         }
@@ -601,10 +461,10 @@ export class Pass {
             );
             this.pass.levelXp = activeAnimStep.levelXp;
             const passProgressPct = (this.pass.currentXp / activeAnimStep.levelXp) * 100;
-            $("#pass-progress-xp-current").html(Math.round(this.pass.currentXp));
-            $("#pass-progress-xp-target").html(this.pass.levelXp);
-            $("#pass-progress-bar-fill").css({
-                width: `${passProgressPct}%`,
+            setPassView((s) => {
+                s.xpCurrent = Math.round(this.pass.currentXp);
+                s.xpTarget = this.pass.levelXp;
+                s.barPct = passProgressPct;
             });
             if (passAnimT >= 1) {
                 if (activeAnimStep.targetLevel > this.pass.currentLevel) {
@@ -616,9 +476,11 @@ export class Pass {
             }
         }
         if (!this.account.loggingIn && !this.account.loggedIn && !this.lockDisplayed) {
-            $("#pass-block").css("z-index", "1");
-            $("#pass-loading").css("display", "none");
-            $("#pass-locked").css("display", "block");
+            setPassView((s) => {
+                s.blockRaised = true;
+                s.loadingVisible = false;
+                s.lockedVisible = true;
+            });
             this.lockDisplayed = true;
         }
     }
@@ -626,11 +488,12 @@ export class Pass {
     onResize() {}
     loadPlaceholders() {
         const def = PassDefs[this.pass.data.type];
-        const passName = this.localization.translate(this.pass.data.type).toUpperCase();
-        $("#pass-name-text").html(passName);
-        $("#pass-progress-level").html(1);
-        $("#pass-progress-xp-current").html(0);
-        $("#pass-progress-xp-target").html(def.xp[0]);
-        this.setPassUnlockImage(def.items[0].item);
+        setPassView((s) => {
+            s.type = this.pass.data.type;
+            s.level = 1;
+            s.xpCurrent = 0;
+            s.xpTarget = def.xp[0];
+            s.unlockItem = def.items[0].item;
+        });
     }
 }

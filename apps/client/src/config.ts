@@ -2,11 +2,12 @@ import { GameConfig } from "@survev/shared/gameConfig.ts";
 import loadout from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
+import { createStore, reconcile } from "solid-js";
 
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
-import type { Locale } from "./ui/localization.ts";
+import type { Locale } from "./ui/i18n.ts";
 
-type AimStyle = "locked" | "anywhere";
+export type AimStyle = "locked" | "anywhere";
 
 export const debugToolsConfig = {
     enabled: false,
@@ -149,7 +150,18 @@ export class ConfigManager {
 
     config = {} as ConfigType;
 
+    /**
+     * Reactive copy of `config` for TSX views. get() keeps reading the plain object: a store
+     * read right after a write returns the old value until Solid flushes.
+     */
+    readonly state: ConfigType;
+    private readonly setState: (fn: (state: ConfigType) => void) => void;
+
     onModifiedListeners: Array<(key?: ConfigKey) => void> = [];
+
+    constructor() {
+        [this.state, this.setState] = createStore<ConfigType>({ ...defaultConfig });
+    }
 
     load(cb?: () => void) {
         const onLoaded = (configStr: string) => {
@@ -163,6 +175,7 @@ export class ConfigManager {
             this.config = util.mergeDeep<ConfigType>({}, defaultConfig, data);
 
             this.checkUpgradeConfig();
+            this.syncState();
             this.onModified();
 
             this.loaded = true;
@@ -196,6 +209,7 @@ export class ConfigManager {
         if (!key) return;
 
         this.config[key] = value;
+        this.syncState([key]);
 
         this.store();
         this.onModified(key);
@@ -205,6 +219,26 @@ export class ConfigManager {
         if (!key) return undefined;
 
         return this.config[key];
+    }
+
+    /**
+     * Copies `config` into the reactive state. Objects are cloned and merged leaf by leaf, so the
+     * store never shares an object with `config` (a write to one would silently change the other)
+     * and only the leaves that changed notify.
+     */
+    private syncState(keys = Object.keys(this.config) as ConfigKey[]) {
+        const copy = <K extends ConfigKey>(state: ConfigType, key: K) => {
+            const value = this.config[key];
+            const current = state[key];
+            if (value && typeof value === "object" && current && typeof current === "object") {
+                reconcile(structuredClone(value))(current);
+            } else {
+                state[key] = value && typeof value === "object" ? structuredClone(value) : value;
+            }
+        };
+        this.setState((state) => {
+            for (const key of keys) copy(state, key);
+        });
     }
 
     addModifiedListener(e: (key?: ConfigKey) => void) {
