@@ -1,443 +1,139 @@
 import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
-import $ from "jquery";
-import type { Account } from "../account.ts";
+import { type Account, accountView } from "../account.ts";
 import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
+import { follow } from "./controller.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
-import type { Localization } from "./localization.ts";
-import { MenuModal } from "./menuModal.ts";
+import {
+    createAccountModal,
+    loginOptionsModal,
+    loginOptionsModalMobile,
+    mobileAccountModal,
+    setNameModal,
+    setProfile,
+    setProfileUi,
+    userSettingsModal,
+} from "./profile.ts";
 
-function createLoginOptions(
-    parentElem: JQuery<HTMLElement>,
-    linkAccount: boolean | undefined,
-    account: Account,
-    localization: Localization,
-) {
-    const contentsElem = parentElem.find(".login-options-content");
-    contentsElem.empty();
-    if (linkAccount) {
-        contentsElem.append(
-            $("<div/>", {
-                class: "account-login-desc",
-            }).append(
-                $("<p/>", {
-                    html: localization.translate("index-link-account-to"),
-                }),
-            ),
-        );
-    }
-    const buttonParentElem = $("<div/>", {
-        class: "account-buttons",
-    });
-    contentsElem.append(buttonParentElem);
-    const addLoginOption = function(method: string, onClick: () => void) {
-        const el = $("<div/>", {
-            class: `menu-option btn-darken btn-standard btn-login-${method}`,
-        });
-        el.append(
-            $("<span/>", {
-                class: "login-button-name",
-            })
-                .append(
-                    $("<span/>", {
-                        html: localization.translate(`index-${method}`),
-                    }),
-                )
-                .append(
-                    $("<div/>", {
-                        class: "icon",
-                    }),
-                ),
-        );
+const usernameErrors: Record<string, string> = {
+    failed: "Failed setting username.",
+    invalid: "Invalid username.",
+    taken: "Name already taken!",
+    change_time_not_expired: "Username has already been set recently.",
+};
 
-        el.on("click", (_e) => {
-            onClick();
-        });
-
-        buttonParentElem.append(el);
-    };
-
-    // Define the available login methods
-    if (api.loginSupported("discord")) {
-        addLoginOption("discord", () => {
-            signInWithDiscord();
-        });
-    }
-
-    if (api.loginSupported("mock")) {
-        addLoginOption("mock", () => {
-            window.location.href = api.resolveUrl("/api/auth/mock");
-        });
-    }
-}
-
+/** keeps the account views' store (./profile.ts) in sync with Account, and runs their actions */
 export class ProfileUi {
-    setNameModal: MenuModal | null = null;
-    resetStatsModal: MenuModal | null = null;
-    deleteAccountModal: MenuModal | null = null;
-    userSettingsModal: MenuModal | null = null;
-    loginOptionsModal: MenuModal | null = null;
-    createAccountModal: MenuModal | null = null;
-
-    loginOptionsModalMobile!: MenuModal;
-    modalMobileAccount!: MenuModal;
-
     constructor(
         public account: Account,
-        public localization: Localization,
         public loadoutMenu: LoadoutMenu,
-        public errorModal: MenuModal,
     ) {
-        account.addEventListener("error", this.onError.bind(this));
-        account.addEventListener("login", this.onLogin.bind(this));
-        account.addEventListener("loadout", this.onLoadoutUpdated.bind(this));
-        account.addEventListener("items", this.onItemsUpdated.bind(this));
-        account.addEventListener("request", this.render.bind(this));
-        this.initUi();
-        this.render();
-    }
-
-    initUi() {
-        // Set username
-        const clearNamePrompt = function() {
-            $("#modal-body-warning").css("display", "none");
-            $("#modal-account-name-input").val("");
-        };
-        this.setNameModal = new MenuModal($("#modal-account-name-change"));
-        this.setNameModal.onShow(clearNamePrompt);
-        this.setNameModal.onHide(clearNamePrompt);
-        $("#modal-account-name-finish").on("click", (t) => {
-            t.stopPropagation();
-            const name = $("#modal-account-name-input").val() as string;
-            this.account.setUsername(name, (error?: string) => {
-                if (error) {
-                    const ERROR_CODE_TO_LOCALIZATION = {
-                        failed: "Failed setting username.",
-                        invalid: "Invalid username.",
-                        taken: "Name already taken!",
-                        change_time_not_expired: "Username has already been set recently.",
-                    };
-                    const message = ERROR_CODE_TO_LOCALIZATION[
-                        error as keyof typeof ERROR_CODE_TO_LOCALIZATION
-                    ] || ERROR_CODE_TO_LOCALIZATION.failed;
-                    $("#modal-body-warning").hide();
-                    $("#modal-body-warning").html(message);
-                    $("#modal-body-warning").fadeIn();
-                } else {
-                    this.setNameModal!.hide();
-                }
-            });
-        });
-        $("#modal-account-name-input").on("keypress", (e) => {
-            if (e.key === "Enter") {
-                $("#modal-account-name-finish").trigger("click");
-            }
+        follow(() => accountView.status, (status, prev) => {
+            if (prev == "loggingIn" && status == "loggedIn") this.onLogin();
         });
 
-        // Reset stats
-        this.resetStatsModal = new MenuModal($("#modal-account-reset-stats"));
-        this.resetStatsModal.onShow(() => {
-            $("#modal-account-reset-stats-input").val("");
-            this.modalMobileAccount.hide();
-        });
-        $("#modal-account-reset-stats-finish").on("click", (t) => {
-            t.stopPropagation();
-            if ($("#modal-account-reset-stats-input").val() == "RESET STATS") {
-                this.account.resetStats();
-                this.resetStatsModal!.hide();
-            }
-        });
-        $("#modal-account-reset-stats-input").on("keypress", (e) => {
-            if (e.key === "Enter") {
-                $("#modal-account-reset-stats-finish").trigger("click");
-            }
-        });
-        // Delete account
-        this.deleteAccountModal = new MenuModal($("#modal-account-delete"));
-        this.deleteAccountModal.onShow(() => {
-            $("#modal-account-delete-input").val("");
-            this.modalMobileAccount.hide();
-        });
-        $("#modal-account-delete-finish").on("click", (t) => {
-            t.stopPropagation();
-            if ($("#modal-account-delete-input").val() == "DELETE") {
-                this.account.deleteAccount();
-                this.deleteAccountModal!.hide();
-            }
-        });
-        $("#modal-account-delete-input").on("keypress", (e) => {
-            if (e.key === "Enter") {
-                $("#modal-account-delete-finish").trigger("click");
-            }
-        });
+        createAccountModal.onHide(() => this.loadoutMenu.hide());
 
-        // User settings
-        this.userSettingsModal = new MenuModal($(".account-buttons-settings"));
-        this.userSettingsModal.checkSelector = false;
-        this.userSettingsModal.skipFade = true;
-        this.userSettingsModal.onShow(() => {
-            $(".account-details-top").css("display", "none");
-        });
-        this.userSettingsModal.onHide(() => {
-            $(".account-details-top").css("display", "block");
-        });
-
-        // Login and link options
-        this.loginOptionsModal = new MenuModal($("#account-login-options"));
-        this.loginOptionsModal.checkSelector = false;
-        this.loginOptionsModal.skipFade = true;
-        this.loginOptionsModal.onShow(() => {
-            $(".account-details-top").css("display", "none");
-        });
-        this.loginOptionsModal.onHide(() => {
-            $(".account-details-top").css("display", "block");
-        });
-
-        // Login and link options mobile
-        this.loginOptionsModalMobile = new MenuModal($("#account-login-options-mobile"));
-        this.loginOptionsModalMobile.checkSelector = false;
-        this.loginOptionsModalMobile.skipFade = true;
-        this.loginOptionsModalMobile.onShow(() => {
-            $(".account-details-top").css("display", "none");
-        });
-        this.loginOptionsModalMobile.onHide(() => {
-            $(".account-details-top").css("display", "block");
-        });
-
-        // Create account
-        this.createAccountModal = new MenuModal($("#modal-create-account"));
-        this.createAccountModal.onHide(() => {
-            this.loadoutMenu.hide();
-        });
-
-        // Mobile Accounts Modal
-        this.modalMobileAccount = new MenuModal($("#modal-mobile-account"));
-        this.modalMobileAccount.onShow(() => {
-            $("#start-top-right").css("display", "none");
-            $(".account-details-top").css("display", "none");
-        });
-        this.modalMobileAccount.onHide(() => {
-            $("#start-top-right").css("display", "block");
-            $(".account-details-top").css("display", "block");
-            this.userSettingsModal!.hide();
-        });
-
-        //
-        // Main-menu buttons
-        //
-
-        // Leaderboard
-        $(".account-leaderboard-link").on("click", (_e) => {
-            window.open("/stats", "_blank");
-            return false;
-        });
-        $(".account-stats-link").on("click", () => {
-            this.waitOnLogin(() => {
-                if (this.account.loggedIn) {
-                    if (this.account.profile.usernameSet) {
-                        const slug = this.account.profile.slug || "";
-                        window.open(`/stats/?slug=${slug}`, "_blank");
-                    } else {
-                        this.setNameModal!.show(true);
-                    }
-                } else {
-                    this.showLoginMenu({
-                        modal: true,
-                    });
-                }
-            });
-            return false;
-        });
-        $(".account-loadout-link, #btn-customize").on("click", () => {
-            this.loadoutMenu.show();
-            return false;
-        });
-        $(".account-details-user").on("click", () => {
-            if (
-                this.userSettingsModal!.isVisible()
-                || this.loginOptionsModal!.isVisible()
-            ) {
-                this.userSettingsModal!.hide();
-                this.loginOptionsModal!.hide();
-            } else {
-                this.waitOnLogin(() => {
-                    if (device.mobile) {
-                        this.modalMobileAccount.show();
-                    }
-                    if (this.account.loggedIn) {
-                        this.loginOptionsModal!.hide();
-                        this.userSettingsModal!.show();
-                    } else {
-                        this.showLoginMenu({
-                            modal: false,
-                        });
-                    }
-                });
-            }
-            return false;
-        });
-        $(".btn-account-link").on("click", () => {
-            this.userSettingsModal!.hide();
-            this.showLoginMenu({
-                modal: false,
-                link: true,
-            });
-            return false;
-        });
-        $(".btn-account-change-name").on("click", () => {
-            if (this.account.profile.usernameChangeTime <= 0) {
-                this.userSettingsModal!.hide();
-                this.modalMobileAccount.hide();
-                $("#modal-account-name-title").html(
-                    this.localization.translate("index-change-account-name"),
-                );
-                this.setNameModal!.show();
-            }
-            return false;
-        });
-        $(".btn-account-reset-stats").on("click", () => {
-            this.userSettingsModal!.hide();
-            this.resetStatsModal!.show();
-            return false;
-        });
-        $(".btn-account-delete").on("click", () => {
-            this.userSettingsModal!.hide();
-            this.deleteAccountModal!.show();
-            return false;
-        });
-        $(".btn-account-logout").on("click", () => {
-            this.account.logout();
-            return false;
-        });
-        $("#btn-pass-locked").on("click", () => {
-            this.showLoginMenu({
-                modal: true,
-            });
-            return false;
-        });
-
+        setProfileUi(this);
         this.updateLoginSupport();
     }
 
     /** again once site_info says which logins the API has */
     updateLoginSupport() {
-        $(".account-block").toggle(api.anyLoginSupported());
-    }
-
-    onError(type: string, data?: string) {
-        const typeText = {
-            server_error: "Operation failed, please try again later.",
-            facebook_account_in_use: "Failed linking Facebook account.<br/>Account already in use!",
-            twitch_account_in_use: "Failed linking Twitch account.<br/>Account already in use!",
-            discord_account_in_use: "Failed linking Discord account.<br/>Account already in use!",
-            account_banned: `Account banned: ${data}`,
-            login_failed: "Login failed.",
-        };
-        const text = typeText[type as keyof typeof typeText];
-        if (text) {
-            this.errorModal.selector.find(".modal-body-text").html(text);
-            this.errorModal.show();
-        }
+        setProfile((p) => {
+            p.loginSupported = api.anyLoginSupported();
+            p.logins.discord = api.loginSupported("discord");
+            p.logins.mock = api.loginSupported("mock");
+        });
     }
 
     onLogin() {
-        this.createAccountModal!.hide();
-        this.loginOptionsModalMobile.hide();
-        this.loginOptionsModal!.hide();
+        createAccountModal.hide();
+        loginOptionsModalMobile.hide();
+        loginOptionsModal.hide();
         if (!this.account.profile.usernameSet) {
-            this.setNameModal!.show(true);
+            setNameModal.show(true);
         }
-    }
-
-    onLoadoutUpdated() {
-        this.updateUserIcon();
-    }
-
-    onItemsUpdated(items: Array<Item>) {
-        let unconfirmedItemCount = 0;
-        let unackedItemCount = 0;
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (item.status < loadout.ItemStatus.Confirmed) {
-                unconfirmedItemCount++;
-            }
-            if (item.status < loadout.ItemStatus.Ackd) {
-                unackedItemCount++;
-            }
-        }
-        items.filter((e) => {
-            return e.status < loadout.ItemStatus.Confirmed;
-        });
-        items.filter((e) => {
-            return e.status < loadout.ItemStatus.Ackd;
-        });
-        const displayAlert = unconfirmedItemCount > 0 || unackedItemCount > 0;
-        $("#loadout-alert-main").css({
-            display: displayAlert ? "block" : "none",
-        });
     }
 
     waitOnLogin(cb: () => void) {
-        if (this.account.loggingIn && !this.account.loggedIn) {
-            const runOnce = () => {
-                cb();
-                this.account.removeEventListener("requestsComplete", runOnce);
-            };
-            this.account.addEventListener("requestsComplete", runOnce);
+        if (this.account.status == "loggingIn") {
+            this.account.settled().then(cb);
         } else {
             cb();
         }
     }
 
     showLoginMenu(opts: { modal?: boolean; link?: boolean }) {
-        opts = {
-            modal: false,
-            link: false,
-            ...opts,
-        };
-
-        const modal = opts.modal
-            ? this.createAccountModal
-            : device.mobile
-            ? this.loginOptionsModalMobile
-            : this.loginOptionsModal;
-        createLoginOptions(modal!.selector, opts.link, this.account, this.localization);
-        modal!.show();
+        setProfile((p) => {
+            p.loginLink = !!opts.link;
+        });
+        if (opts.modal) createAccountModal.show();
+        else if (device.mobile) loginOptionsModalMobile.show();
+        else loginOptionsModal.show();
     }
 
-    updateUserIcon() {
-        const icon = helpers.getSvgFromGameType(this.account.loadout.player_icon)
-            || "img/gui/player-gui.svg";
-        $(".account-details-user .account-avatar").css(
-            "background-image",
-            `url(${icon})`,
-        );
-    }
-
-    render() {
-        // Loading icon
-        const loading = this.account.requestsInFlight > 0;
-        $(".account-loading").css("opacity", loading ? 1 : 0);
-
-        let usernameText = helpers.htmlEscape(this.account.profile.username || "");
-        if (!this.account.loggedIn) {
-            usernameText = this.account.loggingIn
-                ? `${this.localization.translate("index-logging-in")}...`
-                : this.localization.translate("index-log-in-desc");
-        }
-        $("#account-player-name").html(usernameText);
-        $("#account-player-name").css(
-            "display",
-            this.account.loggedIn ? "block" : "none",
-        );
-        $("#account-login").css("display", this.account.loggedIn ? "none" : "block");
-        this.updateUserIcon();
-        if (this.account.profile.usernameChangeTime <= 0) {
-            $(".btn-account-change-name").removeClass("btn-account-disabled");
+    login(method: "discord" | "mock") {
+        if (method === "discord") {
+            signInWithDiscord();
         } else {
-            $(".btn-account-change-name").addClass("btn-account-disabled");
+            window.location.href = api.resolveUrl("/api/auth/mock");
         }
+    }
+
+    openLoadout() {
+        this.loadoutMenu.show();
+    }
+
+    /** the player's stats page, or a prompt to log in / pick a name first */
+    openMyStats() {
+        this.waitOnLogin(() => {
+            if (!this.account.loggedIn) {
+                this.showLoginMenu({ modal: true });
+            } else if (!this.account.profile.usernameSet) {
+                setNameModal.show(true);
+            } else {
+                window.open(`/stats/?slug=${this.account.profile.slug || ""}`, "_blank");
+            }
+        });
+    }
+
+    /** clicking the name: the account menu when logged in, the login buttons when not */
+    toggleAccountMenu() {
+        if (userSettingsModal.isVisible() || loginOptionsModal.isVisible()) {
+            userSettingsModal.hide();
+            loginOptionsModal.hide();
+            return;
+        }
+        this.waitOnLogin(() => {
+            if (device.mobile) {
+                mobileAccountModal.show();
+            }
+            if (this.account.loggedIn) {
+                loginOptionsModal.hide();
+                userSettingsModal.show();
+            } else {
+                this.showLoginMenu({ modal: false });
+            }
+        });
+    }
+
+    changeName() {
+        if (this.account.profile.usernameChangeTime > 0) return;
+        userSettingsModal.hide();
+        mobileAccountModal.hide();
+        setProfile((p) => {
+            p.nameModalTitle = "index-change-account-name";
+        });
+        setNameModal.show();
+    }
+
+    /** `done` gets the message to show, or nothing when the name was set */
+    setUsername(name: string, done: (warning?: string) => void) {
+        this.account.setUsername(name, (error) => {
+            done(error ? usernameErrors[error] || usernameErrors.failed : undefined);
+        });
     }
 }

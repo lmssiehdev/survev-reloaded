@@ -1,4 +1,3 @@
-import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
 
 import { BulletDefs } from "@survev/shared/defs/gameObjects/bulletDefs.ts";
@@ -17,6 +16,7 @@ import type { InputHandler } from "../input.ts";
 import type { Map } from "../map.ts";
 import type { Player } from "../objects/player.ts";
 import type { Renderer } from "../renderer.ts";
+import { setTouchRef } from "./touchControls.ts";
 
 interface Pad {
     touched: boolean;
@@ -109,6 +109,7 @@ export class Touch {
             };
         };
         this.touchPads = [createPad(), createPad()];
+        setTouchRef(this);
         const validateTouchStyle = function(style: "locked" | "anywhere") {
             if (!["locked", "anywhere"].includes(style)) {
                 return "anywhere";
@@ -298,17 +299,6 @@ export class Touch {
     setMoveStyle(style: "locked" | "anywhere") {
         this.moveStyle = style;
         this.config.set("touchMoveStyle", style);
-        const elem = document.getElementById("btn-game-move-style");
-
-        if (elem) {
-            if (this.moveStyle == "locked") {
-                elem.classList.remove("unlocked-on-icon");
-                elem.classList.add("locked-on-icon");
-            } else {
-                elem.classList.remove("locked-on-icon");
-                elem.classList.add("unlocked-on-icon");
-            }
-        }
     }
 
     toggleAimStyle() {
@@ -318,15 +308,6 @@ export class Touch {
     setAimStyle(style: "locked" | "anywhere") {
         this.aimStyle = style;
         this.config.set("touchAimStyle", style);
-
-        const elem = document.getElementById("btn-game-aim-style")!;
-        if (this.aimStyle == "locked") {
-            elem.classList.remove("unlocked-on-icon");
-            elem.classList.add("locked-on-icon");
-        } else {
-            elem.classList.remove("locked-on-icon");
-            elem.classList.add("unlocked-on-icon");
-        }
     }
 
     toggleAimLine() {
@@ -336,14 +317,6 @@ export class Touch {
     setTouchAimLine(isOn: boolean) {
         this.touchAimLine = isOn;
         this.config.set("touchAimLine", this.touchAimLine);
-        const elem = document.getElementById("btn-game-aim-line")!;
-        if (this.touchAimLine) {
-            elem.classList.remove("aim-line-off-icon");
-            elem.classList.add("aim-line-on-icon");
-        } else {
-            elem.classList.remove("aim-line-on-icon");
-            elem.classList.add("aim-line-off-icon");
-        }
     }
 
     init() {
@@ -415,144 +388,6 @@ export class Touch {
             rightOffset.x,
             device.screenHeight - rightOffset.y,
         );
-
-        this.setMobileStyling(isLandscape);
-    }
-
-    setMobileStyling(isLandscape: boolean) {
-        if (device.touch) {
-            $("#btn-touch-styles")
-                .find(".btn-game-container")
-                .css("display", "inline-block");
-            $("#ui-emote-button").css("display", "block");
-        }
-        if (device.uiLayout == device.UiLayout.Sm) {
-            $("#ui-map-wrapper")
-                .addClass("ui-map-wrapper-mobile")
-                .removeClass("ui-map-wrapper-desktop");
-            $("#ui-settings-container-mobile").css("display", "block");
-            $("#ui-settings-container-desktop").css("display", "none");
-            $("#ui-right-center")
-                .addClass("ui-right-center-mobile")
-                .removeClass("ui-right-center-desktop");
-            $("#ui-leaderboard-wrapper").css("display", "none");
-            $("#big-map-close").css("display", "block");
-            $("#ui-game-menu").removeClass("ui-game-menu-desktop");
-            $("#btn-game-tabs").css("display", "none");
-            $("#ui-game-tab-settings").removeClass("ui-game-tab-settings-desktop");
-            $(".ui-ability-key").css("display", "none");
-        } else {
-            $("#ui-map-wrapper")
-                .removeClass("ui-map-wrapper-mobile")
-                .addClass("ui-map-wrapper-desktop");
-            $("#ui-settings-container-mobile").css("display", "none");
-            $("#ui-settings-container-desktop").css("display", "block");
-            $("#ui-right-center")
-                .removeClass("ui-right-center-mobile")
-                .addClass("ui-right-center-desktop");
-            $("#ui-leaderboard-wrapper").css("display", "block");
-            $("#big-map-close").css("display", "none");
-            $("#ui-game-menu").addClass("ui-game-menu-desktop");
-            $("#btn-game-tabs").css("display", "flex");
-            $("#ui-game-tab-settings").addClass("ui-game-tab-settings-desktop");
-            $(".ui-ability-key").css("display", "block");
-        }
-        if (device.tablet) {
-            if (isLandscape) {
-                if (device.os == "ios") {
-                    $("#ui-bottom-right").addClass("ui-bottom-right-tablet-ipad-browser");
-                    $("#ui-right-center").addClass("ui-right-center-tablet-ipad-browser");
-                } else {
-                    $("#ui-bottom-right").addClass("ui-bottom-right-tablet");
-                    $("#ui-right-center").addClass("ui-right-center-tablet");
-                }
-                $("#ui-bottom-center-left").addClass("ui-bottom-center-left-tablet");
-                $("#ui-bottom-center-right").addClass("ui-bottom-center-right-tablet");
-                $("#ui-top-left").addClass("ui-top-left-tablet");
-                $("#ui-spectate-options-wrapper").addClass(
-                    "ui-spectate-options-wrapper-tablet",
-                );
-                $("#ui-killfeed-wrapper").addClass("ui-killfeed-wrapper-tablet");
-                $("#ui-kill-leader-wrapper").css("right", 144);
-            } else {
-                $("#ui-bottom-left").removeClass("ui-bottom-left-tablet");
-                $("#ui-bottom-right").removeClass("ui-bottom-right-tablet");
-                $("#ui-right-center").removeClass("ui-right-center-tablet");
-                $("#ui-bottom-center-right").removeClass("ui-bottom-center-right-tablet");
-                $("#ui-top-left").removeClass("ui-top-left-tablet");
-                $("#ui-spectate-options-wrapper").removeClass(
-                    "ui-spectate-options-wrapper-tablet",
-                );
-                $("#ui-killfeed-wrapper-wrapper").removeClass(
-                    "ui-killfeed-wrapper-tablet",
-                );
-            }
-        }
-        if (device.os == "ios") {
-            if (device.model == "iphonex") {
-                const gameHeight = device.isLandscape ? "99%" : "90%";
-                const topOffset = device.isLandscape ? 0 : 32;
-                $("#ui-game").css({
-                    height: gameHeight,
-                    top: topOffset,
-                });
-                $("#ui-stats-contents").css({
-                    transform: "translate(-50%) scale(0.95)",
-                    "transform-origin": "top",
-                });
-                if (isLandscape) {
-                    $("#ui-game").css({
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: "93%",
-                    });
-                } else {
-                    $("#ui-game").css({
-                        left: "",
-                        transform: "",
-                        width: "",
-                    });
-                }
-            } else if (window.navigator.standalone && !device.tablet) {
-                $("#ui-game").css({
-                    height: "95%",
-                });
-            } else {
-                let marginBottom = device.isLandscape ? "86%" : "82%";
-                if (device.tablet) {
-                    marginBottom = "100%";
-                }
-                $("#ui-game").css({
-                    height: marginBottom,
-                });
-                const gameMarginTop = 6;
-                const gameMarginElems = $(
-                    "#ui-right-center, #ui-top-center-scopes-wrapper, #ui-top-center, #ui-menu-display",
-                );
-                gameMarginElems.css({
-                    "margin-top": gameMarginTop,
-                });
-            }
-        }
-
-        // Reorder ammo for mobile
-        if (device.tablet || isLandscape) {
-            $("#ui-loot-50AE").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-9mm").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-308sub").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-12gauge").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-flare").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-762mm").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-45acp").insertBefore("#ui-loot-556mm");
-        } else {
-            $("#ui-loot-9mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-12gauge").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-762mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-556mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-50AE").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-308sub").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-flare").insertBefore("#ui-loot-45acp");
-        }
     }
 
     hideAll() {

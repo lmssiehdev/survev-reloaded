@@ -171,7 +171,7 @@ export const GameConfig = {
         [TeamMode.Solo]: "solo",
         [TeamMode.Duo]: "duo",
         [TeamMode.Squad]: "squad",
-    },
+    } as const,
     FactionTeam,
     WeaponSlot,
     WeaponType: ["gun", "gun", "melee", "throwable"] as const,

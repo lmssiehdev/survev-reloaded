@@ -2,31 +2,67 @@ import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import { api } from "./api.ts";
+import { createSignal, createStore } from "solid-js";
+import { api, client } from "./api.ts";
 import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
+import { showNotification } from "./ui/appModals.ts";
 
-import { type Treaty, treaty } from "@elysia/eden";
-import type { UserRouterApp } from "@survev/api/types";
+import type { Treaty } from "@elysia/eden";
 
-type UserRouter = ReturnType<typeof treaty<UserRouterApp>>["api"]["user"];
+type UserRouter = typeof client.user;
 type UserRoute = Exclude<keyof UserRouter, "~path">;
 
-type AccountEventMap = {
-    request: (account: Account) => void;
-    requestsComplete: () => void;
-    login: (account: Account) => void;
-    loadout: (loadout: Loadout) => void;
-    items: (items: Item[]) => void;
-    error: (error: string, reason?: string) => void;
-    pass: (pass: PassState, quests: QuestState[], resetRefresh: boolean) => void;
-};
+/** unknown: before site_info says whether there is a login to ask about */
+export type AccountStatus = "unknown" | "loggingIn" | "loggedIn" | "loggedOut";
+
+/** what views show of the account; Account writes it whenever it changes */
+export const [accountView, setAccountView] = createStore({
+    status: "unknown" as AccountStatus,
+    /** account requests in flight */
+    requests: 0,
+    username: "",
+    /** seconds until the name can change again; 0 when it can */
+    usernameChangeTime: 0,
+});
+
+/*
+ * What game classes follow (ui/controller.ts `follow`). Account keeps the truth in its fields, since
+ * a signal read returns the old value until the next flush; these get a new value on every change.
+ */
+export const [accountLoadout, setAccountLoadout] = createSignal<Loadout>(loadouts.defaultLoadout());
+export const [accountItems, setAccountItems] = createSignal<Item[]>([]);
+/** resetRefresh: the quests' refresh timers start over */
+export const [accountPass, setAccountPass] = createSignal<
+    null | { pass: PassState; quests: QuestState[]; resetRefresh: boolean }
+>(null);
+
+const serverError = "Operation failed, please try again later.";
 
 export class Account {
-    events: Record<string, Array<(...args: any[]) => void>> = {};
     requestsInFlight = 0;
-    loggingIn = false;
-    loggedIn = false;
+    status: AccountStatus = "unknown";
+
+    get loggedIn() {
+        return this.status == "loggedIn";
+    }
+
+    private setStatus(status: AccountStatus) {
+        this.status = status;
+        setAccountView((v) => {
+            v.status = status;
+        });
+    }
+
+    private setRequests(n: number) {
+        this.requestsInFlight = n;
+        setAccountView((v) => {
+            v.requests = n;
+        });
+    }
+
+    /** resolves the `settled()` promises once no request is in flight */
+    private onSettled: Array<() => void> = [];
     profile = {
         linked: false,
         usernameSet: false,
@@ -40,17 +76,7 @@ export class Account {
     quests: QuestState[] = [];
     pass = {} as PassState;
 
-    router: UserRouter;
-
-    constructor(public config: ConfigManager) {
-        // keepDomain: the url is relative when the API is on the same host
-        this.router = treaty<UserRouterApp>(api.resolveUrl(""), {
-            keepDomain: true,
-            // a fetcher, not fetch: { credentials }: api.credentials() changes once site_info loads
-            fetcher: ((input: RequestInfo | URL, init?: RequestInit) =>
-                fetch(input, { ...init, credentials: api.credentials() })) as typeof fetch,
-        }).api.user;
-    }
+    constructor(public config: ConfigManager) {}
 
     async fetchApi<Path extends UserRoute>(
         path: Path,
@@ -60,11 +86,10 @@ export class Account {
             res: Treaty.Data<UserRouter[Path]["post"]>,
         ) => void,
     ): Promise<void> {
-        this.requestsInFlight++;
-        this.emit("request", this);
+        this.setRequests(this.requestsInFlight + 1);
 
         try {
-            const { data, error, response } = await this.router[path].post(body as any);
+            const { data, error, response } = await client.user[path].post(body as any);
             // no response: the request failed, error.value is what fetch threw
             if (!response) throw error?.value;
             // the API's error body ({ error, message }); other non 2xx bodies like { result: "invalid" } are answers
@@ -75,57 +100,45 @@ export class Account {
             cb(err, {} as any);
         }
 
-        this.requestsInFlight--;
-        this.emit("request", this);
+        this.setRequests(this.requestsInFlight - 1);
         if (this.requestsInFlight == 0) {
-            this.emit("requestsComplete");
+            for (const resolve of this.onSettled.splice(0)) resolve();
         }
     }
 
-    addEventListener<E extends keyof AccountEventMap>(
-        event: E,
-        callback: AccountEventMap[E],
-    ) {
-        this.events[event] = this.events[event] || [];
-        this.events[event].push(callback);
+    /** once no account request is in flight */
+    settled() {
+        if (this.requestsInFlight == 0) return Promise.resolve();
+        return new Promise<void>((resolve) => this.onSettled.push(resolve));
     }
 
-    removeEventListener<E extends keyof AccountEventMap>(
-        event: E,
-        callback: AccountEventMap[E],
-    ) {
-        const listeners = this.events[event] || [];
-        for (let i = listeners.length - 1; i >= 0; i--) {
-            if (listeners[i] == callback) {
-                listeners.splice(i, 1);
-            }
-        }
+    /** a new loadout, or the same one changed */
+    private loadoutChanged() {
+        setAccountLoadout({ ...this.loadout });
     }
 
-    emit<E extends keyof AccountEventMap>(event: E, ...args: Parameters<AccountEventMap[E]>): void {
-        const listenersCopy = (this.events[event] || []).slice(0);
-        for (let i = 0; i < listenersCopy.length; i++) {
-            listenersCopy[i](...args);
-        }
+    /** the items, or one's status, changed */
+    private itemsChanged() {
+        setAccountItems([...this.items]);
     }
 
     init() {
         // logged out players use their local loadout until the profile says otherwise
         const storedLoadout = this.config.get("loadout")!;
         this.loadout = util.mergeDeep<Loadout>({}, loadouts.defaultLoadout(), storedLoadout);
-        this.emit("loadout", this.loadout);
+        this.loadoutChanged();
     }
 
     /** once site_info says which logins the API has */
     initLogin() {
+        this.setStatus("loggedOut");
         // the session cookie is httpOnly, so asking for the profile is how we learn if we're logged in
         if (api.anyLoginSupported()) {
             this.loadProfile();
             return;
         }
 
-        this.emit("request", this);
-        this.emit("items", []);
+        this.itemsChanged();
     }
 
     logout() {
@@ -137,19 +150,19 @@ export class Account {
     }
 
     loadProfile() {
-        this.loggingIn = !this.loggedIn;
+        // a reload while logged in stays logged in until the answer
+        if (!this.loggedIn) this.setStatus("loggingIn");
         this.fetchApi("profile", {}, (err, data) => {
-            const wasLogginIn = this.loggingIn;
-            this.loggingIn = false;
-            this.loggedIn = false;
+            const wasLoggingIn = this.status == "loggingIn";
+            let status: AccountStatus = "loggedOut";
             this.profile = {} as this["profile"];
             this.items = [];
             if (err) {
                 // leave the profile logged out
             } else if (data.banned) {
-                this.emit("error", "account_banned", data.reason);
+                showNotification(`Account banned: ${data.reason}`);
             } else if (data.success) {
-                this.loggedIn = true;
+                status = "loggedIn";
                 this.profile = data.profile;
                 this.items = data.items;
                 this.loadout = data.loadout;
@@ -157,19 +170,24 @@ export class Account {
                 profile.slug = data.profile.slug;
                 this.config.set("profile", profile);
             }
-            if (wasLogginIn && this.loggedIn) {
-                this.emit("login", this);
+            this.status = status;
+            setAccountView((v) => {
+                v.status = status;
+                v.username = this.profile.username || "";
+                v.usernameChangeTime = this.profile.usernameChangeTime;
+            });
+            if (wasLoggingIn && this.loggedIn) {
                 this.getPass(true);
             }
-            this.emit("items", this.items);
-            this.emit("loadout", this.loadout);
+            this.itemsChanged();
+            this.loadoutChanged();
         });
     }
 
     resetStats() {
         this.fetchApi("reset_stats", {}, (err) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
             }
         });
     }
@@ -177,7 +195,7 @@ export class Account {
     deleteAccount() {
         this.fetchApi("delete", {}, (err) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
                 return;
             }
             this.config.set("profile", null);
@@ -204,21 +222,21 @@ export class Account {
         // Preemptively set the new loadout and revert if the call fail
         const loadoutPrev = this.loadout;
         this.loadout = loadout;
-        this.emit("loadout", this.loadout);
+        this.loadoutChanged();
         this.config.set("loadout", loadout);
 
         if (!this.loggedIn) return;
 
         this.fetchApi("loadout", { loadout }, (err, res) => {
             if (err) {
-                this.emit("error", "server_error");
+                showNotification(serverError);
             }
             if (err || !res.loadout) {
                 this.loadout = loadoutPrev;
             } else {
                 this.loadout = res.loadout;
             }
-            this.emit("loadout", this.loadout);
+            this.loadoutChanged();
         });
     }
 
@@ -234,7 +252,7 @@ export class Account {
                 }
             }
 
-            this.emit("items", this.items);
+            this.itemsChanged();
             this.fetchApi("set_item_status", {
                 status,
                 itemTypes,
@@ -254,7 +272,7 @@ export class Account {
                 this.quests.sort((a, b) => {
                     return a.idx - b.idx;
                 });
-                this.emit("pass", this.pass, this.quests, true);
+                setAccountPass({ pass: this.pass, quests: this.quests, resetRefresh: true });
                 if (this.pass?.newItems) {
                     this.loadProfile();
                 }
@@ -281,7 +299,7 @@ export class Account {
                 this.getPass(false);
             } else {
                 // Give the pass UI a chance to update quests
-                this.emit("pass", this.pass!, this.quests, false);
+                setAccountPass({ pass: this.pass, quests: this.quests, resetRefresh: false });
             }
         });
     }

@@ -17,7 +17,9 @@ import { AbstractObject, Pool } from "./objectPool.ts";
 
 function lerpColor(t: number, a: number, b: number) {
     // util.lerpColor is relatively expensive; avoid if it possible
-    return t == 0.0 ? a : t == 1.0 ? b : util.lerpColor(t, a, b);
+    if (t == 0.0) return a;
+    if (t == 1.0) return b;
+    return util.lerpColor(t, a, b);
 }
 
 class Decal implements AbstractObject {

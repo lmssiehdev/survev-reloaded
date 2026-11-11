@@ -1,15 +1,33 @@
+import solidPlugin from "@solidjs/vite-plugin";
 import { GIT_VERSION } from "@survev/config/utils/gitRevision.ts";
 import { resolve } from "node:path";
-import { defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
+import { type Connect, defineConfig, loadEnv, PluginOption, type ServerOptions } from "vite";
 import pkgJson from "../../package.json" with { type: "json" };
 import { atlasBuilderPlugin } from "./atlas-builder/vitePlugin.ts";
 import { codefendPlugin } from "./vite-plugins/codefendPlugin.ts";
-import { ejsPlugin } from "./vite-plugins/ejsPlugin.ts";
 import { stripBlockPlugin } from "./vite-plugins/stripBlockPlugin.ts";
 import { svgoPlugin } from "./vite-plugins/svgoPlugin.ts";
 
 // the repo root .env, VITE_* variables end up in the client (import.meta.env), the rest stays here
 const envDir = resolve(import.meta.dirname, "../..");
+
+/**
+ * vite only serves stats/index.html at /stats/ (with the trailing slash),
+ * so redirect /stats and /stats?query there, keeping the query.
+ */
+function statsRedirectPlugin(): PluginOption {
+    const redirect: Connect.NextHandleFunction = (req, res, next) => {
+        const match = req.url?.match(/^\/stats(\?.*)?$/);
+        if (!match) return next();
+        res.writeHead(301, { Location: `/stats/${match[1] ?? ""}` });
+        res.end();
+    };
+    return {
+        name: "stats-redirect",
+        configureServer: (server) => void server.middlewares.use(redirect),
+        configurePreviewServer: (server) => void server.middlewares.use(redirect),
+    };
+}
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, envDir, "");
@@ -21,7 +39,8 @@ export default defineConfig(({ mode }) => {
     process.env.VITE_GAME_VERSION = pkgJson.version;
 
     const plugins: PluginOption[] = [
-        ejsPlugin(),
+        statsRedirectPlugin(),
+        solidPlugin(),
         ...atlasBuilderPlugin(mode === "production"),
         svgoPlugin(),
     ];
@@ -41,14 +60,6 @@ export default defineConfig(({ mode }) => {
         port,
         host: "127.0.0.1",
         proxy: {
-            // this redirects /stats to /stats/
-            // because vite is cringe and does not work without trailing slashes at the end of paths 😭
-            "^/stats(?!/$).*": {
-                target: `http://127.0.0.1:${port}`,
-                rewrite: (path) => path.replace(/^\/stats(?!\/$).*/, "/stats/"),
-                changeOrigin: true,
-                secure: false,
-            },
             "/t/": {
                 target: apiUrl,
                 changeOrigin: true,
@@ -101,7 +112,7 @@ export default defineConfig(({ mode }) => {
         },
         envDir,
         resolve: {
-            extensions: [".ts", ".js"],
+            extensions: [".ts", ".tsx", ".js"],
         },
         define: {
             GIT_VERSION: JSON.stringify(GIT_VERSION),

@@ -1,7 +1,6 @@
 import { CrosshairDefs } from "@survev/shared/defs/gameObjects/crosshairDefs.ts";
 import type { Crosshair } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import $ from "jquery";
 
 function getCrosshairDims(crosshairDef: Crosshair) {
     const crosshairBase = {
@@ -29,29 +28,35 @@ function getCursorCSS(crosshairDef: Crosshair) {
     return `${getBaseURL(crosshairDef)} ${dims.width / 2} ${dims.height / 2}, crosshair`;
 }
 
+/** the CSS `cursor` for an element showing this crosshair */
+function getCursor(crosshairDef: Crosshair) {
+    const objDef = CrosshairDefs[crosshairDef.type];
+    if (!objDef) return "crosshair";
+    return objDef.cursor ? objDef.cursor : getCursorCSS(crosshairDef);
+}
+
 export const crosshair = {
     getCursorURL: function(crosshairDef: Crosshair) {
         return getBaseURL(crosshairDef);
     },
-    setElemCrosshair: function(elem: JQuery<HTMLElement>, crosshairDef: Crosshair) {
-        let cursor = "crosshair";
-        const objDef = CrosshairDefs[crosshairDef.type];
-        if (objDef) {
-            cursor = objDef.cursor ? objDef.cursor : getCursorCSS(crosshairDef);
-        }
-        elem.css({
-            cursor,
-        });
+    getCursor,
+    setElemCrosshair: function(elem: HTMLElement, crosshairDef: Crosshair) {
+        elem.style.cursor = getCursor(crosshairDef);
     },
     setGameCrosshair: function(crosshairDef: Crosshair) {
         // Set game pointer
-        crosshair.setElemCrosshair($("#game-area-wrapper"), crosshairDef);
+        const gameArea = document.getElementById("game-area-wrapper");
+        if (gameArea) crosshair.setElemCrosshair(gameArea, crosshairDef);
 
         // Adjust UI elements to use the custom crosshair as well
         const objDef = CrosshairDefs[crosshairDef.type];
         const style = !objDef || objDef.cursor ? "pointer" : "inherit";
-        $(".ui-zoom, .ui-medical, .ui-settings-button, .ui-weapon-switch").css({
-            cursor: style,
-        });
+        for (
+            const el of document.querySelectorAll<HTMLElement>(
+                ".ui-zoom, .ui-medical, .ui-settings-button, .ui-weapon-switch",
+            )
+        ) {
+            el.style.cursor = style;
+        }
     },
 };

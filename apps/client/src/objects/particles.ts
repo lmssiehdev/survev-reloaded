@@ -187,11 +187,7 @@ export class Emitter {
         this.rateMult = options.rateMult !== undefined ? options.rateMult : 1;
         this.color = options.color;
         const partDef = ParticleDefs[def.particle];
-        this.zOrd = def.zOrd !== undefined
-            ? def.zOrd
-            : partDef.zOrd !== undefined
-            ? partDef.zOrd
-            : 20;
+        this.zOrd = def.zOrd ?? partDef.zOrd ?? 20;
     }
 
     free() {

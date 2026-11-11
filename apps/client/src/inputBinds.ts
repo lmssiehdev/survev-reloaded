@@ -1,11 +1,10 @@
 import { type Input, Input as GameInput } from "@survev/shared/gameConfig.ts";
 import { BitStream } from "@survev/shared/lib/bitBuffer.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import $ from "jquery";
 import type { ConfigManager } from "./config.ts";
 import { type InputHandler, InputType, InputValue, Key, MouseButton, MouseWheel } from "./input.ts";
 import { crc16 } from "./lib/crc.ts";
-import type { Localization } from "./ui/localization.ts";
+import { setCapturing, setKeybindUi, setKeybindView } from "./ui/keybinds.ts";
 
 function def(name: string, defaultValue: InputValue | null) {
     return {
@@ -59,6 +58,18 @@ const BindDefs = {
     [GameInput.HideUI]: def("Hide UI", null),
     [GameInput.TeamPingSingle]: def("Team Ping Menu", null),
 };
+
+/** every bind in menu order, with its translation key */
+export const bindList = Object.entries(BindDefs).map(([bind, def]) => ({
+    bind: Number(bind),
+    name: def.name,
+    nameKey: "bind-"
+        + def.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, ""),
+}));
 
 export class InputBinds {
     binds: Array<InputValue | null> = [];
@@ -143,6 +154,7 @@ export class InputBinds {
 
     saveBinds() {
         this.config.set("binds", this.toBase64());
+        this.syncView();
     }
 
     loadBinds() {
@@ -150,6 +162,12 @@ export class InputBinds {
             this.loadDefaultBinds();
             this.saveBinds();
         }
+        this.syncView();
+    }
+
+    /** what the keybind lists show; called whenever the binds are loaded or saved */
+    syncView() {
+        setKeybindView(this.binds.map((bind) => bind?.toString() ?? null), this.toBase64());
     }
 
     upgradeBinds(_version: number) {
@@ -237,99 +255,67 @@ export class InputBinds {
     }
 }
 
+const disallowedKeys: number[] = [
+    Key.Control,
+    Key.Alt,
+    Key.Windows,
+    Key.ContextMenu,
+    Key.F1,
+    Key.F2,
+    Key.F3,
+    Key.F4,
+    Key.F5,
+    Key.F6,
+    Key.F7,
+    Key.F8,
+    Key.F9,
+    Key.F10,
+    Key.F11,
+    Key.F12,
+];
+
+/** what the keybind lists (components/Keybinds.tsx) do when clicked */
 export class InputBindUi {
     constructor(
         public input: InputHandler,
         public inputBinds: InputBinds,
-        private localization: Localization,
     ) {
-        $(".js-btn-keybind-restore").on("click", () => {
-            this.inputBinds.loadDefaultBinds();
-            this.inputBinds.saveBinds();
-            this.refresh();
+        setKeybindUi(this);
+    }
+
+    /** the next key/button press becomes `bind`; Escape cancels, Backspace clears it */
+    capture(bind: number) {
+        setCapturing(bind);
+        this.input.captureNextInput((event, inputValue) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (inputValue.type == InputType.Key && disallowedKeys.includes(inputValue.code)) {
+                return false;
+            }
+            setCapturing(null);
+            if (!inputValue.equals(inputKey(Key.Escape))) {
+                const bindValue = inputValue.equals(inputKey(Key.Backspace)) ? null : inputValue;
+                this.inputBinds.setBind(bind, bindValue);
+                this.inputBinds.saveBinds();
+            }
+            return true;
         });
     }
 
     cancelBind() {
+        setCapturing(null);
         this.input.captureNextInput(null);
     }
 
-    refresh() {
-        const defKeys = Object.keys(BindDefs);
-        const binds = this.inputBinds.binds;
-        const container = $(".js-keybind-list");
-        container.empty();
-        for (let i = 0; i < defKeys.length; i++) {
-            const key = defKeys[i];
-            const bindDef = BindDefs[key as unknown as keyof typeof BindDefs];
-            const bind = binds[key as unknown as number];
-            const nameKey = "bind-"
-                + bindDef.name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/-+/g, "-")
-                    .replace(/^-|-$/g, "");
-            const btn = $("<a/>", {
-                class: "btn-game-menu btn-darken btn-keybind-desc",
-                text: this.localization.translate(nameKey) || bindDef.name,
-            });
-            const val = $("<div/>", {
-                class: "btn-keybind-display",
-                text: bind
-                    ? this.localization.translate(bind.toString()) || bind.toString()
-                    : "",
-            });
-            btn.on("click", (event) => {
-                const targetElem = $(event.target);
-                targetElem.addClass("btn-keybind-desc-selected");
-                this.input.captureNextInput((event, inputValue) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const disallowKeys: number[] = [
-                        Key.Control,
-                        Key.Alt,
-                        Key.Windows,
-                        Key.ContextMenu,
-                        Key.F1,
-                        Key.F2,
-                        Key.F3,
-                        Key.F4,
-                        Key.F5,
-                        Key.F6,
-                        Key.F7,
-                        Key.F8,
-                        Key.F9,
-                        Key.F10,
-                        Key.F11,
-                        Key.F12,
-                    ];
-                    if (
-                        inputValue.type == InputType.Key
-                        && disallowKeys.includes(inputValue.code)
-                    ) {
-                        return false;
-                    }
-                    targetElem.removeClass("btn-keybind-desc-selected");
-                    if (!inputValue.equals(inputKey(Key.Escape))) {
-                        let bindValue: InputValue | null = inputValue;
-                        if (inputValue.equals(inputKey(Key.Backspace))) {
-                            bindValue = null;
-                        }
-                        this.inputBinds.setBind(parseInt(key), bindValue);
-                        this.inputBinds.saveBinds();
-                        this.refresh();
-                    }
-                    return true;
-                });
-            });
-            container.append(
-                $("<div/>", {
-                    class: "ui-keybind-container",
-                })
-                    .append(btn)
-                    .append(val),
-            );
-        }
-        $("#keybind-link").html(this.inputBinds.toBase64());
+    restoreDefaults() {
+        this.inputBinds.loadDefaultBinds();
+        this.inputBinds.saveBinds();
+    }
+
+    /** loads a shared keybind code; false if it isn't valid */
+    loadCode(code: string) {
+        const success = this.inputBinds.fromBase64(code);
+        if (success) this.inputBinds.saveBinds();
+        return success;
     }
 }
