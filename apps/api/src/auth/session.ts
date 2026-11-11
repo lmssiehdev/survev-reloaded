@@ -14,36 +14,37 @@ export function appendCookies(set: { headers: HTTPHeaders }, headers: Headers | 
     }
 }
 
+/**
+ * better-auth's session: `user` / `session`, null when logged out (banned users included).
+ * fresh skips the 60s cookie cache and reads the user row, for routes that show or check its fields.
+ * returnHeaders: getSession extends active sessions, the refreshed cookie has to reach the browser too.
+ */
+async function loadSession(request: Request, set: { headers: HTTPHeaders }, fresh: boolean) {
+    const res = await auth.api
+        .getSession({ headers: request.headers, query: { disableCookieCache: fresh }, returnHeaders: true })
+        .catch((err) => void logger.error("auth.session_load_failed", { err }));
+
+    appendCookies(set, res?.headers);
+    const user: AuthUser | null = res?.response?.user ?? null;
+    const session: AuthSession | null = res?.response?.session ?? null;
+    noteRequest(request, { userId: user?.id });
+    return { user, session };
+}
+
 export const session = new Elysia({ name: "session" })
     .macro({
-        /**
-         * better-auth's session: `user` / `session`, null when logged out (banned users included).
-         * returnHeaders: getSession extends active sessions, the refreshed cookie has to reach the browser too.
-         */
-        session: {
-            async derive({ request, set }) {
-                const res = await auth.api
-                    .getSession({ headers: request.headers, returnHeaders: true })
-                    .catch((err) => void logger.error("auth.session_load_failed", { err }));
-
-                appendCookies(set, res?.headers);
-                const user: AuthUser | null = res?.response?.user ?? null;
-                const session: AuthSession | null = res?.response?.session ?? null;
-                noteRequest(request, { userId: user?.id });
-                return { user, session };
-            },
-        },
-    })
-    // a second .macro() call: auth builds on session, which types its user / session
-    .macro({
+        /** the session, see loadSession */
+        session: (mode: true | "fresh") => ({
+            derive: ({ request, set }) => loadSession(request, set, mode === "fresh"),
+        }),
         /** like session, 401 when logged out */
-        auth: {
-            session: true,
-            derive({ user, session }) {
+        auth: (mode: true | "fresh") => ({
+            async derive({ request, set }) {
+                const { user, session } = await loadSession(request, set, mode === "fresh");
                 if (!user || !session) {
                     throw new Unauthorized({ message: "Authentication failed" });
                 }
                 return { user, session };
             },
-        },
+        }),
     });

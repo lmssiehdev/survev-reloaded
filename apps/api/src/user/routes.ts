@@ -11,7 +11,7 @@ import { auth } from "../auth/auth.ts";
 import { appendCookies, session } from "../auth/session.ts";
 import { db } from "../db/index.ts";
 import { itemColumns, items, matchData, users } from "../db/schema.ts";
-import { query, queryOne, respond } from "../lib/errors.ts";
+import { query, respond } from "../lib/errors.ts";
 import { macros } from "../lib/macros.ts";
 import { PassRoutes } from "../pass/routes.ts";
 import { getTimeUntilNextUsernameChange, sanitizeSlug, userRateLimit } from "./users.ts";
@@ -20,30 +20,10 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
     .use(macros)
     .use(session)
     .use(PassRoutes)
-    .guard({ rateLimit: userRateLimit, auth: true })
+    // fresh: these show and check the user row, which the cookie cache can hold for a minute after a change
+    .guard({ rateLimit: userRateLimit, auth: "fresh" })
     .post("/profile", async ({ user, request, set }) => {
-        // not the session's user: its cookie cache can be older than a name or loadout change
-        const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
-        const row = await queryOne(
-            () =>
-                db.query.users.findFirst({
-                    where: { id: user.id },
-                    columns: {
-                        loadout: true,
-                        slug: true,
-                        username: true,
-                        usernameSet: true,
-                        lastUsernameChangeTime: true,
-                        banned: true,
-                    },
-                    with: {
-                        items: { where: { type: { notIn: defaultUnlockItems } }, columns: itemColumns },
-                    },
-                }),
-            "Account not found",
-        );
-        if (row.isErr()) return row.error;
-        const { loadout, slug, username, usernameSet, lastUsernameChangeTime, banned, items: ownedItems } = row.value;
+        const { loadout, slug, name: username, usernameSet, lastUsernameChangeTime, banned } = user;
 
         if (banned) {
             const ban = await db.query.bans.findFirst({
@@ -60,6 +40,16 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
 
         const timeUntilNextChange = getTimeUntilNextUsernameChange(lastUsernameChangeTime);
 
+        const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
+
+        const ownedItems = await query(() =>
+            db.query.items.findMany({
+                where: { userId: user.id, type: { notIn: defaultUnlockItems } },
+                columns: itemColumns,
+            })
+        );
+        if (ownedItems.isErr()) return ownedItems.error;
+
         return {
             success: true,
             profile: {
@@ -71,7 +61,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                 usernameChangeTime: timeUntilNextChange,
             },
             loadout: loadout as Loadout,
-            items: ownedItems,
+            items: ownedItems.value,
         } satisfies ProfileResponse;
     })
     .post(
@@ -88,18 +78,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                 return status(400, { result: "invalid" } satisfies UsernameResponse);
             }
 
-            // from the row: the session's cookie cache may predate the last change
-            const row = await queryOne(
-                () =>
-                    db.query.users.findFirst({
-                        where: { id: user.id },
-                        columns: { lastUsernameChangeTime: true },
-                    }),
-                "Account not found",
-            );
-            if (row.isErr()) return status(500, { result: "failed" } satisfies UsernameResponse);
-
-            const timeUntilNextChange = getTimeUntilNextUsernameChange(row.value.lastUsernameChangeTime);
+            const timeUntilNextChange = getTimeUntilNextUsernameChange(user.lastUsernameChangeTime);
 
             if (timeUntilNextChange > 0) {
                 return { result: "change_time_not_expired" } satisfies UsernameResponse;
