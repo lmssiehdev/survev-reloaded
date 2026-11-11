@@ -23,6 +23,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
     .guard({ rateLimit: userRateLimit, auth: true })
     .post("/profile", async ({ user, request, set }) => {
         // not the session's user: its cookie cache can be older than a name or loadout change
+        const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
         const row = await queryOne(
             () =>
                 db.query.users.findFirst({
@@ -35,11 +36,14 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                         lastUsernameChangeTime: true,
                         banned: true,
                     },
+                    with: {
+                        items: { where: { type: { notIn: defaultUnlockItems } }, columns: itemColumns },
+                    },
                 }),
             "Account not found",
         );
         if (row.isErr()) return row.error;
-        const { loadout, slug, username, usernameSet, lastUsernameChangeTime, banned } = row.value;
+        const { loadout, slug, username, usernameSet, lastUsernameChangeTime, banned, items: ownedItems } = row.value;
 
         if (banned) {
             const ban = await db.query.bans.findFirst({
@@ -56,16 +60,6 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
 
         const timeUntilNextChange = getTimeUntilNextUsernameChange(lastUsernameChangeTime);
 
-        const defaultUnlockItems = UnlockDefs["unlock_default"].unlocks;
-
-        const ownedItems = await query(() =>
-            db.query.items.findMany({
-                where: { userId: user.id, type: { notIn: defaultUnlockItems } },
-                columns: itemColumns,
-            })
-        );
-        if (ownedItems.isErr()) return ownedItems.error;
-
         return {
             success: true,
             profile: {
@@ -77,7 +71,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                 usernameChangeTime: timeUntilNextChange,
             },
             loadout: loadout as Loadout,
-            items: ownedItems.value,
+            items: ownedItems,
         } satisfies ProfileResponse;
     })
     .post(

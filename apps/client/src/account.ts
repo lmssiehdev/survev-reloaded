@@ -170,11 +170,12 @@ export class Account {
                 profile.slug = data.profile.slug;
                 this.config.set("profile", profile);
             }
+            this.status = status;
             setAccountView((v) => {
+                v.status = status;
                 v.username = this.profile.username || "";
                 v.usernameChangeTime = this.profile.usernameChangeTime;
             });
-            this.setStatus(status);
             if (wasLoggingIn && this.loggedIn) {
                 this.getPass(true);
             }

@@ -6,6 +6,7 @@ import type {
     UserStatsRequest,
 } from "@survev/shared/types/stats.ts";
 import { client } from "../api.ts";
+import { helpers } from "../helpers.ts";
 
 /** the data of an Eden call, which throws on a failed request or an error status */
 async function data<T>(call: Promise<{ data: T; error: unknown }>): Promise<T> {
@@ -14,7 +15,7 @@ async function data<T>(call: Promise<{ data: T; error: unknown }>): Promise<T> {
     return data;
 }
 
-const timeout = () => ({ fetch: { signal: AbortSignal.timeout(10_000) } });
+const timeout = () => ({ fetch: { signal: helpers.abortSignal(10_000) } });
 
 export const getLeaderboard = query(
     (params: LeaderboardParams) => data(client.leaderboard.post(params, timeout())),
