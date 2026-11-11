@@ -3,15 +3,14 @@ import type { Item, ItemStatus } from "@survev/shared/utils/loadout.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { createSignal, createStore } from "solid-js";
-import { api } from "./api.ts";
+import { api, client } from "./api.ts";
 import { authClient } from "./authClient.ts";
 import type { ConfigManager } from "./config.ts";
 import { showNotification } from "./ui/appModals.ts";
 
-import { type Treaty, treaty } from "@elysia/eden";
-import type { UserRouterApp } from "@survev/api/types";
+import type { Treaty } from "@elysia/eden";
 
-type UserRouter = ReturnType<typeof treaty<UserRouterApp>>["api"]["user"];
+type UserRouter = typeof client.user;
 type UserRoute = Exclude<keyof UserRouter, "~path">;
 
 /** unknown: before site_info says whether there is a login to ask about */
@@ -77,17 +76,7 @@ export class Account {
     quests: QuestState[] = [];
     pass = {} as PassState;
 
-    router: UserRouter;
-
-    constructor(public config: ConfigManager) {
-        // keepDomain: the url is relative when the API is on the same host
-        this.router = treaty<UserRouterApp>(api.resolveUrl(""), {
-            keepDomain: true,
-            // a fetcher, not fetch: { credentials }: api.credentials() changes once site_info loads
-            fetcher: ((input: RequestInfo | URL, init?: RequestInit) =>
-                fetch(input, { ...init, credentials: api.credentials() })) as typeof fetch,
-        }).api.user;
-    }
+    constructor(public config: ConfigManager) {}
 
     async fetchApi<Path extends UserRoute>(
         path: Path,
@@ -100,7 +89,7 @@ export class Account {
         this.setRequests(this.requestsInFlight + 1);
 
         try {
-            const { data, error, response } = await this.router[path].post(body as any);
+            const { data, error, response } = await client.user[path].post(body as any);
             // no response: the request failed, error.value is what fetch threw
             if (!response) throw error?.value;
             // the API's error body ({ error, message }); other non 2xx bodies like { result: "invalid" } are answers

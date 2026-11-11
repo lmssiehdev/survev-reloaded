@@ -1,46 +1,38 @@
 import { query } from "@solidjs/router";
 import type {
     LeaderboardParams,
-    LeaderboardResponse,
     MatchDataRequest,
-    MatchDataResponse,
     MatchHistoryParams,
-    MatchHistoryResponse,
     UserStatsRequest,
-    UserStatsResponse,
 } from "@survev/shared/types/stats.ts";
-import { api } from "../api.ts";
+import { client } from "../api.ts";
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(api.resolveUrl(`/api/${path}`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-        throw new Error(`/api/${path} failed: ${res.status} ${res.statusText}`);
-    }
-    return res.json();
+/** the data of an Eden call, which throws on a failed request or an error status */
+async function data<T>(call: Promise<{ data: T; error: unknown }>): Promise<T> {
+    const { data, error } = await call;
+    if (error) throw error;
+    return data;
 }
 
+const timeout = () => ({ fetch: { signal: AbortSignal.timeout(10_000) } });
+
 export const getLeaderboard = query(
-    (params: LeaderboardParams) => post<LeaderboardResponse[] | null>("leaderboard", params),
+    (params: LeaderboardParams) => data(client.leaderboard.post(params, timeout())),
     "leaderboard",
 );
 
 /** null when the player doesn't exist */
 export const getUserStats = query(
-    (params: UserStatsRequest) => post<UserStatsResponse | null>("user_stats", params),
+    (params: UserStatsRequest) => data(client.user_stats.post(params, timeout())),
     "userStats",
 );
 
 export const getMatchHistory = query(
-    (params: MatchHistoryParams) => post<MatchHistoryResponse | null>("match_history", params),
+    (params: MatchHistoryParams) => data(client.match_history.post(params, timeout())),
     "matchHistory",
 );
 
 export const getMatchData = query(
-    (params: MatchDataRequest) => post<MatchDataResponse | null>("match_data", params),
+    (params: MatchDataRequest) => data(client.match_data.post(params, timeout())),
     "matchData",
 );

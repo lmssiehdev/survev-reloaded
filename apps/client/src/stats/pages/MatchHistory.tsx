@@ -120,9 +120,11 @@ function MatchPage(
         onMore: () => void;
     },
 ) {
-    const games = createMemo(async () =>
-        (await getMatchHistory(pageParams(props.slug, props.teamModeFilter, props.index))) ?? []
-    );
+    const games = createMemo(async () => {
+        const res = await getMatchHistory(pageParams(props.slug, props.teamModeFilter, props.index));
+        // an unknown slug gets {}
+        return Array.isArray(res) ? res : [];
+    });
 
     return (
         <>

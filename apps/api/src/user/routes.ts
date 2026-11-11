@@ -188,8 +188,6 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
         return {};
     });
 
-export type UserRouterApp = typeof UserRoutes;
-
 /** ends the current session and clears its cookies */
 async function logout(request: Request, set: { headers: HTTPHeaders }) {
     const res = await auth.api.signOut({ headers: request.headers, returnHeaders: true });

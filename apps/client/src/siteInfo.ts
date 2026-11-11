@@ -2,7 +2,7 @@ import { type MapDefKey, MapDefs } from "@survev/shared/defs/mapDefs.ts";
 import { GameConfig, TeamMode } from "@survev/shared/gameConfig.ts";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 import { reconcile } from "solid-js";
-import { api } from "./api.ts";
+import { api, client } from "./api.ts";
 import type { ConfigManager } from "./config.ts";
 import { device } from "./device.ts";
 import { helpers } from "./helpers.ts";
@@ -17,12 +17,11 @@ export class SiteInfo {
 
     /** resolves once site_info is in, or failed to load */
     async load() {
-        const locale = currentLocale();
-        const siteInfoUrl = api.resolveUrl(`/api/site_info?language=${locale}`);
-        const data = await fetch(siteInfoUrl)
-            .then((res) => res.json() as Promise<SiteInfoRes>)
-            .catch((err) => void console.error("Failed to load site info", err));
-        if (!data) return;
+        const { data, error } = await client.site_info.get({ query: { language: currentLocale() } });
+        if (!data) {
+            console.error("Failed to load site info", error);
+            return;
+        }
 
         this.info = data;
         this.loaded = true;

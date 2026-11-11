@@ -1,10 +1,14 @@
+import type { Auth } from "@survev/api/types";
 import { createAuthClient } from "better-auth/client";
+import { inferAdditionalFields } from "better-auth/client/plugins";
 import { api } from "./api.ts";
 
 /** better-auth's own client for its /api/auth endpoints (sign in, sign out) */
 export const authClient = createAuthClient({
     baseURL: new URL(api.resolveUrl("/api/auth"), window.location.href).href,
     fetchOptions: { credentials: "include" },
+    // the session's user has the API's extra fields (slug, banned, loadout...)
+    plugins: [inferAdditionalFields<Auth>()],
 });
 
 /** redirects to discord, which sends the player back to this page */
