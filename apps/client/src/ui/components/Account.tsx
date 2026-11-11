@@ -1,7 +1,9 @@
-import { type JSX, render } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
+import { loadout } from "@survev/shared/utils/loadout.ts";
 import { createSignal, Show } from "solid-js";
+import { accountItems, accountLoadout, accountView } from "../../account.ts";
+import { helpers } from "../../helpers.ts";
 import { keybindModal, settingsModal } from "../appModals.ts";
-import { fade } from "../fade.ts";
 import { t } from "../i18n.ts";
 import type { MenuModal } from "../menuModal.ts";
 import {
@@ -30,7 +32,11 @@ function AccountModal(props: {
     footer: JSX.Element;
 }) {
     return (
-        <div id={props.id} class="modal modal-account" ref={(el) => props.modal.attach(el)}>
+        <div
+            id={props.id}
+            class={["modal modal-account", props.modal.classes()]}
+            ref={(el) => props.modal.attach(el)}
+        >
             <div class="modal-content modal-close">
                 <div class={`modal-header modal-header-${props.layout}`}>
                     <span
@@ -80,7 +86,7 @@ const clearNameForm = () => {
 setNameModal.onShow(clearNameForm);
 setNameModal.onHide(clearNameForm);
 
-function SetNameModal() {
+export function SetNameModal() {
     const finish = () =>
         profileUi()?.setUsername(nameInput(), (warning) => {
             if (warning) setNameWarning(warning);
@@ -129,7 +135,7 @@ resetStatsModal.onShow(() => {
     mobileAccountModal.hide();
 });
 
-function ResetStatsModal() {
+export function ResetStatsModal() {
     const confirm = () => {
         if (resetInput() === "RESET STATS") {
             profileUi()?.account.resetStats();
@@ -175,7 +181,7 @@ deleteAccountModal.onShow(() => {
     mobileAccountModal.hide();
 });
 
-function DeleteAccountModal() {
+export function DeleteAccountModal() {
     const confirm = () => {
         if (deleteInput() === "DELETE") {
             profileUi()?.account.deleteAccount();
@@ -251,7 +257,11 @@ function AccountSettings(props: { class?: string; myStats?: boolean }) {
     };
     return (
         <div
-            class={["account-buttons-settings account-buttons-wrapper account-block-arrow modal-close", props.class]}
+            class={[
+                "account-buttons-settings account-buttons-wrapper account-block-arrow modal-close",
+                props.class,
+                userSettingsModal.classes(),
+            ]}
             ref={(el) => userSettingsModal.attach(el)}
         >
             <div class="account-buttons">
@@ -266,7 +276,7 @@ function AccountSettings(props: { class?: string; myStats?: boolean }) {
                 <div
                     class={[
                         "btn-account-change-name btn-account-turq menu-option btn-darken btn-standard",
-                        { "btn-account-disabled": profile.usernameChangeTime > 0 },
+                        { "btn-account-disabled": accountView.usernameChangeTime > 0 },
                     ]}
                     onClick={action(() => profileUi()?.changeName())}
                 >
@@ -303,9 +313,13 @@ function AccountSettings(props: { class?: string; myStats?: boolean }) {
 
 mobileAccountModal.onHide(() => userSettingsModal.hide());
 
-function MobileAccountModal() {
+export function MobileAccountModal() {
     return (
-        <div id="modal-mobile-account" class="modal" ref={(el) => mobileAccountModal.attach(el)}>
+        <div
+            id="modal-mobile-account"
+            class={["modal", mobileAccountModal.classes()]}
+            ref={(el) => mobileAccountModal.attach(el)}
+        >
             <div class="modal-content modal-close">
                 <div class="modal-header">
                     <span class="close close-corner" onClick={(e) => mobileAccountModal.hide(e)} />
@@ -315,7 +329,10 @@ function MobileAccountModal() {
                     <AccountSettings myStats />
                     <div
                         id="account-login-options-mobile"
-                        class="account-buttons-link-account account-buttons-wrapper account-block-arrow modal-close"
+                        class={[
+                            "account-buttons-link-account account-buttons-wrapper account-block-arrow modal-close",
+                            loginOptionsModalMobile.classes(),
+                        ]}
                         ref={(el) => loginOptionsModalMobile.attach(el)}
                     >
                         <LoginOptions />
@@ -326,8 +343,13 @@ function MobileAccountModal() {
     );
 }
 
+/** the player icon, or the default silhouette */
+const avatar = () => helpers.getSvgFromGameType(accountLoadout().player_icon) || "img/gui/player-gui.svg";
+/** some items are new or unconfirmed */
+const itemAlert = () => accountItems().some((item) => item.status! < loadout.ItemStatus.Ackd);
+
 /** the top-right corner of the start menu: loadout/stats/leaderboard, the name, its menus */
-function StartTopRight() {
+export function StartTopRight() {
     // the row above the name hides while a menu under the name is open
     const menuOpen = () =>
         userSettingsModal.isOpen() || loginOptionsModal.isOpen() || loginOptionsModalMobile.isOpen()
@@ -340,7 +362,9 @@ function StartTopRight() {
     return (
         <div
             id="start-top-right"
-            ref={fade(() => !(mobileAccountModal.isOpen() || settingsModal.isOpen() || keybindModal.isOpen()))}
+            class={["fade", {
+                faded: mobileAccountModal.isOpen() || settingsModal.isOpen() || keybindModal.isOpen(),
+            }]}
         >
             <div class="account-block" style={{ display: profile.loginSupported ? "block" : "none" }}>
                 <div class="account-details-top" style={{ display: menuOpen() ? "none" : "block" }}>
@@ -350,7 +374,7 @@ function StartTopRight() {
                                 <div
                                     id="loadout-alert-main"
                                     class="account-alert-main account-alert"
-                                    style={{ display: profile.itemAlert ? "block" : "none" }}
+                                    style={{ display: itemAlert() ? "block" : "none" }}
                                 />
                                 <div
                                     class="account-link account-loadout-link"
@@ -388,23 +412,23 @@ function StartTopRight() {
                         onClick={link(() => profileUi()?.toggleAccountMenu())}
                     >
                         <div class="account-details">
-                            <div class="account-avatar" style={{ "background-image": `url(${profile.avatar})` }} />
+                            <div class="account-avatar" style={{ "background-image": `url(${avatar()})` }} />
                             <div
                                 id="account-login"
                                 class="account-player-name account-name account-name-user"
-                                style={{ display: profile.loggedIn ? "none" : "block" }}
+                                style={{ display: accountView.status == "loggedIn" ? "none" : "block" }}
                             >
                                 {t("index-log-in-desc")}
                             </div>
                             <div
                                 id="account-player-name"
                                 class="account-player-name account-name account-name-user"
-                                style={{ display: profile.loggedIn ? "block" : "none" }}
+                                style={{ display: accountView.status == "loggedIn" ? "block" : "none" }}
                             >
-                                {profile.username}
+                                {accountView.username}
                             </div>
                             <div class="account-loading-container">
-                                <div class="account-loading" style={{ opacity: profile.loading ? 1 : 0 }} />
+                                <div class="account-loading" style={{ opacity: accountView.requests > 0 ? 1 : 0 }} />
                             </div>
                         </div>
                     </div>
@@ -412,7 +436,10 @@ function StartTopRight() {
                 <AccountSettings class="hide-on-mobile" />
                 <div
                     id="account-login-options"
-                    class="account-buttons-link-account account-buttons-wrapper account-block-arrow modal-close"
+                    class={[
+                        "account-buttons-link-account account-buttons-wrapper account-block-arrow modal-close",
+                        loginOptionsModal.classes(),
+                    ]}
                     ref={(el) => loginOptionsModal.attach(el)}
                 >
                     <LoginOptions />
@@ -440,21 +467,5 @@ export function CreateAccountModal() {
             <p class="modal-body-text">{t("index-create-account-prompt-1")}</p>
             <LoginOptions />
         </AccountModal>
-    );
-}
-
-/** fills #account-ui in index.html: the account modals and the start menu's top-right corner */
-export function mountAccount() {
-    render(
-        () => (
-            <>
-                <SetNameModal />
-                <ResetStatsModal />
-                <DeleteAccountModal />
-                <MobileAccountModal />
-                <StartTopRight />
-            </>
-        ),
-        document.getElementById("account-ui")!,
     );
 }

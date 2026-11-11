@@ -9,7 +9,7 @@ import { collider } from "@survev/shared/utils/collider.ts";
 import { type Loadout, loadout as loadouts } from "@survev/shared/utils/loadout.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
-import type { Account } from "../account.ts";
+import { type Account, accountLoadout } from "../account.ts";
 import type { AudioManager } from "../audioManager.ts";
 import { Camera } from "../camera.ts";
 import type { ConfigManager, DebugRendererOpts } from "../config.ts";
@@ -24,11 +24,14 @@ import { ParticleBarn } from "../objects/particles.ts";
 import { type Player, PlayerBarn } from "../objects/player.ts";
 import { SmokeBarn } from "../objects/smoke.ts";
 import { Renderer } from "../renderer.ts";
+import { follow } from "./controller.ts";
 import type { UiManager2 } from "./ui2.ts";
 
 export class LoadoutDisplay {
     active = false;
     initialized = false;
+    /** stops following the account's loadout */
+    stopFollowing = () => {};
 
     canvasMode!: boolean;
     camera!: Camera;
@@ -197,12 +200,8 @@ export class LoadoutDisplay {
         this.actionSeq = 0;
 
         this.hide();
-        this.account.addEventListener("loadout", (loadout) => {
-            this.setLoadout(loadout, true);
-        });
-
-        // @NOTE: Necessary because the account could have already loaded
         this.setLoadout(this.account.loadout, true);
+        this.stopFollowing = follow(accountLoadout, (loadout) => this.setLoadout(loadout, true));
 
         this.initialized = true;
 
@@ -210,6 +209,7 @@ export class LoadoutDisplay {
     }
 
     free() {
+        this.stopFollowing();
         if (this.initialized) {
             this.map.m_free();
             this.particleBarn.m_free();

@@ -1446,7 +1446,8 @@ img {
     z-index: 1;
     position: absolute;
     border-radius: 4px;
-    width: 200px;
+    --team-health-bar: 200px;
+    width: var(--team-health-bar);
     height: 10px;
     transition: width 0s;
     transition-property: width;
@@ -1984,7 +1985,9 @@ img {
  */
 #ui-map-container {
     position: absolute;
-    bottom: 52px;
+    /* --map-scale: the minimap's scale with the screen */
+    bottom: calc(52px * var(--map-scale, 1));
+    transform: scale(var(--map-scale, 1));
 }
 
 #ui-map-info {
@@ -3808,7 +3811,8 @@ span.ui-stats-header-value {
         z-index: 1;
         position: absolute;
         border-radius: 4px;
-        width: 110px;
+        --team-health-bar: 110px;
+        width: var(--team-health-bar);
         height: 5px;
         transition: width 0s;
         transition-property: width;
@@ -5450,5 +5454,27 @@ span.ui-stats-header-value {
         top: -20px;
         left: 84px;
         transform: scale(0.7);
+    }
+}
+
+/* fades in, holds for 3 s, fades out */
+#ui-announcement.announce {
+    animation: announce 4200ms ease-in-out forwards;
+    display: block;
+}
+
+@keyframes announce {
+    0% {
+        opacity: 0;
+    }
+    9.5% {
+        opacity: 1;
+    }
+    81% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        visibility: hidden;
     }
 }

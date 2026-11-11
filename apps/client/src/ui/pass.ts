@@ -4,10 +4,10 @@ import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import type { Account } from "../account.ts";
-import { mountPassPanel } from "./components/PassPanel.tsx";
+import { type Account, accountPass } from "../account.ts";
+import { follow } from "./controller.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
-import { assignLeaves, type Fade, opaque, type QuestView, setPassView } from "./passView.ts";
+import { type PassPhase, type QuestView, setPassPanel, setPassView } from "./passView.ts";
 
 function getNextPassUnlockItemId(passType: string, currentLevel: number) {
     const passDef = PassDefs[passType];
@@ -80,8 +80,8 @@ export class Pass {
         timers: number[];
     }> = [];
 
-    loaded = false;
-    lockDisplayed = false;
+    /** loading until the pass arrives, or locked for a logged out player */
+    phase: PassPhase = "loading";
     updatePass = false;
     updatePassTicker = 0;
 
@@ -89,9 +89,10 @@ export class Pass {
         public account: Account,
         public loadoutMenu: LoadoutMenu,
     ) {
-        this.account.addEventListener("request", this.onRequest.bind(this));
-        this.account.addEventListener("pass", this.onPass.bind(this));
-        mountPassPanel(document.getElementById("pass-wrapper")!, {
+        follow(accountPass, (p) => {
+            if (p) this.onPass(p.pass, p.quests, p.resetRefresh);
+        });
+        setPassPanel({
             getCategory: (gameType) => this.loadoutMenu.getCategory(gameType),
             onRefresh: (idx) => this.onRefreshClick(idx),
             onRefreshConfirm: (idx) => this.onRefreshConfirm(idx),
@@ -102,7 +103,7 @@ export class Pass {
 
     setQuestView(idx: number, view: Partial<QuestView>) {
         setPassView((s) => {
-            assignLeaves(s.quests[idx], view);
+            Object.assign(s.quests[idx], view);
         });
     }
 
@@ -206,13 +207,10 @@ export class Pass {
                     loading: false,
                     showTimer: old?.showTimer ?? false,
                     timerText: old?.timerText ?? "",
-                    completeText: false,
+                    completing: false,
                     pulse: false,
-                    main: opaque(),
-                    refresh: opaque(),
-                    counter: opaque(),
                 };
-                if (old) assignLeaves(old, next);
+                if (old) Object.assign(old, next);
                 else s.quests[quest.data.idx] = next;
             });
             this.setQuestRefreshEnabled(quest);
@@ -223,7 +221,7 @@ export class Pass {
         this.pass.animSteps = [];
         this.pass.currentXp = Math.round(this.pass.currentXp);
         this.pass.levelXp = passUtil.getPassLevelXp(pass.type, this.pass.currentLevel);
-        if (!this.loaded) {
+        if (this.phase != "loaded") {
             const initialLevelXp = passUtil.getPassLevelXp(pass.type, pass.level);
             this.pass.currentXp = 0;
             this.pass.currentLevel = pass.level;
@@ -234,7 +232,7 @@ export class Pass {
         let xp = this.pass.currentXp;
         // Animate level-ups
 
-        if (this.loaded) {
+        if (this.phase == "loaded") {
             while (level < pass.level) {
                 const levelXp = passUtil.getPassLevelXp(pass.type, level);
                 this.pass.animSteps.push({
@@ -262,23 +260,15 @@ export class Pass {
             this.pass.data.type,
             this.pass.currentLevel,
         );
+        this.phase = "loaded";
         setPassView((s) => {
-            s.blockRaised = true;
-            s.lockedVisible = false;
-            s.loadingVisible = false;
+            s.phase = this.phase;
             s.unlockItem = unlockItemId;
             s.type = pass.type;
             s.level = this.pass.currentLevel;
             s.xpCurrent = this.pass.currentXp;
             s.xpTarget = this.pass.levelXp;
             s.barPct = (this.pass.currentXp / this.pass.levelXp) * 100;
-        });
-        this.loaded = true;
-    }
-
-    onRequest(account: Account) {
-        setPassView((s) => {
-            s.loadingVisible = account.loggingIn;
         });
     }
 
@@ -298,14 +288,13 @@ export class Pass {
     }
 
     animatePassLevelUp() {
-        const fade = (opacity: number): Fade => ({ opacity, ms: 250 });
         setPassView((s) => {
             s.level = this.pass.currentLevel;
             s.unlockPulse = true;
         });
         this.after([], 750, () => {
             setPassView((s) => {
-                assignLeaves(s.unlockImages, fade(0));
+                s.unlockHidden = true;
             });
         });
         this.after([], 1000, () => {
@@ -316,24 +305,14 @@ export class Pass {
             setPassView((s) => {
                 s.unlockItem = nextUnlockItemId;
                 s.unlockPulse = false;
-                assignLeaves(s.unlockImages, fade(1));
+                s.unlockHidden = false;
             });
         });
     }
 
     animateQuestComplete(quest: (typeof this.quests)[number]) {
         const idx = quest.data.idx;
-        const fade = (opacity: number, ms = 250): Fade => ({ opacity, ms });
-        this.setQuestView(idx, {
-            pulse: true,
-            // the disabled class forces opacity 0.25; fade from there
-            refreshEnabled: true,
-            refresh: fade(0.25),
-            counter: fade(0),
-            completeText: true,
-        });
-        this.after(quest.timers, 250, () => this.setQuestView(idx, { refresh: fade(0) }));
-        this.after(quest.timers, 1000, () => this.setQuestView(idx, { main: fade(0, 750) }));
+        this.setQuestView(idx, { pulse: true, refreshEnabled: true, completing: true });
     }
 
     update(dt: number) {
@@ -434,7 +413,7 @@ export class Pass {
                 fixedQuest.timer.displayed = showRefreshTimer;
                 this.setQuestView(fixedQuest.data.idx, {
                     pulse: false,
-                    main: { opacity: 1, ms: 250 },
+                    completing: false,
                     showTimer: showRefreshTimer,
                 });
             }
@@ -475,13 +454,12 @@ export class Pass {
                 this.pass.ticker -= 3;
             }
         }
-        if (!this.account.loggingIn && !this.account.loggedIn && !this.lockDisplayed) {
+        const status = this.account.status;
+        if (this.phase == "loading" && (status == "unknown" || status == "loggedOut")) {
+            this.phase = "locked";
             setPassView((s) => {
-                s.blockRaised = true;
-                s.loadingVisible = false;
-                s.lockedVisible = true;
+                s.phase = this.phase;
             });
-            this.lockDisplayed = true;
         }
     }
 

@@ -60,6 +60,9 @@ export interface BulletParams {
     distanceMult?: number;
 }
 
+/** scratch result of the per-tick collision query; collisions are resolved after the loop */
+const SCRATCH_BULLET_NEARBY: GameObject[] = [];
+
 export class BulletBarn {
     bullets: Bullet[] = [];
     newBullets: Bullet[] = [];
@@ -416,6 +419,7 @@ export class Bullet {
         const objects = this.bulletManager.game.grid.intersectLineSegment(
             posOld,
             this.pos,
+            SCRATCH_BULLET_NEARBY,
         );
 
         for (let i = 0; i < objects.length; i++) {

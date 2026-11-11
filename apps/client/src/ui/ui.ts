@@ -26,7 +26,15 @@ import { type MapSprite, MapSpriteBarn } from "../objects/mapSprite.ts";
 import type { ParticleBarn } from "../objects/particles.ts";
 import type { PlaneBarn } from "../objects/plane.ts";
 import type { ClientPlayerStatus, Player, PlayerBarn } from "../objects/player.ts";
-import { type GameTab, setGameUi, setGameView, type StatsPlayerView, type TeamMemberStatus } from "./gameView.ts";
+import {
+    type GameTab,
+    setGameUi,
+    setGameView,
+    type StatsOverview,
+    type StatsPlayerView,
+    type TeamMemberStatus,
+    type TeamMemberView,
+} from "./gameView.ts";
 import type { Localization } from "./localization.ts";
 import { PieTimer } from "./pieTimer.ts";
 import type { Touch } from "./touch.ts";
@@ -57,28 +65,11 @@ interface ContainerWithMask extends PIXI.Container {
     mask: PIXI.Graphics;
 }
 
-/**
- * The HUD's class-wide display toggles (`.js-ui-map-hidden` & co.) for the elements UiManager
- * doesn't render (ui2.ts / emote.ts markup). Its own views (`data-game-view` mount points) take
- * the same displays from the store.
- */
-function setOtherDisplay(selector: string, display: string) {
-    for (const el of document.querySelectorAll<HTMLElement>(selector)) {
-        if (!el.closest("[data-game-view]")) el.style.display = display;
-    }
-}
-
-const elemsById = (...ids: string[]) =>
-    ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
-
 /** module-wide, so a new game's UiManager never repeats the previous one's */
-let statsSeq = 0;
-let announcementSeq = 0;
 
 type PrevStatus = Pick<ClientPlayerStatus, "downed" | "dead" | "disconnected" | "role">;
 export class UiManager {
     m_pieTimer = new PieTimer();
-    gameElem = document.getElementById("ui-game")!;
     escMenuDisplayed = false;
     roleMenuActive = false;
     roleMenuTicker = 0;
@@ -90,15 +81,12 @@ export class UiManager {
     spectating = false;
     prevSpectatorCount = 0;
     spectatorCount = 0;
-    spectatorCounterDisplayed = false;
     spectatedPlayerName = "";
     spectatedPlayerId = 0;
     localStatsDisplayed = false;
     playersAliveCounter = 0;
     playersAliveRedCounter = 0;
     playersAliveBlueCounter = 0;
-    mapContainerBottom = 52;
-    mapInfoBottom = 218;
     gasState = {} as {
         mode: number;
         time: number;
@@ -115,16 +103,10 @@ export class UiManager {
 
     specAction = SpectateAction.None;
 
-    // Touch specific buttons (ui2.ts markup)
-    interactionElems = elemsById("ui-interaction-press", "ui-interaction");
+    // touch buttons pressed since the last input update
     interactionTouched = false;
-
-    reloadElems = elemsById("ui-current-clip", "ui-remaining-ammo", "ui-reload-button-container");
-
     reloadTouched = false;
 
-    // Faction flair display (ui2.ts markup)
-    flairElems = [...document.querySelectorAll<HTMLElement>(".ui-health-flair")];
     flairId = 0;
 
     // Health bar values
@@ -146,12 +128,9 @@ export class UiManager {
     sentAdStatus = false;
     frame = 0;
     weapsDirty = false;
-    // weapon slot dragging (ui2.ts markup)
-    weapSwitches = elemsById("ui-weapon-id-1", "ui-weapon-id-2");
-    weapNoSwitches = elemsById("ui-weapon-id-3", "ui-weapon-id-4");
+    // weapon slot dragging
     weapDraggedId = 0;
     swapWeapSlots = false;
-    weapDraggedDiv: HTMLElement | null = null;
     weapDragging = false;
     weapDropped = false;
 
@@ -177,7 +156,6 @@ export class UiManager {
     dead = false;
 
     displayingStats = false;
-    teamMemberHealthBarWidth: number;
 
     teamMemberHeight = 48;
     groupPlayerCount = 0;
@@ -186,14 +164,6 @@ export class UiManager {
         playerId: number;
         prevHealth: number;
         prevStatus: PrevStatus;
-        indicators: Record<
-            string,
-            {
-                elem: HTMLElement | null;
-                displayed: boolean;
-                displayAll?: boolean;
-            }
-        >;
     }> = [];
 
     displayOldMapSprites = false;
@@ -224,26 +194,8 @@ export class UiManager {
 
         this.setCurrentGameTab(this.currentGameTab);
 
-        // Touch specific buttons
-        for (const el of this.interactionElems) {
-            el.style.pointerEvents = "auto";
-            el.addEventListener("touchstart", this.onInteractionTouch);
-        }
-        for (const el of this.reloadElems) {
-            el.style.pointerEvents = "auto";
-            el.addEventListener("touchstart", this.onReloadTouch);
-        }
-
         this.gasRenderer = new GasRenderer(canvasMode, 0x000000);
 
-        if (!device.touch) {
-            for (const el of this.weapSwitches) {
-                el.addEventListener("mousedown", this.onWeapMouseDown);
-                el.addEventListener("mouseup", this.onWeapMouseUp);
-            }
-            this.gameElem.addEventListener("mousemove", this.onWeapMouseMove);
-            this.gameElem.addEventListener("mouseup", this.onWeapMouseUp);
-        }
         this.mapIndicatorBarn = new MapIndicatorBarn(this.mapSpriteBarn);
 
         this.container.mask = new PIXI.Graphics();
@@ -271,10 +223,6 @@ export class UiManager {
             game.m_camera.m_screenHeight - minimapSize / 2 - minimapMargin,
         );
 
-        // the stylesheet's full width (it differs per layout)
-        const healthBar = document.querySelector(".ui-team-member-health .ui-bar-inner");
-        this.teamMemberHealthBarWidth = healthBar ? parseInt(getComputedStyle(healthBar).width) : 0;
-
         for (let i = 0; i < 4; i++) {
             this.teamSelectors.push({
                 groupIdDisplayed: false,
@@ -286,81 +234,62 @@ export class UiManager {
                     downed: false,
                     role: "",
                 },
-                indicators: {
-                    main: {
-                        elem: document.querySelector<HTMLElement>(
-                            `#ui-team-indicators .ui-indicator-main[data-id="${i}"]`,
-                        ),
-                        displayed: false,
-                    },
-                },
             });
         }
         this.init();
     }
 
-    onInteractionTouch = (e: TouchEvent) => {
-        e.stopPropagation();
+    /** the touch interaction button (components/Hud.tsx) */
+    onInteractionTouch() {
         this.interactionTouched = true;
-    };
+    }
 
-    onReloadTouch = (e: TouchEvent) => {
-        e.stopPropagation();
+    /** the touch reload buttons (components/Hud.tsx) */
+    onReloadTouch() {
         this.reloadTouched = true;
-    };
+    }
 
-    onWeapMouseDown = (e: MouseEvent) => {
-        const elem = e.currentTarget;
-        if (e.button == 0 && elem instanceof HTMLElement) {
-            this.weapDraggedDiv = elem;
-            this.weapDraggedId = Number(elem.dataset.slot);
-        }
-    };
+    /** a left press on weapon slot 1 or 2 may start dragging it onto the other (mouse only) */
+    onWeapMouseDown(e: MouseEvent, slot: number) {
+        if (device.touch || e.button != 0) return;
+        this.weapDraggedId = slot;
+    }
 
-    onWeapMouseMove = (e: MouseEvent) => {
-        if (this.weapDraggedDiv && !this.weapDropped) {
-            if (this.weapDragging) {
-                this.weapDraggedDiv.style.left = `${e.pageX - 80}px`;
-                this.weapDraggedDiv.style.top = `${e.pageY - 30}px`;
-                this.weapDraggedDiv.classList.add("ui-weapon-dragged");
-            } else {
-                this.gameElem.style.pointerEvents = "initial";
-                for (const el of this.weapNoSwitches) el.classList.remove("ui-outline-hover");
-                this.weapDragging = true;
-            }
-        }
-    };
+    onWeapMouseMove(e: MouseEvent) {
+        if (device.touch || !this.weapDraggedId || this.weapDropped) return;
+        const dragging = this.weapDragging;
+        this.weapDragging = true;
+        setGameView((v) => {
+            v.weaponDrag.slot = this.weapDraggedId;
+            v.weaponDrag.dragging = true;
+            // the slot follows the mouse from the second move on
+            v.weaponDrag.moved = dragging;
+            v.weaponDrag.left = e.pageX - 80;
+            v.weaponDrag.top = e.pageY - 30;
+        });
+    }
 
-    onWeapMouseUp = (e: MouseEvent) => {
-        if (e.button == 0 && this.weapDraggedDiv != null) {
-            const target = e.currentTarget;
-            if (
-                target instanceof HTMLElement
-                && target.matches(":hover")
-                && this.weapDraggedId != Number(target.dataset.slot)
-            ) {
-                this.swapWeapSlots = true;
-                this.weapDropped = true;
-            }
-            if (!this.swapWeapSlots) {
-                this.resetWeapSlotStyling();
-            }
+    /** a left release over a weapon slot (`slot`, if 1 or 2) or anywhere else in the game UI */
+    onWeapMouseUp(e: MouseEvent, hovered: boolean, slot?: number) {
+        if (device.touch || e.button != 0 || !this.weapDraggedId) return;
+        if (hovered && this.weapDraggedId != slot) {
+            this.swapWeapSlots = true;
+            this.weapDropped = true;
         }
-    };
+        if (!this.swapWeapSlots) {
+            this.resetWeapSlotStyling();
+        }
+    }
 
     resetWeapSlotStyling() {
-        if (this.weapDraggedDiv) {
-            for (const el of this.weapSwitches) {
-                el.style.left = "";
-                el.style.top = "";
-            }
-            this.gameElem.style.pointerEvents = "";
-        }
-        this.weapDraggedDiv = null;
+        this.weapDraggedId = 0;
         this.weapDragging = false;
         this.weapDropped = false;
-        for (const el of this.weapSwitches) el.classList.remove("ui-weapon-dragged");
-        for (const el of this.weapNoSwitches) el.classList.add("ui-outline-hover");
+        setGameView((v) => {
+            v.weaponDrag.slot = 0;
+            v.weaponDrag.dragging = false;
+            v.weaponDrag.moved = false;
+        });
     }
 
     m_free() {
@@ -369,18 +298,10 @@ export class UiManager {
         this.clearUI();
 
         document.removeEventListener("touchstart", this.onTouchScreen);
-        for (const el of this.interactionElems) el.removeEventListener("touchstart", this.onInteractionTouch);
-        for (const el of this.reloadElems) el.removeEventListener("touchstart", this.onReloadTouch);
-        for (const el of this.weapSwitches) {
-            el.removeEventListener("mousedown", this.onWeapMouseDown);
-            el.removeEventListener("mouseup", this.onWeapMouseUp);
-        }
-        this.gameElem.removeEventListener("mousemove", this.onWeapMouseMove);
-        this.gameElem.removeEventListener("mouseup", this.onWeapMouseUp);
 
         // Reset team member health bar widths
         setGameView((v) => {
-            for (const member of v.team) member.healthWidth = null;
+            for (const member of v.team) member.health = 1;
         });
 
         this.inputBinds.menuHovered = false;
@@ -396,25 +317,17 @@ export class UiManager {
     }
 
     init() {
-        this.setMapHiddenDisplay("block");
+        this.flairId = 0;
         setGameView((v) => {
-            v.alive.mapFaction = false;
+            v.flair = "";
+            v.alive.kind = null;
+            v.map.bigmap = false;
         });
-        for (const el of this.flairElems) el.style.display = "none";
         this.clearStatsElems();
         this.setSpectating(false);
-        this.updateSpectatorCountDisplay(true);
+        this.updateSpectatorCountDisplay();
         this.resetWeapSlotStyling();
         this.dead = false;
-    }
-
-    /** `.js-ui-map-hidden` elements, plus `.js-ui-mobile-map-hidden` ones when given */
-    setMapHiddenDisplay(display: "block" | "none", mobile = false) {
-        setGameView((v) => {
-            v.map.hidden = display;
-            if (mobile) v.map.mobileHidden = display;
-        });
-        setOtherDisplay(mobile ? ".js-ui-mobile-map-hidden, .js-ui-map-hidden" : ".js-ui-map-hidden", display);
     }
 
     onMapLoad(map: Map, camera: Camera) {
@@ -425,9 +338,10 @@ export class UiManager {
             v.killLeaderEnabled = displayLeader;
         });
 
-        const killfeed = document.getElementById("ui-killfeed-wrapper");
-        if (!device.mobile && killfeed) {
-            killfeed.style.top = displayLeader ? "60px" : "12px";
+        if (!device.mobile) {
+            setGameView((v) => {
+                v.killfeedTop = displayLeader ? "60px" : "12px";
+            });
         }
     }
 
@@ -469,7 +383,7 @@ export class UiManager {
 
         // Spectator count display
         this.spectatorCount = player.m_localData.m_spectatorCount;
-        this.updateSpectatorCountDisplay(false);
+        this.updateSpectatorCountDisplay();
 
         if (player.m_netData.m_dead && !this.dead) {
             this.dead = true;
@@ -585,84 +499,37 @@ export class UiManager {
                     playerInfo.playerId,
                 );
 
-                // Team indicators (per frame, emote.ts shares their markup)
-                for (const key in teamElems.indicators) {
-                    if (teamElems.indicators.hasOwnProperty(key)) {
-                        const indicator = teamElems.indicators[key];
-                        const elem = indicator.elem;
-                        let hideIndicator = true;
-
-                        if ((!isLocalPlayer || indicator.displayAll) && !factionMode && elem) {
-                            const playerPos = playerStatus.pos;
-                            const dir = v2.normalizeSafe(
-                                v2.sub(playerPos, camera.m_pos),
-                                v2.create(1, 0),
-                            );
-                            const edge = coldet.intersectRayAabb(
-                                camera.m_pos,
-                                dir,
-                                camAabb.min,
-                                camAabb.max,
-                            )!;
-                            // fixme: find actual cause for the indicator rotation facing backwards
-                            const rot = Math.atan2(dir.y, -dir.x) - Math.PI * 0.5;
-                            const screenEdge = camera.m_pointToScreen(edge);
-                            const onscreen = coldet.testCircleAabb(
-                                playerPos,
-                                GameConfig.player.radius,
-                                camAabb.min,
-                                camAabb.max,
-                            );
-                            if (!playerStatus.dead && !onscreen) {
-                                let off = 32;
-                                let transform = `translate(-50%, -50%) rotate(${rot}rad)`;
-                                if (layoutSm) {
-                                    off = 16;
-                                    transform += " scale(0.5)";
-                                }
-                                hideIndicator = false;
-                                const heightAdjust = 0;
-                                elem.style.left = `${
-                                    math.clamp(
-                                        screenEdge.x,
-                                        off,
-                                        camera.m_screenWidth - off,
-                                    )
-                                }px`;
-                                elem.style.top = `${
-                                    math.clamp(
-                                        screenEdge.y,
-                                        off,
-                                        camera.m_screenHeight - off - heightAdjust,
-                                    )
-                                }px`;
-                                elem.style.transform = transform;
-                                if (!indicator.displayed) {
-                                    elem.style.display = "block";
-                                    indicator.displayed = true;
-                                }
-                            }
-                        }
-                        if (hideIndicator && indicator.displayed && elem) {
-                            elem.style.display = "none";
-                            indicator.displayed = false;
-                        }
+                // Team indicator at the screen edge (per frame)
+                let indicator: TeamMemberView["indicator"] = null;
+                if (!isLocalPlayer && !factionMode && !playerStatus.dead) {
+                    const playerPos = playerStatus.pos;
+                    const dir = v2.normalizeSafe(v2.sub(playerPos, camera.m_pos), v2.create(1, 0));
+                    const edge = coldet.intersectRayAabb(camera.m_pos, dir, camAabb.min, camAabb.max)!;
+                    // fixme: find actual cause for the indicator rotation facing backwards
+                    const rot = Math.atan2(dir.y, -dir.x) - Math.PI * 0.5;
+                    const screenEdge = camera.m_pointToScreen(edge);
+                    const onscreen = coldet.testCircleAabb(
+                        playerPos,
+                        GameConfig.player.radius,
+                        camAabb.min,
+                        camAabb.max,
+                    );
+                    if (!onscreen) {
+                        const off = layoutSm ? 16 : 32;
+                        indicator = {
+                            left: math.clamp(screenEdge.x, off, camera.m_screenWidth - off),
+                            top: math.clamp(screenEdge.y, off, camera.m_screenHeight - off),
+                            transform: `translate(-50%, -50%) rotate(${rot}rad)${layoutSm ? " scale(0.5)" : ""}`,
+                        };
                     }
                 }
+                this.setTeamIndicator(i, indicator);
             }
         }
         // Hide unused elements
         for (let i = groupPlayerCount; i < this.teamSelectors.length; i++) {
             const teamElems = this.teamSelectors[i];
-            for (const key in teamElems.indicators) {
-                if (teamElems.indicators.hasOwnProperty(key)) {
-                    const indicator = teamElems.indicators[key];
-                    if (indicator.displayed) {
-                        if (indicator.elem) indicator.elem.style.display = "none";
-                        indicator.displayed = false;
-                    }
-                }
-            }
+            this.setTeamIndicator(i, null);
             if (teamElems.groupIdDisplayed) {
                 setGameView((v) => {
                     v.team[i].displayed = false;
@@ -677,11 +544,9 @@ export class UiManager {
             if (this.flairId != localPlayerInfo.teamId) {
                 this.flairId = localPlayerInfo.teamId;
                 // Assume red or blue for now
-                const flairColor = this.flairId == GameConfig.FactionTeam.Red ? "red" : "blue";
-                for (const el of this.flairElems) {
-                    el.style.display = "block";
-                    el.style.backgroundImage = `url(../img/gui/player-patch-${flairColor}.svg)`;
-                }
+                setGameView((v) => {
+                    v.flair = this.flairId == GameConfig.FactionTeam.Red ? "red" : "blue";
+                });
             }
         }
 
@@ -788,17 +653,14 @@ export class UiManager {
                 tint = playerBarn.getTeamColor(playerInfo.teamId);
             }
             const dotScale = device.uiLayout == device.UiLayout.Sm ? 0.15 : 0.2;
+            // the player's own group is drawn larger; dead, downed and custom icons stand out
             let scale = dotScale;
-
-            scale = sameGroup
-                ? playerStatus.dead
-                    ? dotScale * 1.5
-                    : customMapIcon
-                    ? dotScale * 1.25
-                    : dotScale * 1
-                : playerStatus.dead || playerStatus.downed || customMapIcon
-                ? dotScale * 1.25
-                : dotScale * 0.75;
+            if (sameGroup) {
+                if (playerStatus.dead) scale *= 1.5;
+                else if (customMapIcon) scale *= 1.25;
+            } else {
+                scale *= playerStatus.dead || playerStatus.downed || customMapIcon ? 1.25 : 0.75;
+            }
 
             addSprite(
                 playerStatus.pos,
@@ -1015,14 +877,6 @@ export class UiManager {
         return undefined;
     }
 
-    hideAll() {
-        this.gameElem.style.display = "none";
-    }
-
-    showAll() {
-        this.gameElem.style.display = "block";
-    }
-
     setLocalKills(kills: number) {
         setGameView((v) => {
             v.kills = kills;
@@ -1057,8 +911,7 @@ export class UiManager {
     hideStats() {
         this.displayingStats = false;
         setGameView((v) => {
-            v.stats.open = false;
-            v.stats.contents = false;
+            v.stats = null;
         });
     }
 
@@ -1184,11 +1037,6 @@ export class UiManager {
             }
             const factionMode = !!map.getMapDef().gameMode.factionMode;
 
-            const layoutLg = device.uiLayout != device.UiLayout.Sm || device.tablet;
-            const columnWidth = layoutLg ? 250 : 125;
-            let left = 0;
-            left -= ((playerStats.length - 1) * columnWidth) / 2;
-            left -= (playerStats.length - 1) * 10;
             const players: StatsPlayerView[] = [];
             for (let i = 0; i < playerStats.length; i++) {
                 const stats = playerStats[i];
@@ -1212,58 +1060,40 @@ export class UiManager {
                     playerId: stats.playerId,
                     name: playerInfo.name,
                     dead: stats.dead,
-                    left,
                     kills: stats.kills,
                     damageDealt: stats.damageDealt,
                     damageTaken: stats.damageTaken,
                     timeAlive: stats.timeAlive,
                     badge,
                 });
-                left += 10;
             }
             const alive = this.playersAliveCounter + this.playersAliveRedCounter + this.playersAliveBlueCounter;
             const spectatable = !gameOver && alive !== 0;
 
+            const overview: StatsOverview = factionMode
+                ? { kind: "faction", red: this.playersAliveRedCounter, blue: this.playersAliveBlueCounter }
+                : {
+                    kind: teamMode == TeamMode.Solo ? "solo" : "team",
+                    rankL10n: this.teamModeToL10n(teamMode),
+                    rank: teamRank,
+                    kills: teamKills,
+                };
             setGameView((v) => {
-                const s = v.stats;
-                s.open = true;
-                s.contents = true;
-                s.seq = ++statsSeq;
-                s.delay = statsDelay;
-                s.teamAd = false;
-                s.filled = true;
-                s.title = title;
-                const overview = s.overview;
-                if (factionMode) {
-                    overview.kind = "faction";
-                    overview.red = this.playersAliveRedCounter;
-                    overview.blue = this.playersAliveBlueCounter;
-                } else {
-                    overview.kind = teamMode == TeamMode.Solo ? "solo" : "team";
-                    overview.rankL10n = this.teamModeToL10n(teamMode);
-                    overview.rank = teamRank;
-                    overview.kills = teamKills;
-                }
-                reconcile(players, "playerId")(s.players);
-                s.restartWidth = spectatable ? null : layoutLg ? 225 : 130;
-                s.restartLeft = spectatable ? (layoutLg ? -72 : -46) : null;
-                s.spectateButton = spectatable;
+                v.stats = {
+                    teamAd: false,
+                    delay: statsDelay,
+                    title,
+                    overview,
+                    players,
+                    spectateButton: spectatable,
+                };
             });
         }
     }
 
     clearStatsElems() {
         setGameView((v) => {
-            const s = v.stats;
-            s.open = false;
-            s.contents = false;
-            s.teamAd = false;
-            s.filled = false;
-            s.title = "";
-            reconcile([], "playerId")(s.players);
-            s.restartWidth = null;
-            s.restartLeft = null;
-            s.spectateButton = false;
+            v.stats = null;
         });
     }
 
@@ -1275,19 +1105,14 @@ export class UiManager {
         this.displayingStats = true;
         const title = `${this.localization.translate("game-You")} ${this.localization.translate("game-you-died")}.`;
         setGameView((v) => {
-            const s = v.stats;
-            s.open = true;
-            s.contents = true;
-            s.seq = ++statsSeq;
-            s.delay = 2500;
-            // no logo, contents higher up, no player columns
-            s.teamAd = true;
-            s.filled = true;
-            s.title = title;
-            s.overview.kind = "kills";
-            s.overview.kills = playerStats.kills;
-            s.restartLeft = device.uiLayout != device.UiLayout.Sm || device.tablet ? -72 : -46;
-            s.spectateButton = true;
+            v.stats = {
+                teamAd: true,
+                delay: 2500,
+                title,
+                overview: { kind: "kills", kills: playerStats.kills },
+                players: [],
+                spectateButton: true,
+            };
         });
     }
 
@@ -1313,10 +1138,9 @@ export class UiManager {
     setSpectating(spectating: boolean, teamMode?: TeamMode) {
         if (this.spectating != spectating) {
             this.spectating = spectating;
-            // the scope buttons are ui2.ts markup
-            for (const el of document.querySelectorAll(".ui-zoom")) {
-                el.classList.toggle("ui-zoom-hover", !this.spectating);
-            }
+            setGameView((v) => {
+                v.zoomHover = !spectating;
+            });
             if (this.spectating) {
                 const hideSpec = teamMode == TeamMode.Solo;
                 setGameView((v) => {
@@ -1354,7 +1178,7 @@ export class UiManager {
         this.playersAliveCounter = alive;
         setGameView((v) => {
             v.alive.count = alive;
-            v.alive.leaderboardFaction = false;
+            v.alive.kind = "players";
         });
     }
 
@@ -1362,8 +1186,7 @@ export class UiManager {
         this.playersAliveRedCounter = alive;
         setGameView((v) => {
             v.alive.red = alive;
-            v.alive.leaderboardFaction = true;
-            v.alive.mapFaction = true;
+            v.alive.kind = "faction";
         });
     }
 
@@ -1371,8 +1194,7 @@ export class UiManager {
         this.playersAliveBlueCounter = alive;
         setGameView((v) => {
             v.alive.blue = alive;
-            v.alive.leaderboardFaction = true;
-            v.alive.mapFaction = true;
+            v.alive.kind = "faction";
         });
     }
 
@@ -1383,11 +1205,9 @@ export class UiManager {
         gameMode: MapDef["gameMode"],
     ) {
         setGameView((v) => {
-            const leader = v.killLeader;
-            leader.playerId = playerId;
-            leader.name = playerName;
-            leader.kills = kills;
-            leader.hunted = !!gameMode?.sniperMode;
+            // playerId 0: no leader yet
+            v.killLeader = playerId ? { name: playerName, kills } : null;
+            v.killLeaderHunted = !!gameMode?.sniperMode;
         });
     }
 
@@ -1398,35 +1218,18 @@ export class UiManager {
         } else {
             this.container.alpha = this.minimapDisplayed ? 1 : 0;
         }
-        this.setMapHiddenDisplay(this.bigmapDisplayed ? "none" : "block", device.uiLayout == device.UiLayout.Sm);
-        const mapShow = this.bigmapDisplayed ? "block" : "none";
         setGameView((v) => {
             v.map.bigmap = this.bigmapDisplayed;
-            v.map.show = mapShow;
         });
-        setOtherDisplay(".js-ui-map-show", mapShow);
-        this.updateSpectatorCountDisplay(true);
         this.redraw(this.game.m_camera);
     }
 
-    updateSpectatorCountDisplay(dirty: boolean) {
-        const displayCounter = !this.bigmapDisplayed && this.spectatorCount > 0;
-        dirty = dirty
-            || (this.spectatorCount > 0 && !this.spectatorCounterDisplayed)
-            || (this.spectatorCount == 0 && this.spectatorCounterDisplayed);
-
+    updateSpectatorCountDisplay() {
         if (this.spectatorCount != this.prevSpectatorCount) {
-            const text = String(this.spectatorCount);
-            setGameView((v) => {
-                v.map.spectators.text = text;
-            });
             this.prevSpectatorCount = this.spectatorCount;
-        }
-        if (dirty) {
             setGameView((v) => {
-                v.map.spectators.displayed = displayCounter;
+                v.map.spectators = this.spectatorCount;
             });
-            this.spectatorCounterDisplayed = displayCounter;
         }
     }
 
@@ -1453,15 +1256,12 @@ export class UiManager {
     }
 
     cycleHud() {
-        if (getComputedStyle(this.gameElem).display == "none") {
-            this.gameElem.style.display = "block";
-            this.displayMiniMap();
-            this.hudVisible = true;
-        } else {
-            this.gameElem.style.display = "none";
-            this.hideMiniMap();
-            this.hudVisible = false;
-        }
+        this.hudVisible = !this.hudVisible;
+        setGameView((v) => {
+            v.hidden = !this.hudVisible;
+        });
+        if (this.hudVisible) this.displayMiniMap();
+        else this.hideMiniMap();
     }
 
     hideMiniMap() {
@@ -1469,22 +1269,17 @@ export class UiManager {
             this.minimapDisplayed = false;
             this.container.alpha = 0;
             setGameView((v) => {
-                v.map.infoBottom = "auto";
-                v.map.spectators.bottom = 6;
-                v.map.spectators.left = 98;
+                v.map.minimap = false;
             });
         }
     }
 
     displayMiniMap() {
         if (!this.bigmapDisplayed) {
-            const layoutSm = device.uiLayout == device.UiLayout.Sm;
             this.minimapDisplayed = true;
             this.container.alpha = 1;
             setGameView((v) => {
-                v.map.infoBottom = `${this.mapInfoBottom}px`;
-                v.map.spectators.bottom = layoutSm ? 0 : 218;
-                v.map.spectators.left = layoutSm ? 0 : 6;
+                v.map.minimap = true;
             });
         }
     }
@@ -1492,8 +1287,7 @@ export class UiManager {
     displayAnnouncement(message: string) {
         if (message) {
             setGameView((v) => {
-                v.announcement.text = message;
-                v.announcement.seq = ++announcementSeq;
+                v.announcement = { text: message };
             });
         }
     }
@@ -1568,18 +1362,7 @@ export class UiManager {
     }
 
     /** a health bar's width, color (null: unchanged) and danger pulse */
-    getHealthBarStyle(
-        innerWidth: number,
-        status: {
-            health: number;
-            dead: boolean;
-            downed: boolean;
-        },
-    ) {
-        const healthBarWidth = innerWidth;
-        let uiHealth = status.health * 0.01 * healthBarWidth;
-        uiHealth = status.dead ? 0 : math.max(uiHealth, 1);
-
+    getHealthBarStyle(status: { health: number; dead: boolean; downed: boolean }) {
         let color: string | null = null;
         const val = status.health;
         let l = this.healthRed;
@@ -1606,7 +1389,7 @@ export class UiManager {
                 color = `rgba(${h},${d},${u},1)`;
             }
         }
-        return { width: uiHealth, color, danger: val <= 25 };
+        return { color, danger: val <= 25 };
     }
 
     updateTeam(
@@ -1630,7 +1413,7 @@ export class UiManager {
             || statusChange
         ) {
             selector.playerId = playerId;
-            const bar = this.getHealthBarStyle(this.teamMemberHealthBarWidth, {
+            const bar = this.getHealthBarStyle({
                 health,
                 dead: status.dead,
                 downed: status.downed,
@@ -1646,13 +1429,11 @@ export class UiManager {
             setGameView((v) => {
                 const member = v.team[slotIdx];
                 member.name = name;
-                member.healthWidth = bar.width;
+                member.health = health / 100;
+                member.healthEmpty = status.dead;
                 if (bar.color !== null) member.healthColor = bar.color;
                 member.healthDanger = bar.danger;
-                if (statusChange) {
-                    member.status = memberStatus;
-                    member.nameOpacity = status.disconnected || status.dead ? 0.3 : 1;
-                }
+                if (statusChange) member.status = memberStatus;
                 member.displayed = true;
             });
             selector.prevStatus = status;
@@ -1660,18 +1441,23 @@ export class UiManager {
         }
     }
 
+    /** a teammate's marker at the screen edge; null hides it */
+    setTeamIndicator(slot: number, indicator: TeamMemberView["indicator"]) {
+        setGameView((v) => {
+            const member = v.team[slot];
+            if (!indicator || !member.indicator) member.indicator = indicator;
+            else Object.assign(member.indicator, indicator);
+        });
+    }
+
     clearTeamUI() {
         setGameView((v) => {
             for (const member of v.team) {
                 member.displayed = false;
-                member.nameOpacity = null;
                 member.status = "";
+                member.indicator = null;
             }
         });
-        // the main indicators and emote.ts' ping indicators
-        for (const el of document.querySelectorAll<HTMLElement>(".ui-team-indicator")) {
-            el.style.display = "none";
-        }
         this.teamSelectors = [];
     }
 
@@ -1688,15 +1474,6 @@ export class UiManager {
         this.gasRenderer.resize();
 
         this.mapSprite.texture = map.getMapTexture()!;
-
-        const roleMenuScale = math.min(
-            1,
-            math.min(camera.m_screenWidth / 1200, camera.m_screenHeight / 900),
-        );
-
-        setGameView((v) => {
-            v.role.scale = roleMenuScale;
-        });
 
         this.redraw(camera);
     }
@@ -1740,12 +1517,6 @@ export class UiManager {
                 this.mapSprite.height,
             );
             this.container.mask.endFill();
-            if (device.touch) {
-                setGameView((v) => {
-                    v.map.collisionWidth = screenHeight;
-                    v.map.collisionHeight = screenWidth;
-                });
-            }
         } else {
             const minimapScale = (this.screenScaleFactor * 1600) / 1.2;
             const minimapSize = thisMinimapSize * this.screenScaleFactor;
@@ -1756,7 +1527,6 @@ export class UiManager {
 
             setGameView((v) => {
                 v.map.scale = this.screenScaleFactor;
-                v.map.bottom = this.mapContainerBottom * this.screenScaleFactor;
             });
             const minimapPosY = layoutSm
                 ? minimapSize / 2 + thisMinimapMargin

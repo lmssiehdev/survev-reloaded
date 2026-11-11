@@ -68,6 +68,14 @@ interface Emote {
 
 type FabricateThrowable = keyof typeof PerkProperties["fabricate"]["weights"];
 
+// Scratch objects for Player.update movement, reused every call. Safe because movement never
+// re-enters itself; SCRATCH_MOVE_IN_USE catches that in dev builds.
+const SCRATCH_MOVE_CIRCLE = collider.createCircle(v2.create(0, 0), 0);
+const SCRATCH_MOVE_NEARBY: GameObject[] = [];
+const SCRATCH_MOVE_COLLIDING: Obstacle[] = [];
+let SCRATCH_MOVE_IN_USE = false;
+const ZERO = v2.create(0, 0);
+
 const boostHeals: Array<{ maxBoost: number; heal: number }> = [];
 {
     const boostBreakPoints = GameConfig.player.boostBreakpoints;
@@ -1943,16 +1951,16 @@ export class Player extends BaseGameObject {
 
         v2.set(this.posOld, this.pos);
 
-        if (!v2.eq(this.vel, v2.create(0, 0), 0.01)) {
-            v2.set(this.vel, v2.mul(this.vel, 1 / (1 + dt * 4)));
-            v2.set(this.pos, v2.add(this.pos, v2.mul(this.vel, dt)));
+        if (!v2.eq(this.vel, ZERO, 0.01)) {
+            v2.scaleInPlace(this.vel, 1 / (1 + dt * 4));
+            v2.addScaledInPlace(this.pos, this.vel, dt);
         }
 
         const hasTreeClimbing = this.hasPerk("tree_climbing");
 
         let steps: number;
 
-        if (!v2.eq(movement, v2.create(0, 0))) {
+        if (!v2.eq(movement, ZERO)) {
             this.recalculateSpeed(hasTreeClimbing);
             steps = Math.round(math.max(this.speed * dt + 5, 5));
 
@@ -1969,37 +1977,43 @@ export class Player extends BaseGameObject {
 
         const speedToAdd = (this.speed / steps) * dt;
 
-        const circle = collider.createCircle(
-            this.pos,
-            GameConfig.player.maxVisualRadius * this.scale + this.speed * dt,
-        );
+        /* STRIP_FROM_PROD_SERVER:START */
+        assert(!SCRATCH_MOVE_IN_USE, "Player movement re-entered its scratch objects");
+        SCRATCH_MOVE_IN_USE = true;
+        /* STRIP_FROM_PROD_SERVER:END */
 
-        const objs = this.game.grid.intersectCollider(circle);
+        const circle = SCRATCH_MOVE_CIRCLE;
+        v2.set(circle.pos, this.pos);
+        circle.rad = GameConfig.player.maxVisualRadius * this.scale + this.speed * dt;
+        const objs = this.game.grid.intersectCollider(circle, SCRATCH_MOVE_NEARBY);
+
+        // the obstacle filter can't change between steps, so it runs once (same obstacles, same order)
+        const colliding = SCRATCH_MOVE_COLLIDING;
+        for (let j = 0; j < objs.length && !this.debug.noClip; j++) {
+            const obj = objs[j];
+            if (obj.__type !== ObjectType.Obstacle) continue;
+            if (!obj.collidable) continue;
+            if (obj.dead) continue;
+            if (!util.sameLayer(obj.layer, this.layer)) continue;
+            if (obj.isTree && hasTreeClimbing) continue;
+            colliding.push(obj);
+        }
 
         for (let i = 0; i < steps; i++) {
-            v2.set(this.pos, v2.add(this.pos, v2.mul(movement, speedToAdd)));
+            v2.addScaledInPlace(this.pos, movement, speedToAdd);
 
-            for (let j = 0; j < objs.length && !this.debug.noClip; j++) {
-                const obj = objs[j];
-                if (obj.__type !== ObjectType.Obstacle) continue;
-                if (!obj.collidable) continue;
-                if (obj.dead) continue;
-                if (!util.sameLayer(obj.layer, this.layer)) continue;
-                if (obj.isTree && hasTreeClimbing) continue;
-
-                const collision = collider.intersectCircle(
-                    obj.collider,
-                    this.pos,
-                    this.rad,
-                );
+            for (let j = 0; j < colliding.length; j++) {
+                const collision = collider.intersectCircle(colliding[j].collider, this.pos, this.rad);
                 if (collision) {
-                    v2.set(
-                        this.pos,
-                        v2.add(this.pos, v2.mul(collision.dir, collision.pen + 0.001)),
-                    );
+                    v2.addScaledInPlace(this.pos, collision.dir, collision.pen + 0.001);
                 }
             }
         }
+        colliding.length = 0;
+
+        /* STRIP_FROM_PROD_SERVER:START */
+        SCRATCH_MOVE_IN_USE = false;
+        /* STRIP_FROM_PROD_SERVER:END */
 
         this.mapIndicator?.updatePosition(this.pos);
 
@@ -2917,6 +2931,7 @@ export class Player extends BaseGameObject {
         // drop loot
         //
 
+        this.weaponManager.setCurWeapIndex(GameConfig.WeaponSlot.Melee);
         for (let i = 0; i < GameConfig.WeaponSlot.Count; i++) {
             const weap = this.weapons[i];
             if (!weap.type) continue;
@@ -2939,7 +2954,6 @@ export class Player extends BaseGameObject {
                     break;
             }
         }
-        this.weaponManager.setCurWeapIndex(GameConfig.WeaponSlot.Melee);
 
         for (const item of Object.keys(this.invManager.items) as InventoryItem[]) {
             // const def = GameObjectDefs[item] as AmmoDef | HealDef;

@@ -34,7 +34,7 @@ export const [startMenu, setStartMenu] = createStore({
     youtube: null as SiteInfoRes["youtube"] | null,
 
     /** the start menu is showing (not in a game) */
-    active: false,
+    active: true,
     errorMessage: "",
     /** the quick play button showing a spinner, -1 for none */
     pendingModeIdx: -1,
@@ -47,7 +47,6 @@ export const [startMenu, setStartMenu] = createStore({
     teamLinkOpen: false,
     teamLink: "",
     teamLinkWarning: false,
-    landscape: true,
     /** the right column shows news instead of the pass */
     newsDisplayed: false,
     newsUnread: false,

@@ -50,13 +50,13 @@ export function KeybindModal() {
     const [code, setCode] = createSignal("");
     let link!: HTMLDivElement;
     const copy = (e: MouseEvent) => {
-        showToast("Copied!", keybindModal.element!, link, e);
+        showToast("Copied!", link, e);
         helpers.copyTextToClipboard(keybinds.code);
     };
     return (
         <div
             id="ui-modal-keybind"
-            class="ui-modal-keybind modal"
+            class={["ui-modal-keybind modal", keybindModal.classes()]}
             ref={(el) => keybindModal.attach(el)}
             onContextMenu={(e) => e.preventDefault()}
         >
@@ -107,7 +107,7 @@ export function KeybindModal() {
                                     const success = !!keybindUi()?.loadCode(code());
                                     setCode("");
                                     setCodeWarning(!success);
-                                    if (success) showToast("Loaded!", keybindModal.element!, e.currentTarget, e);
+                                    if (success) showToast("Loaded!", e.currentTarget, e);
                                 }}
                             >
                                 {t("index-keybind-apply")}

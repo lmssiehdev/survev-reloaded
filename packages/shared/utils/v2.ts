@@ -37,6 +37,18 @@ export const v2 = {
         return { x: a.x * s, y: a.y * s };
     },
 
+    /** a = a * s, in place; same float ops as v2.set(a, v2.mul(a, s)) */
+    scaleInPlace(a: Vec2, s: number): void {
+        a.x = a.x * s;
+        a.y = a.y * s;
+    },
+
+    /** a = a + b * s, in place; same float ops as v2.set(a, v2.add(a, v2.mul(b, s))) */
+    addScaledInPlace(a: Vec2, b: Vec2, s: number): void {
+        a.x = a.x + b.x * s;
+        a.y = a.y + b.y * s;
+    },
+
     div(a: Vec2, s: number): Vec2 {
         return { x: a.x / s, y: a.y / s };
     },

@@ -6,23 +6,22 @@ import type { UiManager } from "./ui.ts";
 export const gameTabs = ["settings", "keybinds"] as const;
 export type GameTab = (typeof gameTabs)[number];
 
-/** an inline `display` written by UiManager; "" until it writes one (the stylesheet decides) */
-export type Display = "" | "block" | "none";
-
 export type TeamMemberStatus = "" | "disconnected" | "dead" | "downed";
 
 /** a teammate's row in #ui-team */
 export interface TeamMemberView {
     displayed: boolean;
     name: string;
-    /** health bar width in px; null: the stylesheet's */
-    healthWidth: number | null;
+    /** off-screen marker at the screen edge (#ui-team-indicators); null: hidden */
+    indicator: { left: number; top: number; transform: string } | null;
+    /** health bar fill, 0..1 of the bar (at least a sliver while alive) */
+    health: number;
+    /** a dead teammate's bar is empty */
+    healthEmpty: boolean;
     /** health bar color; "" for the stylesheet's */
     healthColor: string;
     healthDanger: boolean;
     status: TeamMemberStatus;
-    /** name opacity after a status change; null: the stylesheet's */
-    nameOpacity: number | null;
 }
 
 /** a column of the death / victory screen */
@@ -30,13 +29,32 @@ export interface StatsPlayerView {
     playerId: number;
     name: string;
     dead: boolean;
-    left: number;
     kills: number;
     damageDealt: number;
     damageTaken: number;
     timeAlive: number;
     /** faction mode leader / ribbon badge class, "" for none */
     badge: string;
+}
+
+/** the death / victory screen's header line */
+export type StatsOverview =
+    | { kind: "faction"; red: number; blue: number }
+    | { kind: "solo" | "team"; /** translation key of the rank label */ rankL10n: string; rank: number; kills: number }
+    | { kind: "kills"; kills: number };
+
+/**
+ * The death / victory screen, a new object every time it opens (its fade-ins start over).
+ * `teamAd`: the "you died" screen of a team game whose team is still alive (no player columns).
+ */
+export interface StatsScreen {
+    teamAd: boolean;
+    /** ms before the screen fades in */
+    delay: number;
+    title: string;
+    overview: StatsOverview;
+    players: StatsPlayerView[];
+    spectateButton: boolean;
 }
 
 export interface LocalStatsView {
@@ -55,17 +73,28 @@ export interface RolePerkView {
 const teamMember = (): TeamMemberView => ({
     displayed: false,
     name: "",
-    healthWidth: null,
+    indicator: null,
+    health: 1,
+    healthEmpty: false,
     healthColor: "",
     healthDanger: false,
     status: "",
-    nameOpacity: null,
 });
 
 /** the in-game UI that UiManager owns (components/GameHud.tsx, GameMenu.tsx, DeathScreen.tsx); UiManager writes it */
 export const [gameView, setGameView] = createStore({
     /** a game's UiManager exists: the minimap and team panels show */
     active: false,
+    /** the whole in-game UI is hidden (the HUD visibility toggle) */
+    hidden: false,
+    /** the faction patch on the health bar */
+    flair: "" as "" | "red" | "blue",
+    /** #ui-killfeed-wrapper top; "" for the stylesheet's */
+    killfeedTop: "",
+    /** scopes highlight on hover; set once spectating ends */
+    zoomHover: false,
+    /** a weapon slot (1 or 2, 0 for none) being dragged onto the other one */
+    weaponDrag: { slot: 0, dragging: false, moved: false, left: 0, top: 0 },
 
     menu: {
         open: false,
@@ -83,63 +112,40 @@ export const [gameView, setGameView] = createStore({
         borderColor: "",
         /** "ENTER GAME (n)" countdown; null before the first tick */
         seconds: null as number | null,
-        /** set by UiManager.resize; null before */
-        scale: null as number | null,
     },
 
     map: {
+        /** the big map is open: `.js-ui-map-hidden` elements hide, `.js-ui-map-show` ones show */
         bigmap: false,
-        /** inline display of my `.js-ui-map-hidden` elements */
-        hidden: "" as Display,
-        /** inline display of my `.js-ui-map-show` elements */
-        show: "" as Display,
-        /** inline display of my `.js-ui-mobile-map-hidden` elements (small layout only) */
-        mobileHidden: "" as Display,
-        /** #ui-map-container scale and bottom; null until the first redraw */
-        scale: null as number | null,
-        bottom: null as number | null,
-        /** #ui-map-info bottom, "auto" when the minimap is hidden */
-        infoBottom: "",
+        /** the minimap shows (it hides with the HUD and the visibility toggle) */
+        minimap: true,
+        /** the minimap's scale with the screen */
+        scale: 1,
         gasMoving: false,
         gasTime: "",
-        spectators: {
-            /** null until UiManager decides */
-            displayed: null as boolean | null,
-            text: "",
-            bottom: null as number | null,
-            left: null as number | null,
-        },
-        /** #big-map-collision size on touch devices; null until the big map opens there */
-        collisionWidth: null as number | null,
-        collisionHeight: null as number | null,
+        spectators: 0,
     },
 
     alive: {
+        /** which counters show: players, or red / blue teams; null until the first count arrives */
+        kind: null as "players" | "faction" | null,
         count: 0,
         red: 0,
         blue: 0,
-        /** the leaderboard shows the red / blue counters; null until a count arrives */
-        leaderboardFaction: null as boolean | null,
-        /** the mobile map counter shows red / blue */
-        mapFaction: null as boolean | null,
     },
     kills: 0,
 
-    killLeader: {
-        /** null before the first update: the markup's untranslated placeholder */
-        playerId: null as number | null,
-        name: "",
-        kills: 0,
-        /** waiting text for sniper (hunted) mode */
-        hunted: false,
-    },
-    /** the map has a kill leader; null until a map loads */
-    killLeaderEnabled: null as boolean | null,
+    /** null while there is no leader */
+    killLeader: null as null | { name: string; kills: number },
+    /** sniper (hunted) mode's waiting text */
+    killLeaderHunted: false,
+    /** the map has a kill leader */
+    killLeaderEnabled: true,
     /** the debug editor hides the kill leader */
     editor: false,
 
-    /** null until UiManager decides */
-    waiting: null as boolean | null,
+    /** waiting for players before the game starts */
+    waiting: false,
 
     spectate: {
         active: false,
@@ -153,43 +159,13 @@ export const [gameView, setGameView] = createStore({
         stats: { kills: 0, damageDealt: 0, damageTaken: 0, timeAlive: 0 } as LocalStatsView,
     },
 
-    announcement: {
-        text: "",
-        /** bumps on every announcement: the view fades it in, then out */
-        seq: 0,
-    },
+    /** the latest announcement, a new object each time (the view fades it in, then out) */
+    announcement: null as { text: string } | null,
 
     team: [teamMember(), teamMember(), teamMember(), teamMember()],
 
-    stats: {
-        /** #ui-stats shows */
-        open: false,
-        /** the background and contents show (fading in) */
-        contents: false,
-        /** bumps every time the screen (re)opens: the view restarts its fade-ins */
-        seq: 0,
-        /** ms before the screen fades in */
-        delay: 0,
-        /** the "you died" screen of a team game whose team is still alive */
-        teamAd: false,
-        title: "",
-        overview: {
-            kind: "solo" as "solo" | "team" | "faction" | "kills",
-            /** translation key of the rank label */
-            rankL10n: "",
-            rank: 0,
-            kills: 0,
-            red: 0,
-            blue: 0,
-        },
-        /** header and buttons exist (emptied when the screen is cleared) */
-        filled: false,
-        players: [] as StatsPlayerView[],
-        /** restart button width / left offset in px */
-        restartWidth: null as number | null,
-        restartLeft: null as number | null,
-        spectateButton: false,
-    },
+    /** the death / victory screen; null while closed */
+    stats: null as StatsScreen | null,
 });
 
 /** the current game's UiManager, for event handlers */

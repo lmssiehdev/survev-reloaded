@@ -1,16 +1,17 @@
-import { type JSX, render } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
 import * as net from "@survev/shared/net/net.ts";
 import { createSignal, flush, For, Show } from "solid-js";
 import { config } from "../../appConfig.ts";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
 import { hamburgerModal, keybindModal, settingsModal } from "../appModals.ts";
-import { fade } from "../fade.ts";
 import { t, translate } from "../i18n.ts";
 import newsHtml from "../news.html?raw";
+import { passPanel } from "../passView.ts";
 import { profile, profileUi } from "../profile.ts";
 import { app, type RegionView, setStartMenu, setTeam, startMenu, team, teamMenu } from "../startMenu.ts";
 import { showToast } from "../toast.ts";
+import { PassPanel } from "./PassPanel.tsx";
 import { LanguageSelect } from "./SettingsModal.tsx";
 
 /** the newest news entry's date; newer than the config's lastNewsTimestamp lights the news button */
@@ -397,9 +398,9 @@ function TeamPlay() {
 function TeamMenuColumn() {
     const roomCode = () => team.room.roomUrl.substring(1);
     const inIframe = window !== window.top;
+    let copyButton: HTMLElement | undefined;
     const copy = (e: MouseEvent) => {
-        const anchor = document.getElementById("team-copy-url")!;
-        showToast("Copied!", document.getElementById("start-menu-wrapper")!, anchor, e, 20);
+        if (copyButton) showToast("Copied!", copyButton, e, 20);
         const invite = teamMenu()?.inviteToCopy();
         if (invite) helpers.copyTextToClipboard(invite);
     };
@@ -477,7 +478,13 @@ function TeamMenuColumn() {
                             <span id="invite-link-text">{t("index-invite-link")}</span>:{" "}
                             <span id="team-url">{roomCode() ? `${window.location.origin}/t/${roomCode()}` : ""}</span>
                         </div>
-                        <a id="team-copy-url" class="copy-item btn-darken" onClick={copy}></a>
+                        <a
+                            id="team-copy-url"
+                            class="copy-item btn-darken"
+                            ref={(el) => (copyButton = el)}
+                            onClick={copy}
+                        >
+                        </a>
                         <a
                             id="team-hide-url"
                             class="hide-item btn-darken"
@@ -550,8 +557,8 @@ function TeamLink() {
             </div>
             <div
                 id="team-mobile-link-warning"
-                class="team-mobile-link-text"
-                ref={fade(() => startMenu.teamLinkWarning, 100)}
+                class={["team-mobile-link-text fade", { faded: !startMenu.teamLinkWarning }]}
+                style={{ "--fade": "100ms" }}
             >
                 Invalid link!
             </div>
@@ -604,8 +611,18 @@ function RightColumn() {
             class="menu-column"
             style={{ display: team.active || startMenu.teamLinkOpen ? "none" : "block" }}
         >
-            <div id="pass-wrapper" ref={fade(() => !startMenu.newsDisplayed, 250)}></div>
-            <div id="news-wrapper" ref={fade(() => startMenu.newsDisplayed, 250)}>
+            <div
+                id="pass-wrapper"
+                class={["fade", { faded: startMenu.newsDisplayed }]}
+                style={{ "--fade": "250ms" }}
+            >
+                <Show when={passPanel()} keyed>{(panel) => <PassPanel {...panel} />}</Show>
+            </div>
+            <div
+                id="news-wrapper"
+                class={["fade", { faded: !startMenu.newsDisplayed }]}
+                style={{ "--fade": "250ms" }}
+            >
                 <RightColumnToggle class="pass-toggle" />
                 <div id="news-block" class="menu-block">
                     <div id="news" innerHTML={newsHtml}></div>
@@ -615,7 +632,7 @@ function RightColumn() {
     );
 }
 
-function StartMainCenter() {
+export function StartMainCenter() {
     const warning = () => (team.active ? team.error : startMenu.errorMessage);
     return (
         <div id="start-main-center">
@@ -636,7 +653,7 @@ function StartMainCenter() {
                     <span>{t("index-rotate-reminder")}</span>
                 </div>
                 <div id="left-column" class="menu-column">
-                    <div id="left-block" style={{ display: !startMenu.landscape && team.active ? "none" : "block" }}>
+                    <div id="left-block" style={{ display: !layout.landscape && team.active ? "none" : "block" }}>
                     </div>
                     <div id="social-share-block-wrapper">
                         <div
@@ -677,9 +694,9 @@ function StartMainCenter() {
     );
 }
 
-function StartTopLeft() {
+export function StartTopLeft() {
     return (
-        <div id="start-top-left" ref={fade(() => !hamburgerModal.isOpen())}>
+        <div id="start-top-left" class={["fade", { faded: hamburgerModal.isOpen() }]}>
             <div id="btn-hamburger" class="icon-hamburger" onClick={stop(() => hamburgerModal.show())}></div>
             <a
                 id="btn-discord-top-right"
@@ -731,7 +748,7 @@ function StartTopLeft() {
     );
 }
 
-function StartBottom() {
+export function StartBottom() {
     const optionsOpen = () => settingsModal.isOpen() || keybindModal.isOpen();
     return (
         <>
@@ -748,7 +765,7 @@ function StartBottom() {
                 <a href="changelogRec.html" target="_blank">ver {import.meta.env.VITE_GAME_VERSION}</a>
             </div>
             <div id="start-bottom-right-wrapper">
-                <div id="start-bottom-right" ref={fade(() => !optionsOpen())}>
+                <div id="start-bottom-right" class={["fade", { faded: optionsOpen() }]}>
                     <LanguageSelect />{" "}
                     <div
                         class="btn-settings menu-option btn-darken btn-start-option"
@@ -781,11 +798,4 @@ function StartBottom() {
             </div>
         </>
     );
-}
-
-/** fill the start menu's mount points in index.html */
-export function mountStartMenu() {
-    render(() => <StartTopLeft />, document.getElementById("start-top-left-ui")!);
-    render(() => <StartMainCenter />, document.getElementById("start-main-center-ui")!);
-    render(() => <StartBottom />, document.getElementById("start-bottom-ui")!);
 }

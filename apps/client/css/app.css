@@ -1363,7 +1363,6 @@ a:active {
 }
 
 #team-mobile-link-warning {
-    display: none;
     color: red;
     font-weight: 700;
 }
@@ -1910,7 +1909,6 @@ a:active {
 #modal-screen-block {
     background-color: #000000;
     background-color: rgba(0, 0, 0, 0.75);
-    display: none;
     height: 100%;
     position: fixed;
     width: 100%;
@@ -3342,14 +3340,6 @@ a:active {
 #pass-wrapper, #news-wrapper {
     position: relative;
     width: 330px;
-}
-
-#pass-wrapper {
-    display: block;
-}
-
-#news-wrapper {
-    display: none;
 }
 
 #news-block {
@@ -6734,4 +6724,149 @@ input [type="image"]:focus {
         height: 280px;
         top: 310px;
     }
+}
+
+/*
+ * Show/hide with a fade: `class={["fade", { faded: !visible }]}`, `--fade` sets the duration.
+ * The browser animates opacity and keeps the element displayed until the fade out ends.
+ */
+.fade {
+    transition: opacity var(--fade, 200ms) ease-in-out, display var(--fade, 200ms) allow-discrete;
+}
+
+.fade.faded {
+    display: none !important;
+    opacity: 0;
+}
+
+@starting-style {
+    .fade {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fade {
+        transition: none;
+    }
+}
+
+/* fades in once, after `--fade-delay`; hidden (and not clickable) until it starts */
+.fade-in {
+    animation: fade-in var(--fade, 200ms) ease-in-out var(--fade-delay, 0ms) backwards;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+/*
+ * A MenuModal's elements (`modal.classes()`): shown at once while open, faded out once closed.
+ * `#app` outranks the elements' own `#id { display: none }` defaults.
+ */
+#app .menu-modal {
+    display: block;
+    transition: opacity 200ms ease-in-out, display 200ms allow-discrete;
+}
+
+.menu-modal.closed {
+    display: none !important;
+    opacity: 0;
+}
+
+#app .menu-modal.no-fade {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #app .menu-modal {
+        transition: none;
+    }
+}
+
+/* a just completed quest: its counter and refresh button fade, then the whole quest */
+.pass-quest-completing {
+    animation: fade-out 750ms ease-in-out 1000ms forwards;
+}
+
+.pass-quest-completing .pass-quest-counter {
+    animation: fade-out 250ms ease-in-out forwards;
+}
+
+.pass-quest-completing .pass-quest-refresh {
+    animation: pass-quest-refresh-out 500ms ease-in-out forwards;
+}
+
+@keyframes fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes pass-quest-refresh-out {
+    50% {
+        opacity: 0.25;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* the next pass unlock swaps in while its images are faded out */
+#pass-progress-unlock-image, #pass-progress-unlock-type-image {
+    transition: opacity 250ms ease-in-out;
+}
+
+.pass-unlock-hidden #pass-progress-unlock-image, .pass-unlock-hidden #pass-progress-unlock-type-image {
+    opacity: 0;
+}
+
+/* a toast (ui/toast.ts): rises from its anchor and fades in, then fades out */
+.toast {
+    animation: toast-rise 300ms ease-in-out forwards, toast-fade 250ms 300ms forwards;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+@keyframes toast-rise {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+        translate: 0 calc(-1 * var(--rise));
+    }
+}
+
+@keyframes toast-fade {
+    from {
+        opacity: 1;
+        translate: 0 calc(-1 * var(--rise));
+    }
+    to {
+        opacity: 0;
+        translate: 0 calc(-1 * var(--rise));
+    }
+}
+
+/* the big map covers the HUD (and, on small screens, the team panel and the map buttons) */
+#ui-game[data-bigmap] .js-ui-map-hidden, #ui-game[data-bigmap][data-small] .js-ui-mobile-map-hidden {
+    display: none !important;
+}
+
+#ui-game[data-bigmap] .js-ui-map-show {
+    display: block;
+}
+
+/* with the minimap hidden, the gas timer and spectator count move down to the corner */
+#ui-game[data-minimap-hidden] #ui-map-info {
+    bottom: auto;
+}
+
+#ui-game[data-minimap-hidden] #ui-spec-counter {
+    bottom: 6px;
+    left: 98px;
 }

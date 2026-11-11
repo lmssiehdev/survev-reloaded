@@ -1,3 +1,5 @@
+import { treaty } from "@elysia/eden";
+import type { PublicRouteApp } from "@survev/api/types";
 import type { SiteInfoRes } from "@survev/shared/types/api.ts";
 
 /** the API's origin (VITE_API_URL) when it isn't the one the client is served from */
@@ -25,3 +27,12 @@ export const api = {
         return api.anyLoginSupported() ? "include" : "omit";
     },
 };
+
+/** the API's JSON routes, typed from the server's routes */
+export const client = treaty<PublicRouteApp>(api.resolveUrl(""), {
+    // the url is relative when the API is on the same host
+    keepDomain: true,
+    // a fetcher, not fetch: { credentials }: api.credentials() changes once site_info loads
+    fetcher: ((input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input, { ...init, credentials: api.credentials() })) as typeof fetch,
+}).api;
