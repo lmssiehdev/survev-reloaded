@@ -4,9 +4,10 @@ import type { PassState, QuestState } from "@survev/shared/types/user.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { passUtil } from "@survev/shared/utils/passUtil.ts";
 import { util } from "@survev/shared/utils/util.ts";
-import type { Account } from "../account.ts";
+import { type Account, accountPass } from "../account.ts";
+import { follow } from "./controller.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
-import { type QuestView, setPassPanel, setPassView } from "./passView.ts";
+import { type PassPhase, type QuestView, setPassPanel, setPassView } from "./passView.ts";
 
 function getNextPassUnlockItemId(passType: string, currentLevel: number) {
     const passDef = PassDefs[passType];
@@ -79,8 +80,8 @@ export class Pass {
         timers: number[];
     }> = [];
 
-    loaded = false;
-    lockDisplayed = false;
+    /** loading until the pass arrives, or locked for a logged out player */
+    phase: PassPhase = "loading";
     updatePass = false;
     updatePassTicker = 0;
 
@@ -88,8 +89,9 @@ export class Pass {
         public account: Account,
         public loadoutMenu: LoadoutMenu,
     ) {
-        this.account.addEventListener("request", this.onRequest.bind(this));
-        this.account.addEventListener("pass", this.onPass.bind(this));
+        follow(accountPass, (p) => {
+            if (p) this.onPass(p.pass, p.quests, p.resetRefresh);
+        });
         setPassPanel({
             getCategory: (gameType) => this.loadoutMenu.getCategory(gameType),
             onRefresh: (idx) => this.onRefreshClick(idx),
@@ -219,7 +221,7 @@ export class Pass {
         this.pass.animSteps = [];
         this.pass.currentXp = Math.round(this.pass.currentXp);
         this.pass.levelXp = passUtil.getPassLevelXp(pass.type, this.pass.currentLevel);
-        if (!this.loaded) {
+        if (this.phase != "loaded") {
             const initialLevelXp = passUtil.getPassLevelXp(pass.type, pass.level);
             this.pass.currentXp = 0;
             this.pass.currentLevel = pass.level;
@@ -230,7 +232,7 @@ export class Pass {
         let xp = this.pass.currentXp;
         // Animate level-ups
 
-        if (this.loaded) {
+        if (this.phase == "loaded") {
             while (level < pass.level) {
                 const levelXp = passUtil.getPassLevelXp(pass.type, level);
                 this.pass.animSteps.push({
@@ -258,23 +260,15 @@ export class Pass {
             this.pass.data.type,
             this.pass.currentLevel,
         );
+        this.phase = "loaded";
         setPassView((s) => {
-            s.blockRaised = true;
-            s.lockedVisible = false;
-            s.loadingVisible = false;
+            s.phase = this.phase;
             s.unlockItem = unlockItemId;
             s.type = pass.type;
             s.level = this.pass.currentLevel;
             s.xpCurrent = this.pass.currentXp;
             s.xpTarget = this.pass.levelXp;
             s.barPct = (this.pass.currentXp / this.pass.levelXp) * 100;
-        });
-        this.loaded = true;
-    }
-
-    onRequest(account: Account) {
-        setPassView((s) => {
-            s.loadingVisible = account.loggingIn;
         });
     }
 
@@ -460,13 +454,12 @@ export class Pass {
                 this.pass.ticker -= 3;
             }
         }
-        if (!this.account.loggingIn && !this.account.loggedIn && !this.lockDisplayed) {
+        const status = this.account.status;
+        if (this.phase == "loading" && (status == "unknown" || status == "loggedOut")) {
+            this.phase = "locked";
             setPassView((s) => {
-                s.blockRaised = true;
-                s.loadingVisible = false;
-                s.lockedVisible = true;
+                s.phase = this.phase;
             });
-            this.lockDisplayed = true;
         }
     }
 

@@ -47,7 +47,6 @@ export const [startMenu, setStartMenu] = createStore({
     teamLinkOpen: false,
     teamLink: "",
     teamLinkWarning: false,
-    landscape: true,
     /** the right column shows news instead of the pass */
     newsDisplayed: false,
     newsUnread: false,

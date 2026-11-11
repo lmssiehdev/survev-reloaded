@@ -11,12 +11,19 @@ import {
     type WheelView,
 } from "../emoteWheel.ts";
 import { onNative } from "../nativeEvent.ts";
-import { touchControls } from "../touchControls.ts";
 
 type AnyWedge = EmoteWedge | PingWedge;
 
-const shapeOf = (key: AnyWedge) =>
-    key === "middle" ? "circle" : key === "bottom-left" || key === "top-left" ? "eighth" : "quarter";
+/** the ping wheel's two extra wedges are eighths */
+const SHAPES: Record<AnyWedge, "circle" | "quarter" | "eighth"> = {
+    middle: "circle",
+    top: "quarter",
+    right: "quarter",
+    bottom: "quarter",
+    left: "quarter",
+    "bottom-left": "eighth",
+    "top-left": "eighth",
+};
 
 const touchEvents = () => (emoteWheel.touch ? "auto" : undefined);
 
@@ -29,7 +36,7 @@ const onWedgeTouch = onNative("touchstart", (e) => {
 });
 
 function Wedge(props: { id: string; key: AnyWedge; index: number; dataKey: boolean; view: WedgeView }) {
-    const shape = () => shapeOf(props.key);
+    const shape = () => SHAPES[props.key];
     return (
         <div
             id={props.id}
@@ -46,7 +53,7 @@ function Wedge(props: { id: string; key: AnyWedge; index: number; dataKey: boole
             <div
                 class="ui-emote ui-emote-hl"
                 style={{
-                    display: props.view.highlight === undefined ? undefined : props.view.highlight ? "block" : "none",
+                    display: props.view.highlight ? "block" : "none",
                     "pointer-events": touchEvents(),
                 }}
                 ref={onWedgeTouch}
@@ -72,7 +79,7 @@ function Wheel<K extends AnyWedge>(props: {
             id={props.id}
             class="ui-emote-wheel"
             style={{
-                display: props.view.open === undefined ? undefined : props.view.open ? "block" : "none",
+                display: props.view.open ? "block" : "none",
                 left: px(props.view.left),
                 top: px(props.view.top),
                 opacity: emoteWheel.opacity,
@@ -115,7 +122,7 @@ export function EmoteButton() {
         <div
             id="ui-emote-button"
             style={{
-                display: touchControls.touch ? "block" : "none",
+                display: device.touch ? "block" : "none",
                 "pointer-events": touchEvents(),
             }}
             ref={onNative("touchstart", (e) => {

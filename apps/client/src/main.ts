@@ -11,7 +11,7 @@ import { math } from "@survev/shared/utils/math.ts";
 import * as PIXI from "pixi.js-legacy";
 import { Account } from "./account.ts";
 import { Ambiance } from "./ambiance.ts";
-import { api } from "./api.ts";
+import { api, client } from "./api.ts";
 import { config as appConfig } from "./appConfig.ts";
 import { AudioManager } from "./audioManager.ts";
 import type { ConfigKey, ConfigType } from "./config.ts";
@@ -242,8 +242,6 @@ export class Application {
 
     onResize() {
         device.onResize();
-        Menu.onResize();
-        this.loadoutMenu.onResize();
         this.pixi?.renderer.resize(device.screenWidth, device.screenHeight);
         if (this.game?.initialized) {
             this.game.resize();
@@ -424,7 +422,6 @@ export class Application {
             m.active = this.active;
             m.errorMessage = this.errorMessage;
             m.pendingModeIdx = this.quickPlayPendingModeIdx;
-            m.landscape = device.isLandscape;
         });
     }
 
@@ -433,15 +430,8 @@ export class Application {
             cb();
         } else {
             // Wait some maximum amount of time for pending account requests
-            const timeout = setTimeout(() => {
-                runOnce();
-            }, 2500);
-            const runOnce = () => {
-                cb();
-                clearTimeout(timeout);
-                this.account.removeEventListener("requestsComplete", runOnce);
-            };
-            this.account.addEventListener("requestsComplete", runOnce);
+            const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2500));
+            Promise.race([this.account.settled(), timeout]).then(cb);
         }
     }
 
@@ -560,25 +550,20 @@ export class Application {
             };
             matchArgs.turnstileToken = token;
 
-            fetch(api.resolveUrl("/api/find_game_v2"), {
-                method: "POST",
-                body: JSON.stringify(matchArgs),
-                headers: {
-                    "Content-Type": "application/json; charset=utf-8",
-                },
-                credentials: api.credentials(),
-                signal: helpers.abortSignal(10 * 1000),
-            }).then(res => res.json()).then((data: FindGameResponse) => {
-                if (data.type === "error") {
-                    cbs.error(data.error);
-                } else if (data.type === "banned") {
-                    cbs.ban(data);
-                } else if (data.type === "success") {
-                    cbs.success(data.res);
-                }
-            }).catch(() => {
-                retry();
-            });
+            client.find_game_v2.post(matchArgs, { fetch: { signal: helpers.abortSignal(10 * 1000) } })
+                .then(({ data, error }) => {
+                    // rate limits and failed captchas answer with an error status and a FindGameResponse
+                    const res = data ?? error?.value;
+                    if (!res || typeof res != "object" || !("type" in res)) {
+                        retry();
+                    } else if (res.type === "error") {
+                        cbs.error(res.error);
+                    } else if (res.type === "banned") {
+                        cbs.ban(res);
+                    } else if (res.type === "success") {
+                        cbs.success(res.res);
+                    }
+                });
         };
 
         helpers.verifyTurnstile(

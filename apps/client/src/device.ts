@@ -1,4 +1,5 @@
 import { isMobile } from "pixi.js-legacy";
+import { createStore } from "solid-js";
 
 function detectMobile() {
     return isMobile.android.device || isMobile.apple.device || isIpad();
@@ -57,6 +58,10 @@ class Device {
         this.onResize();
     }
 
+    get small() {
+        return this.uiLayout == this.UiLayout.Sm;
+    }
+
     onResize() {
         this.screenWidth = window.innerWidth;
         this.screenHeight = window.innerHeight;
@@ -67,7 +72,19 @@ class Device {
         this.uiLayout = this.mobile || layoutDim <= 850 || (layoutDim <= 900 && this.pixelRatio >= 3)
             ? this.UiLayout.Sm
             : this.UiLayout.Lg;
+        setLayout((l) => {
+            l.small = this.small;
+            l.landscape = this.isLandscape;
+            l.width = this.screenWidth;
+            l.height = this.screenHeight;
+        });
     }
 }
+
+/**
+ * The screen as views see it: `device` written into a store on every resize. Game code reads
+ * `device` itself.
+ */
+export const [layout, setLayout] = createStore({ small: false, landscape: true, width: 0, height: 0 });
 
 export const device = new Device();

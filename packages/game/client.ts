@@ -13,6 +13,8 @@ import { util } from "@survev/shared/utils/util.ts";
 import { v2 } from "@survev/shared/utils/v2.ts";
 
 import type { Game, JoinTokenData, SpectateTokenData } from "./game.ts";
+import { IdBitset } from "./idBitset.ts";
+import type { View } from "./interest.ts";
 import type { GameObject } from "./objects/gameObject.ts";
 import type { MapIndicator } from "./objects/mapIndicator.ts";
 import type { Player } from "./objects/player.ts";
@@ -39,10 +41,24 @@ export class ClientBarn {
     }
 
     sendMsgs() {
+        // hand each client's view the dirty objects it covers, before any update is built
+        this.game.grid.interest.routeDirty(this.game.objectRegister.dirtyIds);
+
         for (let i = 0; i < this.clients.length; i++) {
             const client = this.clients[i];
             if (client.socket.closed()) continue;
             client.sendMsgs();
+        }
+
+        // ObjectRegister.flush frees the ids of this tick's deleted objects right after this sync,
+        // and a freed id can be reused by a new object; drop them from every visibility bitset first
+        const deletedObjs = this.game.objectRegister.deletedObjs;
+        /* STRIP_FROM_PROD_SERVER:START */
+        this.game.objectRegister.visibilityPurgedCount = deletedObjs.length;
+        /* STRIP_FROM_PROD_SERVER:END */
+        if (deletedObjs.length === 0) return;
+        for (let i = 0; i < this.clients.length; i++) {
+            this.clients[i].forgetDeletedObjs(deletedObjs);
         }
     }
 
@@ -242,6 +258,7 @@ export class ClientBarn {
         client.spectating = undefined;
         client.disconnected = true;
         util.removeFrom(this.clients, client);
+        this.game.grid.interest.removeView(client.view);
 
         if (!client.player) return;
         const player = client.player;
@@ -329,7 +346,17 @@ export class Client {
     spectateNewPlayerTicker = 0;
 
     private _firstUpdate = true;
-    visibleObjects = new Set<GameObject>();
+    /** objects visible at the last sync, as a bitset over object ids */
+    readonly visibleObjects: IdBitset;
+    /** the grid cells this client's camera covered at the last sync, and what changed since */
+    readonly view: View;
+    /** id of the active player at the last sync, visible even when it's off camera */
+    private _forcedId = 0;
+    /**
+     * visible objects that got unregistered (__id is now 0) before this client synced again,
+     * only possible when sendMsgs returned early or for a destroyed active player
+     */
+    private _deadVisibleObjs: GameObject[] = [];
     visibleMapIndicators = new Set<MapIndicator>();
 
     // zoom used for the area in which the server will send objects to the client
@@ -354,6 +381,8 @@ export class Client {
         this.ip = socket.ip();
         this.findGameIp = findGameIp;
         this.game = game;
+        this.visibleObjects = new IdBitset(game.objectRegister.idToType.length);
+        this.view = game.grid.interest.addView();
         socket.setUserData(this);
         this.socket = socket as ClientSocket<Client>;
     }
@@ -492,29 +521,82 @@ export class Client {
         }
         const rect = collider.createAabbExtents(player.pos, v2.create(width, height));
 
-        const newVisibleObjects = game.grid.intersectAABBSet(rect);
+        const objectRegister = game.objectRegister;
+        const { idToObj, dirtyFull, dirtyPart } = objectRegister;
+        const { delObjIds, fullObjects, partObjects } = updateMsg;
+
+        const visible = this.visibleObjects;
+        const view = this.view;
+        game.grid.interest.setView(view, rect);
         // client crashes if active player is not visible
-        // so make sure its always added to visible objects
-        newVisibleObjects.add(player);
+        // so make sure its always added to visible objects: settle it every sync, with the
+        // previous one when it changes, so that one goes once it's off camera
+        const playerId = player.__id;
+        if (playerId !== this._forcedId) {
+            if (this._forcedId !== 0) view.markChanged(this._forcedId);
+            this._forcedId = playerId;
+        }
+        if (playerId !== 0) view.markChanged(playerId);
 
-        for (const obj of this.visibleObjects) {
-            if (!newVisibleObjects.has(obj)) {
-                updateMsg.delObjIds.push(obj.__id);
+        const deadVisible = this._deadVisibleObjs;
+        // objects this client saw that got unregistered (id now 0) before it synced again: sent the
+        // way upstream's Set diff sends them (delete id 0, or full/part if it's the active player)
+        if (deadVisible.length > 0 || playerId === 0) {
+            let playerWasVisible = false;
+            for (let i = 0; i < deadVisible.length; i++) {
+                const obj = deadVisible[i];
+                if (obj === player) {
+                    playerWasVisible = true;
+                    if (dirtyFull[0]) {
+                        fullObjects.push(obj);
+                    } else if (dirtyPart[0]) {
+                        partObjects.push(obj);
+                    }
+                } else {
+                    delObjIds.push(obj.__id);
+                }
+            }
+            deadVisible.length = 0;
+            if (playerId === 0) {
+                if (!playerWasVisible) fullObjects.push(player);
+                deadVisible.push(player);
             }
         }
 
-        for (const obj of newVisibleObjects) {
-            if (
-                !this.visibleObjects.has(obj)
-                || game.objectRegister.dirtyFull[obj.__id]
-            ) {
-                updateMsg.fullObjects.push(obj);
-            } else if (game.objectRegister.dirtyPart[obj.__id]) {
-                updateMsg.partObjects.push(obj);
+        // dirty objects it kept seeing; the changed ones are settled below
+        const changed = view.changed;
+        const dirtyIds = view.dirtyIds;
+        for (let i = 0; i < dirtyIds.length; i++) {
+            const id = dirtyIds[i];
+            if (changed.has(id)) continue;
+            if (dirtyFull[id]) {
+                fullObjects.push(idToObj[id]!);
+            } else {
+                partObjects.push(idToObj[id]!);
             }
         }
 
-        this.visibleObjects = newVisibleObjects;
+        // objects it may have started or stopped seeing since the last sync: new ones and fully
+        // dirty ones in full, partially dirty ones in part
+        const changedIds = view.changedIds;
+        for (let i = 0; i < changedIds.length; i++) {
+            const id = changedIds[i];
+            changed.delete(id);
+            if (id === playerId || view.sees(id)) {
+                if (!visible.has(id)) {
+                    visible.add(id);
+                    fullObjects.push(idToObj[id]!);
+                } else if (dirtyFull[id]) {
+                    fullObjects.push(idToObj[id]!);
+                } else if (dirtyPart[id]) {
+                    partObjects.push(idToObj[id]!);
+                }
+            } else if (visible.has(id)) {
+                visible.delete(id);
+                delObjIds.push(id);
+            }
+        }
+        changedIds.length = 0;
 
         updateMsg.activePlayerId = player.__id;
         if (this.startedSpectating) {
@@ -584,7 +666,7 @@ export class Client {
             const emoteDef = GameObjectDefs.typeToDef(emote.type);
 
             if (emotePlayer) {
-                if (!emote.isPing && !this.visibleObjects.has(emotePlayer)) {
+                if (!emote.isPing && !this.visibleObjects.has(emotePlayer.__id)) {
                     return false;
                 }
 
@@ -709,6 +791,18 @@ export class Client {
 
         this.sendData(msgStream.getBuffer());
         this._firstUpdate = false;
+    }
+
+    /** objs are about to be unregistered and their ids freed */
+    forgetDeletedObjs(objs: GameObject[]) {
+        const visible = this.visibleObjects;
+        for (let i = 0; i < objs.length; i++) {
+            const id = objs[i].__id;
+            if (visible.has(id)) {
+                visible.delete(id);
+                this._deadVisibleObjs.push(objs[i]);
+            }
+        }
     }
 
     handleMsg(type: net.MsgType, msg: net.Msg) {

@@ -1,7 +1,12 @@
 import { For, Show } from "solid-js";
+import { accountView } from "../../account.ts";
+import { device, layout } from "../../device.ts";
 import { t, translate } from "../i18n.ts";
 import type { ItemRef, LoadoutMenu } from "../loadoutMenu.ts";
 import { loadoutView } from "../loadoutView.ts";
+
+/** the open category's loadout type */
+const category = () => loadoutView.categories[loadoutView.catIdx]?.loadoutType;
 
 function display(visible: boolean) {
     return visible ? "block" : "none";
@@ -49,7 +54,8 @@ function ItemList(props: { menu: LoadoutMenu }) {
         <div
             id="modal-customize-list"
             ref={(el) => (props.menu.dom.list = el)}
-            style={{ height: loadoutView.listHeight || undefined }}
+            // phones held upright shorten the grid (the emote wheel needs the room)
+            style={{ height: device.mobile && category() != "emote" && !layout.landscape ? "380px" : undefined }}
         >
             <div>
                 <For each={loadoutView.items}>
@@ -96,7 +102,7 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
         >
             <div class="modal-spacer" />
             <div class="modal-disabled" />
-            <div id="customize-crosshair-parent" style={{ display: display(loadoutView.crosshairParent) }}>
+            <div id="customize-crosshair-parent" style={{ display: display(category() == "crosshair") }}>
                 <div id="customize-crosshair-selected" style={{ cursor: loadoutView.crosshairCursor || undefined }}>
                     <div
                         class="customize-item-image customize-crosshair-image"
@@ -110,7 +116,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                         <input
                             type="text"
                             id="color-picker-hex"
-                            ref={(el) => (props.menu.dom.hex = el)}
                             value={loadoutView.crosshairHex}
                             onInput={(e) => props.menu.onHexInput(e.currentTarget.value)}
                             onKeyUp={(e) => props.menu.onHexInput(e.currentTarget.value)}
@@ -128,7 +133,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                             step="0.025"
                             class="crosshair-slider"
                             id="crosshair-size"
-                            ref={(el) => (props.menu.dom.size = el)}
                             value={loadoutView.crosshairSize}
                             onInput={(e) => props.menu.onCrosshairSize(e.currentTarget.value)}
                         />
@@ -142,7 +146,6 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                             step="0.025"
                             class="crosshair-slider"
                             id="crosshair-stroke"
-                            ref={(el) => (props.menu.dom.stroke = el)}
                             value={loadoutView.crosshairStroke}
                             onInput={(e) => props.menu.onCrosshairStroke(e.currentTarget.value)}
                         />
@@ -213,9 +216,9 @@ function EmotePanel(props: { menu: LoadoutMenu }) {
         <div
             id="modal-content-right-emote"
             class="modal-content-right modal-content-shadow"
-            style={{ display: display(loadoutView.emotePanel) }}
+            style={{ display: display(category() == "emote") }}
         >
-            <div id="customize-emote-parent" style={{ display: display(loadoutView.emoteParent) }}>
+            <div id="customize-emote-parent" style={{ display: display(category() == "emote") }}>
                 <div id="customize-emote-wheel" class="ui-emote-wheel">
                     <div id="customize-emote-middle" class="ui-emote-middle ui-emote-circle ui-emote-parent">
                         <div class="ui-emote ui-emote-bg-circle" />
@@ -314,7 +317,6 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                         <div id="modal-customize-item-header">
                             <div
                                 id="modal-customize-item-name"
-                                ref={(el) => (props.menu.dom.itemName = el)}
                                 onClick={() => props.menu.scrollToSelected()}
                             >
                                 {loadoutView.itemName}
@@ -328,12 +330,11 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                             <div id="modal-customize-loading-container">
                                 <div
                                     id="modal-customize-loading"
+                                    // spins until the account is known, then while a request is in flight
                                     style={{
-                                        opacity: loadoutView.loading === null
-                                            ? undefined
-                                            : loadoutView.loading
-                                            ? "1"
-                                            : "0",
+                                        opacity: accountView.status == "unknown" || accountView.requests > 0
+                                            ? 1
+                                            : 0,
                                     }}
                                 />
                             </div>

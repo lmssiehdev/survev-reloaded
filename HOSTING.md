@@ -29,6 +29,9 @@ Everything is an environment variable in `.env`, documented in [`.env.example`](
 login methods and the captcha key from the API at runtime. Game modes, the client theme and the captcha toggle are
 stored in the database and changed through the API's `/private` routes, without a restart.
 For Discord login also set `DISCORD_CLIENT_ID` / `DISCORD_SECRET_ID` (redirect URL `https://<domain>/api/auth/callback/discord`).
+This setup serves the site and the API from one domain. If you split them, set `CLIENT_URL` to the client's
+origin: the login cookie goes to its host and every subdomain, so the client has to be on the parent domain of
+the API (client `example.com`, API `api.example.com`). A client on `www.example.com` never gets the cookie.
 
 `/private/*` is only reachable inside the compose network (`api:8000`), Caddy answers 404 for it.
 

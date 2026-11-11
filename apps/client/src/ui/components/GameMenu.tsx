@@ -1,7 +1,8 @@
 import { For } from "solid-js";
 import { config } from "../../appConfig.ts";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { gameTabs, gameUi, gameView, px } from "../gameView.ts";
+import { small } from "../hudLayout.ts";
 import { type MessageKey, t } from "../i18n.ts";
 import { GameKeybindsTab } from "./Keybinds.tsx";
 import { TouchControls } from "./TouchControls.tsx";
@@ -22,11 +23,7 @@ const tabIcons: Record<(typeof gameTabs)[number], string> = {
 /** the game reads mouse buttons on window: clicks on the menu must not shoot */
 const stop = (e: Event) => e.stopPropagation();
 
-/**
- * The escape menu (settings + keybinds tabs) and the big map's close button. Classes and
- * displays that touch.ts / ui2.ts set for the device layout (#btn-game-tabs, #btn-touch-styles,
- * #btn-game-aim-line, #big-map-close, ...) are left to them.
- */
+/** the escape menu (settings + keybinds tabs) and the big map's close button */
 export function GameMenu() {
     return (
         <>
@@ -36,8 +33,12 @@ export function GameMenu() {
                 onMouseEnter={() => gameUi()?.setMenuHovered(true)}
                 onMouseLeave={() => gameUi()?.setMenuHovered(false)}
             >
-                <div id="ui-game-menu" style={{ display: gameView.menu.open ? "block" : "none" }}>
-                    <div id="btn-game-tabs" class="btns-game-double-row">
+                <div
+                    id="ui-game-menu"
+                    class={{ "ui-game-menu-desktop": !small() }}
+                    style={{ display: gameView.menu.open ? "block" : "none" }}
+                >
+                    <div id="btn-game-tabs" class="btns-game-double-row" style={{ display: small() ? "none" : "flex" }}>
                         <For each={gameTabs}>
                             {(tab) => (
                                 <div class="btn-game-container">
@@ -57,7 +58,7 @@ export function GameMenu() {
                     </div>
                     <div
                         id="ui-game-tab-settings"
-                        class="ui-game-tab"
+                        class={["ui-game-tab", { "ui-game-tab-settings-desktop": !small() }]}
                         style={{ display: gameView.menu.tab === "settings" ? "block" : "none" }}
                     >
                         <a
@@ -123,17 +124,16 @@ export function GameMenu() {
                     </a>
                 </div>
             </div>
-            <div id="big-map" class="js-ui-map-show" style={{ display: gameView.map.show || undefined }}>
+            <div id="big-map" class="js-ui-map-show">
+                {/* on touch screens, the rotated screen */}
                 <div
                     id="big-map-collision"
-                    style={{
-                        width: px(gameView.map.collisionWidth),
-                        height: px(gameView.map.collisionHeight),
-                    }}
+                    style={device.touch ? { width: px(layout.height), height: px(layout.width) } : undefined}
                 >
                 </div>
                 <div
                     id="big-map-close"
+                    style={{ display: small() ? "block" : "none" }}
                     onTouchEnd={(e) => {
                         e.stopPropagation();
                         gameUi()?.displayMapLarge(true);

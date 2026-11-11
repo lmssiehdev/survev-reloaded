@@ -22,14 +22,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
     .use(PassRoutes)
     .guard({ rateLimit: userRateLimit, auth: true })
     .post("/profile", async ({ user, request, set }) => {
-        const {
-            loadout,
-            slug,
-            name: username,
-            usernameSet,
-            lastUsernameChangeTime,
-            banned,
-        } = user;
+        const { loadout, slug, name: username, usernameSet, lastUsernameChangeTime, banned } = user;
 
         if (banned) {
             const ban = await db.query.bans.findFirst({
@@ -84,9 +77,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                 return status(400, { result: "invalid" } satisfies UsernameResponse);
             }
 
-            const timeUntilNextChange = getTimeUntilNextUsernameChange(
-                user.lastUsernameChangeTime,
-            );
+            const timeUntilNextChange = getTimeUntilNextUsernameChange(user.lastUsernameChangeTime);
 
             if (timeUntilNextChange > 0) {
                 return { result: "change_time_not_expired" } satisfies UsernameResponse;
@@ -187,8 +178,6 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
         if (reset.isErr()) return reset.error;
         return {};
     });
-
-export type UserRouterApp = typeof UserRoutes;
 
 /** ends the current session and clears its cookies */
 async function logout(request: Request, set: { headers: HTTPHeaders }) {

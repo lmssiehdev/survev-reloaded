@@ -26,6 +26,9 @@ export interface QuestView {
     pulse: boolean;
 }
 
+/** loading until the pass arrives, or locked for a logged out player */
+export type PassPhase = "loading" | "locked" | "loaded";
+
 export interface PassView {
     type: string;
     level: number;
@@ -37,10 +40,7 @@ export interface PassView {
     unlockPulse: boolean;
     /** the unlock images fade out while the next unlock swaps in */
     unlockHidden: boolean;
-    loadingVisible: boolean;
-    lockedVisible: boolean;
-    /** raises #pass-block above the loading spinner */
-    blockRaised: boolean;
+    phase: PassPhase;
     /** keyed by quest slot (data.idx) */
     quests: Record<number, QuestView>;
 }
@@ -55,9 +55,7 @@ export const [passView, setPassView] = createStore<PassView>({
     unlockItem: "",
     unlockPulse: false,
     unlockHidden: false,
-    loadingVisible: true,
-    lockedVisible: false,
-    blockRaised: false,
+    phase: "loading",
     quests: {},
 });
 

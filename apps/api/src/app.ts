@@ -3,7 +3,7 @@ import { getLogger, withContext } from "@survev/logger/node.ts";
 import { Elysia, NotFound, ParseError, status, ValidationError } from "elysia";
 import { autoHead } from "elysia/auto-head";
 import { AdminPrivateRoutes } from "./admin/privateRoutes.ts";
-import { auth } from "./auth/auth.ts";
+import { auth, trustedOrigins } from "./auth/auth.ts";
 import { GamePrivateRoutes } from "./game/privateRoutes.ts";
 import { GameRoutes } from "./game/routes.ts";
 import { TeamMenuRoutes } from "./game/teamMenu/routes.ts";
@@ -30,6 +30,14 @@ const privateRoutes = new Elysia({ prefix: "/private" })
     .use(AdminPrivateRoutes);
 
 export type PrivateRouteApp = typeof privateRoutes;
+
+/** the JSON routes the client calls through its Eden client */
+const publicRoutes = new Elysia()
+    .use(UserRoutes)
+    .use(StatsRoutes)
+    .use(GameRoutes);
+
+export type PublicRouteApp = typeof publicRoutes;
 
 // better-auth's own endpoints: /sign-in/social, /callback/discord, /sign-out, /mock (dev)
 // parse: "none" leaves the body to better-auth
@@ -86,13 +94,20 @@ export const app = new Elysia({ strictPath: true })
         logger.error("http.unhandled", { err: error, route: route ?? path });
         return status(500, { error: "InternalError", message: "Internal Server Error" } satisfies ErrorBody);
     })
-    // same CORS headers as before, for /api only. @elysia/cors can't be limited to a path
+    // CORS for /api only. @elysia/cors can't be limited to a path
     // and sends extra headers (vary: *, every request header as expose-headers)
     .onRequest(({ request, set }) => {
         const { pathname } = new URL(request.url);
         if (pathname !== "/api" && !pathname.startsWith("/api/")) return;
-        set.headers["access-control-allow-origin"] = "*";
-        set.headers["access-control-allow-credentials"] = "true";
+        // browsers drop cookies on a `*` answer: the origins better-auth trusts get theirs echoed back
+        const origin = request.headers.get("origin");
+        if (origin && trustedOrigins.includes(origin)) {
+            set.headers["access-control-allow-origin"] = origin;
+            set.headers["access-control-allow-credentials"] = "true";
+        } else {
+            set.headers["access-control-allow-origin"] = "*";
+        }
+        set.headers.vary = "Origin";
         if (request.method === "OPTIONS") {
             return new Response(null, {
                 status: 204,
@@ -101,7 +116,7 @@ export const app = new Elysia({ strictPath: true })
                     "access-control-max-age": "3600",
                     "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
                     "access-control-allow-headers": "Origin,Content-Type,Accept,X-Requested-With",
-                    vary: "Access-Control-Request-Headers",
+                    vary: "Origin, Access-Control-Request-Headers",
                 },
             });
         }
@@ -111,11 +126,9 @@ export const app = new Elysia({ strictPath: true })
 // app.use(csrf())
 
 app
-    .use(UserRoutes)
+    .use(publicRoutes)
     .use(authRoutes)
-    .use(StatsRoutes)
     .use(OgRoutes)
-    .use(GameRoutes)
     .use(privateRoutes)
     .use(TeamMenuRoutes)
     // HEAD for every GET route, like hono

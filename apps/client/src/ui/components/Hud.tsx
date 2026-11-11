@@ -7,7 +7,7 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { createMemo, For } from "solid-js";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
 import { gameUi, gameView } from "../gameView.ts";
 import { hud, InteractionType, MAX_KILL_FEED_LINES, PERK_UI_COUNT } from "../hudView.ts";
@@ -24,9 +24,17 @@ const popScale = (width: number) => {
 
 // ---- inventory (right center) ----
 
+/** armor level text colors; lower levels use the default */
+const LEVEL_COLORS: Partial<Record<number, string>> = { 3: "#ff9900", 4: "#b30000" };
+
 function LootItem(props: { type: string; children: JSX.Element; ammo?: boolean; overlay?: string; img: string }) {
     const loot = () => hud.loot[props.type];
     const special = () => !!(GameObjectDefs.typeToDef(props.type) as AmmoDef).special;
+    /** a special ammo type is hidden until the player has some */
+    const opacity = () => {
+        if (loot().count > 0) return 1;
+        return special() ? 0 : 0.25;
+    };
     const scale = () => popScale(loot().width);
     const def = GameObjectDefs.typeToDef(props.type);
     const actions: ItemAction[] = [{ action: "drop", type: "loot", data: props.type }];
@@ -39,7 +47,7 @@ function LootItem(props: { type: string; children: JSX.Element; ammo?: boolean; 
                 ? "ui-outline-hover ui-ammo tooltip"
                 : "ui-loot ui-outline-hover ui-scale-hover ui-medical tooltip"}
             style={{
-                opacity: String(special() && loot().count == 0 ? 0 : loot().count > 0 ? 1 : 0.25),
+                opacity: String(opacity()),
                 color: loot().count === loot().maximum ? "#ff9900" : "#ffffff",
                 "pointer-events": pointerEvents(loot().selectable),
             }}
@@ -75,6 +83,11 @@ const AMMO = [
     { type: "556mm", overlay: "rgba(3, 123, 0, 0.75)" },
 ];
 
+/** phones held upright list the ammo in another order */
+const AMMO_PORTRAIT = ["9mm", "12gauge", "762mm", "556mm", "50AE", "308sub", "flare", "45acp"].map(
+    (type) => AMMO.find((item) => item.type == type)!,
+);
+
 export function Inventory() {
     return (
         <>
@@ -89,7 +102,7 @@ export function Inventory() {
                 </For>
             </div>
             <div id="ui-ammo-interactive">
-                <For each={AMMO}>
+                <For each={device.tablet || layout.landscape ? AMMO : AMMO_PORTRAIT}>
                     {(item) => (
                         <LootItem type={item.type} ammo overlay={item.overlay} img="img/loot/loot-ammo-box.svg">
                             <span>{translate(`game-${item.type}-tooltip`)}</span>
@@ -112,7 +125,7 @@ export function KillFeed() {
                 {(i) => {
                     const line = () => hud.killFeed[i];
                     const top = () => {
-                        const lineHeight = device.uiLayout != device.UiLayout.Sm || device.tablet ? 35 : 15;
+                        const lineHeight = !layout.small || device.tablet ? 35 : 15;
                         return `${Math.floor(line().offset * lineHeight)}px`;
                     };
                     return (
@@ -447,7 +460,7 @@ export function Gear() {
                         <div class="ui-armor-counter-inner" />
                         <div
                             class="ui-armor-level"
-                            style={{ color: level() === 4 ? "#b30000" : level() === 3 ? "#ff9900" : "#ffffff" }}
+                            style={{ color: LEVEL_COLORS[level()] ?? "#ffffff" }}
                         >
                             {translate(`game-level-${level()}`)}
                         </div>

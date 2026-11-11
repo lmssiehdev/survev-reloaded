@@ -695,11 +695,9 @@ class WebAudioEngine {
         sound.instances.push(instance);
 
         // Play the sound!
-        const outNode = filter === "none"
-            ? this.masterGainNode
-            : filter === "reverb"
-            ? this.reverbNode
-            : this.eqNodes[filter];
+        let outNode = this.eqNodes[filter];
+        if (filter === "none") outNode = this.masterGainNode;
+        else if (filter === "reverb") outNode = this.reverbNode;
         instance.start(
             outNode,
             sound.file.buffer,

@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import * as net from "@survev/shared/net/net.ts";
 import { createSignal, flush, For, Show } from "solid-js";
 import { config } from "../../appConfig.ts";
-import { device } from "../../device.ts";
+import { device, layout } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
 import { hamburgerModal, keybindModal, settingsModal } from "../appModals.ts";
 import { t, translate } from "../i18n.ts";
@@ -653,7 +653,7 @@ export function StartMainCenter() {
                     <span>{t("index-rotate-reminder")}</span>
                 </div>
                 <div id="left-column" class="menu-column">
-                    <div id="left-block" style={{ display: !startMenu.landscape && team.active ? "none" : "block" }}>
+                    <div id="left-block" style={{ display: !layout.landscape && team.active ? "none" : "block" }}>
                     </div>
                     <div id="social-share-block-wrapper">
                         <div

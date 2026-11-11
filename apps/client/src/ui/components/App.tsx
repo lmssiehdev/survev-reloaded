@@ -1,7 +1,9 @@
 import { render } from "@solidjs/web";
 import { For, Show } from "solid-js";
 import { config } from "../../appConfig.ts";
+import { layout } from "../../device.ts";
 import { gameUi, gameView, px } from "../gameView.ts";
+import { iosBrowserTop, iosGameStyle, small, tabletClass } from "../hudLayout.ts";
 import { loadoutMenu, loadoutView } from "../loadoutView.ts";
 import { startMenu } from "../startMenu.ts";
 import { removeToast, toasts } from "../toast.ts";
@@ -27,19 +29,15 @@ import {
 import { CustomizeModal, ItemConfirmModal } from "./Loadout.tsx";
 import { StartBottom, StartMainCenter, StartTopLeft } from "./StartMenu.tsx";
 
-/** `.js-ui-map-hidden` elements hide while the big map is open */
-const mapHidden = () => gameView.map.hidden || undefined;
-
 const TEAM_INDICATOR_COLORS = ["yellow", "purple", "cyan", "orange"];
 
 /** teammates' markers at the screen edge while they're off screen */
 function TeamIndicators() {
     return (
-        <div id="ui-team-indicators" class="js-ui-map-hidden js-desktop-ui-hud-show" style={{ display: mapHidden() }}>
+        <div id="ui-team-indicators" class="js-ui-map-hidden js-desktop-ui-hud-show">
             <For each={TEAM_INDICATOR_COLORS}>
                 {(color, idx) => {
-                    const indicator = () =>
-                        gameView.team[idx()].indicator;
+                    const indicator = () => gameView.team[idx()].indicator;
                     return (
                         <div
                             class="ui-team-indicator ui-indicator-main"
@@ -70,10 +68,15 @@ function GameArea() {
         >
             <div id="game-touch-area"></div>
             <RoleMenu />
+            {/* app.css hides and shows the `.js-ui-map-*` elements and moves the map info with these */}
             <div
                 id="ui-game"
                 class="click-through"
+                data-bigmap={gameView.map.bigmap || undefined}
+                data-small={layout.small || undefined}
+                data-minimap-hidden={!gameView.map.minimap || undefined}
                 style={{
+                    ...iosGameStyle(),
                     display: gameView.hidden ? "none" : undefined,
                     // a dragged weapon slot follows the mouse anywhere
                     "pointer-events": gameView.weaponDrag.dragging ? "initial" : undefined,
@@ -86,28 +89,35 @@ function GameArea() {
                 <TeamIndicators />
                 <div
                     id="ui-right-center"
-                    class="ui-right-center-desktop js-ui-map-hidden"
-                    style={{ display: mapHidden() }}
+                    class={[
+                        "js-ui-map-hidden",
+                        small() ? "ui-right-center-mobile" : "ui-right-center-desktop",
+                        tabletClass("ui-right-center", true),
+                    ]}
+                    style={iosBrowserTop}
                 >
                     <Inventory />
                     <EmoteButton />
                 </div>
                 <TeamPanel />
                 <MapPanel />
-                <div id="ui-killfeed-wrapper" style={{ top: gameView.killfeedTop || undefined }}>
-                    <div id="ui-killfeed" class="js-ui-map-hidden js-ui-hud-show" style={{ display: mapHidden() }}>
+                <div
+                    id="ui-killfeed-wrapper"
+                    class={tabletClass("ui-killfeed-wrapper")}
+                    style={{ top: gameView.killfeedTop || undefined }}
+                >
+                    <div id="ui-killfeed" class="js-ui-map-hidden js-ui-hud-show">
                         <KillFeed />
                     </div>
                 </div>
                 <Leaderboard />
-                <div id="ui-top-center-scopes-wrapper">
+                <div id="ui-top-center-scopes-wrapper" style={iosBrowserTop}>
                     <Scopes />
                 </div>
                 <TopCenter />
                 <div
                     id="ui-lower-center"
                     class="js-ui-map-hidden js-ui-hud-show click-through"
-                    style={{ display: mapHidden() }}
                 >
                     <Interaction />
                 </div>
@@ -117,24 +127,22 @@ function GameArea() {
                 <div
                     id="ui-equipped-ammo-wrapper"
                     class="js-ui-map-hidden js-ui-hud-show"
-                    style={{ display: mapHidden() }}
                 >
                     <EquippedAmmo />
                 </div>
                 <div
                     id="ui-bottom-center-0"
                     class="click-through js-ui-map-hidden js-ui-hud-show"
-                    style={{ display: mapHidden() }}
                 >
                     <HealthAndBoost />
                 </div>
-                <div id="ui-bottom-center-left" class="js-ui-map-hidden" style={{ display: mapHidden() }}>
+                <div id="ui-bottom-center-left" class={["js-ui-map-hidden", tabletClass("ui-bottom-center-left")]}>
                     <Perks />
                 </div>
-                <div id="ui-bottom-center-right" class="js-ui-map-hidden" style={{ display: mapHidden() }}>
+                <div id="ui-bottom-center-right" class={["js-ui-map-hidden", tabletClass("ui-bottom-center-right")]}>
                     <Gear />
                 </div>
-                <div id="ui-bottom-right" class="js-ui-map-hidden" style={{ display: mapHidden() }}>
+                <div id="ui-bottom-right" class={["js-ui-map-hidden", tabletClass("ui-bottom-right", true)]}>
                     <Weapons />
                 </div>
                 <SpectateOptions />

@@ -1,10 +1,10 @@
 import loadout, { type Item } from "@survev/shared/utils/loadout.ts";
-import type { Account } from "../account.ts";
+import { type Account, accountView } from "../account.ts";
 import { api } from "../api.ts";
 import { signInWithDiscord } from "../authClient.ts";
 import { device } from "../device.ts";
 import { helpers } from "../helpers.ts";
-import { showNotification } from "./appModals.ts";
+import { follow } from "./controller.ts";
 import type { LoadoutMenu } from "./loadoutMenu.ts";
 import {
     createAccountModal,
@@ -30,17 +30,14 @@ export class ProfileUi {
         public account: Account,
         public loadoutMenu: LoadoutMenu,
     ) {
-        account.addEventListener("error", this.onError.bind(this));
-        account.addEventListener("login", this.onLogin.bind(this));
-        account.addEventListener("loadout", this.sync.bind(this));
-        account.addEventListener("items", this.onItemsUpdated.bind(this));
-        account.addEventListener("request", this.sync.bind(this));
+        follow(() => accountView.status, (status, prev) => {
+            if (prev == "loggingIn" && status == "loggedIn") this.onLogin();
+        });
 
         createAccountModal.onHide(() => this.loadoutMenu.hide());
 
         setProfileUi(this);
         this.updateLoginSupport();
-        this.sync();
     }
 
     /** again once site_info says which logins the API has */
@@ -52,31 +49,6 @@ export class ProfileUi {
         });
     }
 
-    sync() {
-        const account = this.account;
-        setProfile((p) => {
-            p.loading = account.requestsInFlight > 0;
-            p.loggedIn = account.loggedIn;
-            p.loggingIn = account.loggingIn;
-            p.username = account.profile.username || "";
-            p.usernameChangeTime = account.profile.usernameChangeTime;
-            p.avatar = helpers.getSvgFromGameType(account.loadout.player_icon) || "img/gui/player-gui.svg";
-        });
-    }
-
-    onError(type: string, data?: string) {
-        const typeText = {
-            server_error: "Operation failed, please try again later.",
-            facebook_account_in_use: "Failed linking Facebook account.\nAccount already in use!",
-            twitch_account_in_use: "Failed linking Twitch account.\nAccount already in use!",
-            discord_account_in_use: "Failed linking Discord account.\nAccount already in use!",
-            account_banned: `Account banned: ${data}`,
-            login_failed: "Login failed.",
-        };
-        const text = typeText[type as keyof typeof typeText];
-        if (text) showNotification(text);
-    }
-
     onLogin() {
         createAccountModal.hide();
         loginOptionsModalMobile.hide();
@@ -86,21 +58,9 @@ export class ProfileUi {
         }
     }
 
-    onItemsUpdated(items: Item[]) {
-        // new or unconfirmed items light up the loadout button
-        const itemAlert = items.some((item) => item.status < loadout.ItemStatus.Ackd);
-        setProfile((p) => {
-            p.itemAlert = itemAlert;
-        });
-    }
-
     waitOnLogin(cb: () => void) {
-        if (this.account.loggingIn && !this.account.loggedIn) {
-            const runOnce = () => {
-                cb();
-                this.account.removeEventListener("requestsComplete", runOnce);
-            };
-            this.account.addEventListener("requestsComplete", runOnce);
+        if (this.account.status == "loggingIn") {
+            this.account.settled().then(cb);
         } else {
             cb();
         }
@@ -110,8 +70,9 @@ export class ProfileUi {
         setProfile((p) => {
             p.loginLink = !!opts.link;
         });
-        const modal = opts.modal ? createAccountModal : device.mobile ? loginOptionsModalMobile : loginOptionsModal;
-        modal.show();
+        if (opts.modal) createAccountModal.show();
+        else if (device.mobile) loginOptionsModalMobile.show();
+        else loginOptionsModal.show();
     }
 
     login(method: "discord" | "mock") {

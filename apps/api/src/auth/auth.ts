@@ -18,14 +18,17 @@ const cookieDomain = URL.canParse(clientUrl) ? new URL(clientUrl).hostname : und
 
 const { DISCORD_CLIENT_ID, DISCORD_SECRET_ID } = env;
 
+/** the site, and the client when it's on another subdomain: the origins that may send the session cookie */
+export const trustedOrigins = [
+    ...new Set([new URL(env.PUBLIC_URL).origin, ...(cookieDomain ? [new URL(clientUrl).origin] : [])]),
+];
+
 export const auth = betterAuth({
     appName: "survev",
     baseURL: env.PUBLIC_URL,
     basePath: "/api/auth",
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [
-        ...new Set([new URL(env.PUBLIC_URL).origin, ...(cookieDomain ? [new URL(clientUrl).origin] : [])]),
-    ],
+    trustedOrigins,
     telemetry: { enabled: false },
     // routes are already behind our own rateLimitMiddleware
     rateLimit: { enabled: false },
@@ -112,5 +115,6 @@ export const auth = betterAuth({
     plugins: env.ALLOW_MOCK_ACCOUNT ? [mockLogin] : [],
 });
 
+export type Auth = typeof auth;
 export type AuthUser = typeof auth.$Infer.Session.user;
 export type AuthSession = typeof auth.$Infer.Session.session;

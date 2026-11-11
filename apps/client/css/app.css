@@ -6851,3 +6851,22 @@ input [type="image"]:focus {
         translate: 0 calc(-1 * var(--rise));
     }
 }
+
+/* the big map covers the HUD (and, on small screens, the team panel and the map buttons) */
+#ui-game[data-bigmap] .js-ui-map-hidden, #ui-game[data-bigmap][data-small] .js-ui-mobile-map-hidden {
+    display: none !important;
+}
+
+#ui-game[data-bigmap] .js-ui-map-show {
+    display: block;
+}
+
+/* with the minimap hidden, the gas timer and spectator count move down to the corner */
+#ui-game[data-minimap-hidden] #ui-map-info {
+    bottom: auto;
+}
+
+#ui-game[data-minimap-hidden] #ui-spec-counter {
+    bottom: 6px;
+    left: 98px;
+}
