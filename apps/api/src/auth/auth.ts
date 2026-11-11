@@ -79,6 +79,9 @@ export const auth = betterAuth({
         expiresIn: 30 * DAY,
         // extend the session once it is past its halfway point
         updateAge: 15 * DAY,
+        // a signed copy of the session in a cookie saves the lookup for a minute, so a ban takes up to
+        // that long to reach the account. Routes that show or check changing user fields read the row
+        cookieCache: { enabled: true, maxAge: 60 },
     },
 
     account: {

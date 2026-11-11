@@ -11,7 +11,7 @@ import { auth } from "../auth/auth.ts";
 import { appendCookies, session } from "../auth/session.ts";
 import { db } from "../db/index.ts";
 import { itemColumns, items, matchData, users } from "../db/schema.ts";
-import { query, respond } from "../lib/errors.ts";
+import { query, queryOne, respond } from "../lib/errors.ts";
 import { macros } from "../lib/macros.ts";
 import { PassRoutes } from "../pass/routes.ts";
 import { getTimeUntilNextUsernameChange, sanitizeSlug, userRateLimit } from "./users.ts";
@@ -22,14 +22,24 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
     .use(PassRoutes)
     .guard({ rateLimit: userRateLimit, auth: true })
     .post("/profile", async ({ user, request, set }) => {
-        const {
-            loadout,
-            slug,
-            name: username,
-            usernameSet,
-            lastUsernameChangeTime,
-            banned,
-        } = user;
+        // not the session's user: its cookie cache can be older than a name or loadout change
+        const row = await queryOne(
+            () =>
+                db.query.users.findFirst({
+                    where: { id: user.id },
+                    columns: {
+                        loadout: true,
+                        slug: true,
+                        username: true,
+                        usernameSet: true,
+                        lastUsernameChangeTime: true,
+                        banned: true,
+                    },
+                }),
+            "Account not found",
+        );
+        if (row.isErr()) return row.error;
+        const { loadout, slug, username, usernameSet, lastUsernameChangeTime, banned } = row.value;
 
         if (banned) {
             const ban = await db.query.bans.findFirst({
@@ -84,9 +94,18 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
                 return status(400, { result: "invalid" } satisfies UsernameResponse);
             }
 
-            const timeUntilNextChange = getTimeUntilNextUsernameChange(
-                user.lastUsernameChangeTime,
+            // from the row: the session's cookie cache may predate the last change
+            const row = await queryOne(
+                () =>
+                    db.query.users.findFirst({
+                        where: { id: user.id },
+                        columns: { lastUsernameChangeTime: true },
+                    }),
+                "Account not found",
             );
+            if (row.isErr()) return status(500, { result: "failed" } satisfies UsernameResponse);
+
+            const timeUntilNextChange = getTimeUntilNextUsernameChange(row.value.lastUsernameChangeTime);
 
             if (timeUntilNextChange > 0) {
                 return { result: "change_time_not_expired" } satisfies UsernameResponse;
