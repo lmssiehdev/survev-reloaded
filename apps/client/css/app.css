@@ -3739,6 +3739,12 @@ a:active {
     cursor: initial;
 }
 
+/* the bar and counter share one row; as inline-blocks the space between them wrapped the counter */
+.pass-quest-progress {
+    align-items: center;
+    display: flex;
+}
+
 .pass-quest-bar {
     background: rgba(0, 0, 0, 0.75);
     border-radius: 4px;

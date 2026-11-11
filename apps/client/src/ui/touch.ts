@@ -1,4 +1,3 @@
-import $ from "jquery";
 import * as PIXI from "pixi.js-legacy";
 
 import { BulletDefs } from "@survev/shared/defs/gameObjects/bulletDefs.ts";
@@ -17,6 +16,7 @@ import type { InputHandler } from "../input.ts";
 import type { Map } from "../map.ts";
 import type { Player } from "../objects/player.ts";
 import type { Renderer } from "../renderer.ts";
+import { setTouchControls, setTouchRef } from "./touchControls.ts";
 
 interface Pad {
     touched: boolean;
@@ -109,6 +109,7 @@ export class Touch {
             };
         };
         this.touchPads = [createPad(), createPad()];
+        setTouchRef(this);
         const validateTouchStyle = function(style: "locked" | "anywhere") {
             if (!["locked", "anywhere"].includes(style)) {
                 return "anywhere";
@@ -298,17 +299,9 @@ export class Touch {
     setMoveStyle(style: "locked" | "anywhere") {
         this.moveStyle = style;
         this.config.set("touchMoveStyle", style);
-        const elem = document.getElementById("btn-game-move-style");
-
-        if (elem) {
-            if (this.moveStyle == "locked") {
-                elem.classList.remove("unlocked-on-icon");
-                elem.classList.add("locked-on-icon");
-            } else {
-                elem.classList.remove("locked-on-icon");
-                elem.classList.add("unlocked-on-icon");
-            }
-        }
+        setTouchControls((t) => {
+            t.moveStyle = style;
+        });
     }
 
     toggleAimStyle() {
@@ -318,15 +311,9 @@ export class Touch {
     setAimStyle(style: "locked" | "anywhere") {
         this.aimStyle = style;
         this.config.set("touchAimStyle", style);
-
-        const elem = document.getElementById("btn-game-aim-style")!;
-        if (this.aimStyle == "locked") {
-            elem.classList.remove("unlocked-on-icon");
-            elem.classList.add("locked-on-icon");
-        } else {
-            elem.classList.remove("locked-on-icon");
-            elem.classList.add("unlocked-on-icon");
-        }
+        setTouchControls((t) => {
+            t.aimStyle = style;
+        });
     }
 
     toggleAimLine() {
@@ -336,14 +323,9 @@ export class Touch {
     setTouchAimLine(isOn: boolean) {
         this.touchAimLine = isOn;
         this.config.set("touchAimLine", this.touchAimLine);
-        const elem = document.getElementById("btn-game-aim-line")!;
-        if (this.touchAimLine) {
-            elem.classList.remove("aim-line-off-icon");
-            elem.classList.add("aim-line-on-icon");
-        } else {
-            elem.classList.remove("aim-line-on-icon");
-            elem.classList.add("aim-line-off-icon");
-        }
+        setTouchControls((t) => {
+            t.aimLine = isOn;
+        });
     }
 
     init() {
@@ -419,145 +401,123 @@ export class Touch {
         this.setMobileStyling(isLandscape);
     }
 
+    /**
+     * Layout classes and inline styles for the touch / small-screen / tablet / iOS HUD. Only the
+     * touch toggles and the emote button are views of this class (touchControls); the rest of
+     * the elements belong to the HUD markup and are styled in place.
+     */
     setMobileStyling(isLandscape: boolean) {
         if (device.touch) {
-            $("#btn-touch-styles")
-                .find(".btn-game-container")
-                .css("display", "inline-block");
-            $("#ui-emote-button").css("display", "block");
+            setTouchControls((t) => {
+                t.touch = true;
+            });
         }
-        if (device.uiLayout == device.UiLayout.Sm) {
-            $("#ui-map-wrapper")
-                .addClass("ui-map-wrapper-mobile")
-                .removeClass("ui-map-wrapper-desktop");
-            $("#ui-settings-container-mobile").css("display", "block");
-            $("#ui-settings-container-desktop").css("display", "none");
-            $("#ui-right-center")
-                .addClass("ui-right-center-mobile")
-                .removeClass("ui-right-center-desktop");
-            $("#ui-leaderboard-wrapper").css("display", "none");
-            $("#big-map-close").css("display", "block");
-            $("#ui-game-menu").removeClass("ui-game-menu-desktop");
-            $("#btn-game-tabs").css("display", "none");
-            $("#ui-game-tab-settings").removeClass("ui-game-tab-settings-desktop");
-            $(".ui-ability-key").css("display", "none");
-        } else {
-            $("#ui-map-wrapper")
-                .removeClass("ui-map-wrapper-mobile")
-                .addClass("ui-map-wrapper-desktop");
-            $("#ui-settings-container-mobile").css("display", "none");
-            $("#ui-settings-container-desktop").css("display", "block");
-            $("#ui-right-center")
-                .removeClass("ui-right-center-mobile")
-                .addClass("ui-right-center-desktop");
-            $("#ui-leaderboard-wrapper").css("display", "block");
-            $("#big-map-close").css("display", "none");
-            $("#ui-game-menu").addClass("ui-game-menu-desktop");
-            $("#btn-game-tabs").css("display", "flex");
-            $("#ui-game-tab-settings").addClass("ui-game-tab-settings-desktop");
-            $(".ui-ability-key").css("display", "block");
+        const sm = device.uiLayout == device.UiLayout.Sm;
+        toggleClass("ui-map-wrapper", "ui-map-wrapper-mobile", sm);
+        toggleClass("ui-map-wrapper", "ui-map-wrapper-desktop", !sm);
+        css("ui-settings-container-mobile", { display: sm ? "block" : "none" });
+        css("ui-settings-container-desktop", { display: sm ? "none" : "block" });
+        toggleClass("ui-right-center", "ui-right-center-mobile", sm);
+        toggleClass("ui-right-center", "ui-right-center-desktop", !sm);
+        css("ui-leaderboard-wrapper", { display: sm ? "none" : "block" });
+        css("big-map-close", { display: sm ? "block" : "none" });
+        toggleClass("ui-game-menu", "ui-game-menu-desktop", !sm);
+        css("btn-game-tabs", { display: sm ? "none" : "flex" });
+        toggleClass("ui-game-tab-settings", "ui-game-tab-settings-desktop", !sm);
+        for (const el of document.querySelectorAll<HTMLElement>(".ui-ability-key")) {
+            el.style.display = sm ? "none" : "block";
         }
+
         if (device.tablet) {
             if (isLandscape) {
                 if (device.os == "ios") {
-                    $("#ui-bottom-right").addClass("ui-bottom-right-tablet-ipad-browser");
-                    $("#ui-right-center").addClass("ui-right-center-tablet-ipad-browser");
+                    toggleClass("ui-bottom-right", "ui-bottom-right-tablet-ipad-browser", true);
+                    toggleClass("ui-right-center", "ui-right-center-tablet-ipad-browser", true);
                 } else {
-                    $("#ui-bottom-right").addClass("ui-bottom-right-tablet");
-                    $("#ui-right-center").addClass("ui-right-center-tablet");
+                    toggleClass("ui-bottom-right", "ui-bottom-right-tablet", true);
+                    toggleClass("ui-right-center", "ui-right-center-tablet", true);
                 }
-                $("#ui-bottom-center-left").addClass("ui-bottom-center-left-tablet");
-                $("#ui-bottom-center-right").addClass("ui-bottom-center-right-tablet");
-                $("#ui-top-left").addClass("ui-top-left-tablet");
-                $("#ui-spectate-options-wrapper").addClass(
-                    "ui-spectate-options-wrapper-tablet",
-                );
-                $("#ui-killfeed-wrapper").addClass("ui-killfeed-wrapper-tablet");
-                $("#ui-kill-leader-wrapper").css("right", 144);
+                toggleClass("ui-bottom-center-left", "ui-bottom-center-left-tablet", true);
+                toggleClass("ui-bottom-center-right", "ui-bottom-center-right-tablet", true);
+                toggleClass("ui-top-left", "ui-top-left-tablet", true);
+                toggleClass("ui-spectate-options-wrapper", "ui-spectate-options-wrapper-tablet", true);
+                toggleClass("ui-killfeed-wrapper", "ui-killfeed-wrapper-tablet", true);
+                css("ui-kill-leader-wrapper", { right: "144px" });
             } else {
-                $("#ui-bottom-left").removeClass("ui-bottom-left-tablet");
-                $("#ui-bottom-right").removeClass("ui-bottom-right-tablet");
-                $("#ui-right-center").removeClass("ui-right-center-tablet");
-                $("#ui-bottom-center-right").removeClass("ui-bottom-center-right-tablet");
-                $("#ui-top-left").removeClass("ui-top-left-tablet");
-                $("#ui-spectate-options-wrapper").removeClass(
-                    "ui-spectate-options-wrapper-tablet",
-                );
-                $("#ui-killfeed-wrapper-wrapper").removeClass(
-                    "ui-killfeed-wrapper-tablet",
-                );
+                toggleClass("ui-bottom-left", "ui-bottom-left-tablet", false);
+                toggleClass("ui-bottom-right", "ui-bottom-right-tablet", false);
+                toggleClass("ui-right-center", "ui-right-center-tablet", false);
+                toggleClass("ui-bottom-center-right", "ui-bottom-center-right-tablet", false);
+                toggleClass("ui-top-left", "ui-top-left-tablet", false);
+                toggleClass("ui-spectate-options-wrapper", "ui-spectate-options-wrapper-tablet", false);
+                // (sic) no such element: the killfeed keeps its tablet class
+                toggleClass("ui-killfeed-wrapper-wrapper", "ui-killfeed-wrapper-tablet", false);
             }
         }
         if (device.os == "ios") {
             if (device.model == "iphonex") {
-                const gameHeight = device.isLandscape ? "99%" : "90%";
-                const topOffset = device.isLandscape ? 0 : 32;
-                $("#ui-game").css({
-                    height: gameHeight,
-                    top: topOffset,
+                css("ui-game", {
+                    height: device.isLandscape ? "99%" : "90%",
+                    top: device.isLandscape ? "0px" : "32px",
                 });
-                $("#ui-stats-contents").css({
+                css("ui-stats-contents", {
                     transform: "translate(-50%) scale(0.95)",
                     "transform-origin": "top",
                 });
                 if (isLandscape) {
-                    $("#ui-game").css({
+                    css("ui-game", {
                         left: "50%",
                         transform: "translateX(-50%)",
                         width: "93%",
                     });
                 } else {
-                    $("#ui-game").css({
+                    css("ui-game", {
                         left: "",
                         transform: "",
                         width: "",
                     });
                 }
             } else if (window.navigator.standalone && !device.tablet) {
-                $("#ui-game").css({
-                    height: "95%",
-                });
+                css("ui-game", { height: "95%" });
             } else {
                 let marginBottom = device.isLandscape ? "86%" : "82%";
                 if (device.tablet) {
                     marginBottom = "100%";
                 }
-                $("#ui-game").css({
-                    height: marginBottom,
-                });
-                const gameMarginTop = 6;
-                const gameMarginElems = $(
-                    "#ui-right-center, #ui-top-center-scopes-wrapper, #ui-top-center, #ui-menu-display",
-                );
-                gameMarginElems.css({
-                    "margin-top": gameMarginTop,
-                });
+                css("ui-game", { height: marginBottom });
+                for (
+                    const id of ["ui-right-center", "ui-top-center-scopes-wrapper", "ui-top-center", "ui-menu-display"]
+                ) {
+                    css(id, { "margin-top": "6px" });
+                }
             }
         }
 
         // Reorder ammo for mobile
-        if (device.tablet || isLandscape) {
-            $("#ui-loot-50AE").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-9mm").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-308sub").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-12gauge").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-flare").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-762mm").insertBefore("#ui-loot-556mm");
-            $("#ui-loot-45acp").insertBefore("#ui-loot-556mm");
-        } else {
-            $("#ui-loot-9mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-12gauge").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-762mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-556mm").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-50AE").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-308sub").insertBefore("#ui-loot-45acp");
-            $("#ui-loot-flare").insertBefore("#ui-loot-45acp");
+        const ammoOrder = device.tablet || isLandscape
+            ? { before: "556mm", ammo: ["50AE", "9mm", "308sub", "12gauge", "flare", "762mm", "45acp"] }
+            : { before: "45acp", ammo: ["9mm", "12gauge", "762mm", "556mm", "50AE", "308sub", "flare"] };
+        const before = document.getElementById(`ui-loot-${ammoOrder.before}`);
+        for (const ammo of ammoOrder.ammo) {
+            const el = document.getElementById(`ui-loot-${ammo}`);
+            if (el && before) before.before(el);
         }
     }
 
     hideAll() {
         this.display = false;
     }
+}
+
+function toggleClass(id: string, cls: string, on: boolean) {
+    document.getElementById(id)?.classList.toggle(cls, on);
+}
+
+/** jQuery's `.css({...})` on one element; "" removes the inline value */
+function css(id: string, props: Record<string, string>) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    for (const [name, value] of Object.entries(props)) el.style.setProperty(name, value);
 }
 
 class LineSprites {

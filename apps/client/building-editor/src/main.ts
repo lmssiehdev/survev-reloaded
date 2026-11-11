@@ -73,8 +73,6 @@ class Application {
             const language = this.config.get("language") || this.localization.detectLocale();
             this.config.set("language", language);
             this.localization.setLocale(language);
-            this.localization.populateLanguageSelect();
-            this.localization.localizeIndex();
 
             this.setAppActive(true);
             const domCanvas = document.querySelector<HTMLCanvasElement>("#cvs")!;

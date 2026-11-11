@@ -7,20 +7,6 @@ declare global {
         userLanguage: string;
     }
 
-    interface JQuery<TElement = HTMLElement> extends Iterable<TElement> {
-        html(
-            htmlString_function:
-                | number /** Allow for number values to be passed */
-                | JQuery.htmlString
-                | JQuery.Node
-                | ((
-                    this: TElement,
-                    index: number,
-                    oldhtml: JQuery.htmlString,
-                ) => JQuery.htmlString | JQuery.Node),
-        ): this;
-    }
-
     interface Window {
         mobile?: boolean;
         webkitAudioContext?: AudioContext;
