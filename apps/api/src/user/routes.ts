@@ -20,8 +20,7 @@ export const UserRoutes = new Elysia({ prefix: "/api/user" })
     .use(macros)
     .use(session)
     .use(PassRoutes)
-    // fresh: these show and check the user row, which the cookie cache can hold for a minute after a change
-    .guard({ rateLimit: userRateLimit, auth: "fresh" })
+    .guard({ rateLimit: userRateLimit, auth: true })
     .post("/profile", async ({ user, request, set }) => {
         const { loadout, slug, name: username, usernameSet, lastUsernameChangeTime, banned } = user;
 

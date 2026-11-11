@@ -15,13 +15,12 @@ export function appendCookies(set: { headers: HTTPHeaders }, headers: Headers | 
 }
 
 /**
- * better-auth's session: `user` / `session`, null when logged out (banned users included).
- * fresh skips the 60s cookie cache and reads the user row, for routes that show or check its fields.
+ * better-auth's session: `user` / `session`, null when logged out. A banned user still has one, routes check `user.banned`.
  * returnHeaders: getSession extends active sessions, the refreshed cookie has to reach the browser too.
  */
-async function loadSession(request: Request, set: { headers: HTTPHeaders }, fresh: boolean) {
+async function loadSession(request: Request, set: { headers: HTTPHeaders }) {
     const res = await auth.api
-        .getSession({ headers: request.headers, query: { disableCookieCache: fresh }, returnHeaders: true })
+        .getSession({ headers: request.headers, returnHeaders: true })
         .catch((err) => void logger.error("auth.session_load_failed", { err }));
 
     appendCookies(set, res?.headers);
@@ -33,18 +32,18 @@ async function loadSession(request: Request, set: { headers: HTTPHeaders }, fres
 
 export const session = new Elysia({ name: "session" })
     .macro({
-        /** the session, see loadSession */
-        session: (mode: true | "fresh") => ({
-            derive: ({ request, set }) => loadSession(request, set, mode === "fresh"),
-        }),
-        /** like session, 401 when logged out */
-        auth: (mode: true | "fresh") => ({
+        /** the session, null when logged out */
+        session: {
+            derive: ({ request, set }) => loadSession(request, set),
+        },
+        /** the session, 401 when logged out */
+        auth: {
             async derive({ request, set }) {
-                const { user, session } = await loadSession(request, set, mode === "fresh");
+                const { user, session } = await loadSession(request, set);
                 if (!user || !session) {
                     throw new Unauthorized({ message: "Authentication failed" });
                 }
                 return { user, session };
             },
-        }),
+        },
     });
