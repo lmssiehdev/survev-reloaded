@@ -41,6 +41,7 @@ import type { SoundHandle } from "../lib/createJS.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
 import type { UiManager2 } from "../ui/ui2.ts";
+import { playBodyHitFx, playStepDustFx } from "./bodyFx.ts";
 import { AbstractObject, Pool } from "./objectPool.ts";
 import type { Obstacle } from "./obstacle.ts";
 import type { Emitter, EmitterOptions, ParticleBarn } from "./particles.ts";
@@ -226,6 +227,8 @@ export class Player implements AbstractObject {
     moveWeapon = "";
     /** The body scale updateVisuals last set, the rest scale moves squash from */
     bodyScale = 1;
+    /** The body's colour updateVisuals last set, for skin coloured particles */
+    skinTint = 0xf8c574;
 
     perks: Array<{
         type: string;
@@ -997,6 +1000,7 @@ export class Player implements AbstractObject {
                 });
             } else if (this.stepDistance > 4 && !inWater) {
                 this.stepDistance = 0;
+                playStepDustFx(particleBarn, this, v2.normalizeSafe(v2.sub(this.m_pos, this.m_posOld), this.m_dir));
                 audioManager.playGroup(`footstep_${this.surface.type}`, {
                     soundPos: this.m_pos,
                     fallOff: 3,
@@ -1494,9 +1498,10 @@ export class Player implements AbstractObject {
         const bodyScale = this.m_bodyRad / GameConfig.player.radius;
 
         this.bodySprite.texture = PIXI.Texture.from(outfitImg.baseSprite);
-        this.bodySprite.tint = outfitDef.ghillie
+        this.skinTint = outfitDef.ghillie
             ? map.getMapDef().biome.colors.playerGhillie
             : outfitImg.baseTint;
+        this.bodySprite.tint = this.skinTint;
         this.bodySprite.scale.set(0.25, 0.25);
         this.bodySprite.visible = true;
 
@@ -2579,6 +2584,7 @@ export class Player implements AbstractObject {
                 const dir = v2.normalizeSafe(v2.sub(hit.target.m_pos, this.m_pos), this.m_dir);
                 const contact = v2.sub(hit.target.m_pos, v2.mul(dir, hit.target.m_rad));
                 hit.target.playHitFeel(dir, contact, meleeDef.damage);
+                playBodyHitFx(animCtx.particleBarn, hit.target, contact, dir, this.m_netData.m_activeWeapon != "fists");
             }
         }
     }

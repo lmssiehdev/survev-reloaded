@@ -29,6 +29,7 @@ import type { InputBinds, InputBindUi } from "./inputBinds.ts";
 import type { SoundHandle } from "./lib/createJS.ts";
 import { Map } from "./map.ts";
 import { AirdropBarn } from "./objects/airdrop.ts";
+import { playDeathPopFx } from "./objects/bodyFx.ts";
 import { BulletBarn, createBullet } from "./objects/bullet.ts";
 import { DeadBodyBarn } from "./objects/deadBody.ts";
 import { DecalBarn } from "./objects/decal.ts";
@@ -1222,6 +1223,18 @@ export class Game {
         }
     }
 
+    /** The body pops where a visible player was killed, thrown along the line from the killer. Visual only */
+    playKillFx(msg: net.KillMsg) {
+        if (!msg.killed) return;
+        const target = this.m_playerBarn.getPlayerById(msg.targetId);
+        if (!target) return;
+        const killer = this.m_playerBarn.getPlayerById(msg.killerId);
+        const dir = killer && killer != target
+            ? v2.normalizeSafe(v2.sub(target.m_visualPos, killer.m_visualPos), v2.randomUnit())
+            : v2.randomUnit();
+        playDeathPopFx(this.m_particleBarn, target, dir);
+    }
+
     // Socket functions
     m_onMsg(type: net.MsgType, stream: net.BitStream) {
         switch (type) {
@@ -1300,6 +1313,7 @@ export class Game {
             case net.MsgType.Kill: {
                 const msg = new net.KillMsg();
                 msg.deserialize(stream);
+                this.playKillFx(msg);
                 const sourceType = msg.itemSourceType || msg.mapSourceType;
                 const activeTeamId = this.m_playerBarn.getPlayerInfo(
                     this.m_activeId,

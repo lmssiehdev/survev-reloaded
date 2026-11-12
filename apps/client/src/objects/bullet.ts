@@ -12,6 +12,7 @@ import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
+import { playBodyHitFx } from "./bodyFx.ts";
 import type { FlareBarn } from "./flare.ts";
 import type { ParticleBarn } from "./particles.ts";
 import type { Player, PlayerBarn } from "./player.ts";
@@ -435,6 +436,7 @@ export class BulletBarn {
                                 collidedPlayer.container,
                             );
                             collidedPlayer.playHitFeel(b.dir, col.point, b.damage);
+                            playBodyHitFx(particleBarn, collidedPlayer, col.point, b.dir, false);
                             audioManager.playGroup("player_bullet_hit", {
                                 soundPos: collidedPlayer.m_pos,
                                 fallOff: 1,
