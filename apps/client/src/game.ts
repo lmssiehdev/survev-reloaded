@@ -22,6 +22,7 @@ import { SpectateAction } from "@survev/shared/net/spectateMsg.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
+import { MapFx } from "./fx/mapFx.ts";
 import { Gas } from "./gas.ts";
 import { helpers } from "./helpers.ts";
 import { type InputHandler, Key } from "./input.ts";
@@ -71,6 +72,7 @@ export class Game {
     m_touch!: Touch;
     m_camera!: Camera;
     m_renderer!: Renderer;
+    m_mapFx!: MapFx;
     m_particleBarn!: ParticleBarn;
     m_decalBarn!: DecalBarn;
     m_map!: Map;
@@ -216,6 +218,7 @@ export class Game {
         this.m_touch = new Touch(this.m_input, this.m_config);
         this.m_camera = new Camera();
         this.m_renderer = new Renderer(this, this.m_canvasMode);
+        this.m_mapFx = new MapFx(this.m_canvasMode);
         this.m_particleBarn = new ParticleBarn(this.m_renderer);
         this.m_decalBarn = new DecalBarn();
         this.m_map = new Map(this.m_decalBarn);
@@ -281,7 +284,7 @@ export class Game {
         }
         // Render ordering
         this.m_debugDisplay = new PIXI.Graphics();
-        const pixiContainers = [
+        const worldContainers = [
             this.m_map.display.ground,
             this.m_renderer.layers[0],
             this.m_renderer.ground,
@@ -290,6 +293,12 @@ export class Game {
             this.m_renderer.layers[3],
             this.m_debugDisplay,
             this.m_gas.gasRenderer.display,
+        ].filter((c) => c !== null);
+        for (const container of worldContainers) {
+            container.interactiveChildren = false;
+        }
+        this.m_mapFx.attach(this.m_pixi.renderer, this.m_pixi.stage, worldContainers, 5);
+        const pixiContainers = [
             this.m_touch.container,
             this.m_emoteBarn.container,
             this.m_uiManager.container,
@@ -360,6 +369,7 @@ export class Game {
             this.m_map.m_free();
             this.m_particleBarn.m_free();
             this.m_renderer.m_free();
+            this.m_mapFx.free();
             this.m_input.m_free();
             this.m_audioManager.stopAll();
 
@@ -994,6 +1004,17 @@ export class Game {
         this.m_decalBarn.m_render(this.m_camera, debug, this.m_activePlayer.layer);
         this.m_map.m_render(this.m_camera);
         this.m_gas.m_render(dt, this.m_camera);
+        this.m_mapFx.update(dt, this.m_camera, {
+            map: this.m_map,
+            renderer: this.m_renderer,
+            playerBarn: this.m_playerBarn,
+            bulletBarn: this.m_bulletBarn,
+            explosionBarn: this.m_explosionBarn,
+            activeId: this.m_activeId,
+            audio: this.m_audioManager,
+            activePos: this.m_activePlayer.m_pos,
+            activeLayer: this.m_activePlayer.layer,
+        });
         this.m_uiManager.m_render(
             this.m_activePlayer.m_pos,
             this.m_gas,
@@ -1237,6 +1258,7 @@ export class Game {
                 this.m_localId = msg.playerId;
                 this.m_validateAlpha = true;
                 this.m_emoteBarn.updateEmoteWheel(msg.emotes);
+                this.m_mapFx.configure(msg.fx);
                 if (!msg.started) {
                     this.m_uiManager.setWaitingForPlayers(true);
                 }

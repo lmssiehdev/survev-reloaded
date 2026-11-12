@@ -2,6 +2,7 @@ import { type GameConfig, type MapId } from "../gameConfig.ts";
 import type { DeepPartial } from "../utils/util.ts";
 import type { Vec2 } from "../utils/v2.ts";
 import type { RoleDef } from "./gameObjects/roleDefs.ts";
+import type { MapFxDef } from "./mapFxDefs.ts";
 import type { SurfaceType } from "./mapObjectsTyping.ts";
 import { Main } from "./maps/baseDefs.ts";
 import { Beach } from "./maps/beachDefs.ts";
@@ -118,6 +119,7 @@ export interface MapDef {
             planeSound: string;
             airdropImg: string;
         };
+        fx: MapFxDef;
     };
     gameMode: {
         maxPlayers: number;

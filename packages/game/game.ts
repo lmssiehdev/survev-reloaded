@@ -1,8 +1,10 @@
 import type { FindGamePrivateBody, SaveGameBody } from "@survev/contracts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import type { MatchFx } from "@survev/shared/defs/mapFxDefs.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Loadout } from "@survev/shared/utils/loadout.ts";
 import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { ClientBarn } from "./client.ts";
 import { GameModeManager } from "./gameModeManager.ts";
 import type { GameLogger, GameMode, GameOptions } from "./gameOptions.ts";
@@ -116,6 +118,8 @@ export class Game {
     tickWindow = new TickStats();
     netSyncWindow = new TickStats();
     startedAt = Date.now();
+    /** this match's time of day and weather, rolled from the map def */
+    fx: MatchFx;
     playersPeak = 0;
     playersTotal = 0;
     slowTickCount = 0;
@@ -198,9 +202,25 @@ export class Game {
 
         this.map.init();
 
+        const fxDef = this.map.mapDef.biome.fx;
+        this.fx = {
+            effects: fxDef.effects,
+            hour: fxDef.startHour,
+            dayLength: fxDef.dayLength,
+            weather: util.weightedRandom(fxDef.weather).name,
+        };
+
         this.logger.debug("game.created", { durationMs: Date.now() - start });
 
         this.updateData();
+    }
+
+    /** the match fx with the clock moved to now, for a client that is joining */
+    currentFx(): MatchFx {
+        const { dayLength, hour } = this.fx;
+        if (dayLength <= 0) return this.fx;
+        const elapsed = (Date.now() - this.startedAt) / 1000;
+        return { ...this.fx, hour: (hour + (elapsed / dayLength) * 24) % 24 };
     }
 
     update(dt?: number) {
