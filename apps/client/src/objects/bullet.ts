@@ -77,6 +77,8 @@ export class BulletBarn {
         tracerAlphaMin?: number;
         combatStims: boolean;
         particleTicker: number;
+        /** Only for how hard a hit looks, the server decides the real damage */
+        damage: number;
     }> = [];
 
     tracerColors = {} as typeof GameConfig["tracerColors"];
@@ -128,6 +130,7 @@ export class BulletBarn {
         b.startPos = v2.copy(bullet.pos);
         b.pos = v2.copy(bullet.pos);
         b.dir = v2.copy(bullet.dir);
+        b.damage = bulletDef.damage;
         b.layer = bullet.layer;
         b.speed = bulletDef.speed * bullet.speedMult * variance;
         b.distance = distance * bullet.distanceMult * variance + distAdj;
@@ -431,6 +434,7 @@ export class BulletBarn {
                                 1,
                                 collidedPlayer.container,
                             );
+                            collidedPlayer.playHitFeel(b.dir, col.point, b.damage);
                             audioManager.playGroup("player_bullet_hit", {
                                 soundPos: collidedPlayer.m_pos,
                                 fallOff: 1,

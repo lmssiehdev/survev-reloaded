@@ -221,7 +221,7 @@ export class Player implements AbstractObject {
     // Additive moves on top of the bone pose, the animator is created by the first one
     animator: Animator | null = null;
     weaponDrag = new WeaponDrag();
-    feel = new FeelLayer();
+    feel = new FeelLayer(this.bodyContainer);
     /** The weapon the playing moves belong to, they stop if it changes */
     moveWeapon = "";
     /** The body scale updateVisuals last set, the rest scale moves squash from */
@@ -2264,6 +2264,14 @@ export class Player implements AbstractObject {
         this.wakeFeel().shot(feel);
     }
 
+    /** A bullet or blade landed: dir is the way it travels, contact where it touched the body */
+    playHitFeel(dir: Vec2, contact: Vec2, damage: number) {
+        if (this.m_netData.m_dead) return 0;
+        const offX = contact.x - this.m_pos.x;
+        const offY = contact.y - this.m_pos.y;
+        return this.wakeFeel().hit(dir, offX * dir.y - offY * dir.x, damage);
+    }
+
     updateAnim(dt: number, animCtx: AnimCtx) {
         if (this.anim.data.type == "none") {
             this.playAnim(Anim.None, this.anim.seq);
@@ -2404,6 +2412,8 @@ export class Player implements AbstractObject {
             particle: string;
             sound: string | undefined;
             soundFn: "playSound" | "playGroup";
+            /** The player hit, null for obstacles */
+            target: Player | null;
         }> = [];
 
         // Obstacles
@@ -2464,6 +2474,7 @@ export class Player implements AbstractObject {
                 particle: obstacleDef.hitParticle,
                 sound: obstacleDef.sound.punch,
                 soundFn: "playGroup",
+                target: null,
             });
         }
 
@@ -2528,6 +2539,7 @@ export class Player implements AbstractObject {
                 particle: "bloodSplat",
                 sound: hitSound,
                 soundFn: "playSound",
+                target: playerCol,
             });
         }
 
@@ -2562,6 +2574,11 @@ export class Player implements AbstractObject {
                     layer: this.layer,
                     filter: "muffled",
                 });
+            }
+            if (hit.target) {
+                const dir = v2.normalizeSafe(v2.sub(hit.target.m_pos, this.m_pos), this.m_dir);
+                const contact = v2.sub(hit.target.m_pos, v2.mul(dir, hit.target.m_rad));
+                hit.target.playHitFeel(dir, contact, meleeDef.damage);
             }
         }
     }
