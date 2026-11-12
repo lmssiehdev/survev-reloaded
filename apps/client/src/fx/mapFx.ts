@@ -1,4 +1,4 @@
-import type { FxEffect, MatchFx } from "@survev/shared/defs/mapFxDefs.ts";
+import { type FxEffect, FxEffects, type MatchFx, WeatherNames } from "@survev/shared/defs/mapFxDefs.ts";
 import type { AABB } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
@@ -6,7 +6,6 @@ import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import { createFalloffTexture, type FxWorld } from "./common.ts";
-import { DebugPanel, devOverrides } from "./debugPanel.ts";
 import { Grade } from "./grade.ts";
 import { Lights } from "./lights.ts";
 import { type Look, sampleLook } from "./look.ts";
@@ -24,6 +23,23 @@ function muffleFor(underground: boolean, indoors: boolean) {
     if (underground) return 0.9;
     if (indoors) return 0.7;
     return 0;
+}
+
+// Dev only: ?fx=all|light,sway,... ?fxTime=<hour>|cycle and ?weather=<name> override what the
+// server picked, to look at a setup without editing map defs.
+function devOverrides(fx: MatchFx): MatchFx {
+    const params = new URLSearchParams(window.location.search);
+    const effects = params.get("fx");
+    const time = params.get("fxTime");
+    const weather = WeatherNames.find((name) => name === params.get("weather"));
+    const out = { ...fx, weather: weather ?? fx.weather };
+    if (effects !== null) out.effects = FxEffects.filter((k) => effects === "all" || effects.split(",").includes(k));
+    if (time === "cycle") out.dayLength = 120;
+    if (time !== null && time !== "cycle") {
+        out.hour = Number(time) || 0;
+        out.dayLength = 0;
+    }
+    return out;
 }
 
 // Footprints of ground-level buildings, where no rain falls.
@@ -45,13 +61,14 @@ export class MapFx {
     enabled = new Set<FxEffect>();
     startHour = 15;
     dayLength = 0;
-    clock = 0;
+    /** seconds since the match setup arrived */
     time = 0;
 
     pixi!: PIXI.IRenderer;
     world = new PIXI.Container();
     // Filters render into a transparent texture, so the grass clear colour needs a real backdrop.
     grass = new PIXI.Sprite(PIXI.Texture.WHITE);
+    screen = new PIXI.Rectangle();
     look: Look = sampleLook(15, null);
 
     falloff = createFalloffTexture();
@@ -61,7 +78,6 @@ export class MapFx {
     sway = new Sway();
     weather = new Weather("clear");
     weatherAudio: WeatherAudio | null = null;
-    panel: DebugPanel | null = null;
 
     constructor(public canvasMode: boolean) {
         this.world.addChild(this.grass);
@@ -75,23 +91,17 @@ export class MapFx {
     configure(match: MatchFx) {
         // The effects are WebGL shaders; the canvas fallback renders the plain map.
         if (this.canvasMode) return;
-        const dev = import.meta.env.DEV ? devOverrides(match) : { fx: match, panel: false };
-        const fx = dev.fx;
+        const fx = import.meta.env.DEV ? devOverrides(match) : match;
         this.enabled = new Set(fx.effects);
-        this.setClock(fx.hour, fx.dayLength);
+        this.startHour = fx.hour;
+        this.dayLength = fx.dayLength;
+        this.time = 0;
         this.weather.setWeather(fx.weather, true);
-        if (dev.panel && !this.panel) this.panel = new DebugPanel(this);
-    }
-
-    setClock(hour: number, dayLength: number) {
-        this.startHour = hour;
-        this.dayLength = dayLength;
-        this.clock = 0;
     }
 
     currentHour() {
         if (this.dayLength <= 0) return this.startHour;
-        return (this.startHour + (this.clock / this.dayLength) * 24) % 24;
+        return (this.startHour + (this.time / this.dayLength) * 24) % 24;
     }
 
     // World containers move under one parent so screen passes skip the UI.
@@ -118,9 +128,7 @@ export class MapFx {
     }
 
     update(dt: number, camera: Camera, w: FxWorld) {
-        const t0 = performance.now();
         this.time += dt;
-        this.clock += dt;
         const weatherOn = this.on("weather");
         const c = this.weather.cur;
         this.look = sampleLook(
@@ -143,24 +151,22 @@ export class MapFx {
         }
         if (this.on("light")) this.lights.update(this.pixi, camera, w, this.look);
         else this.lights.hide();
-
-        this.panel?.record(this, performance.now() - t0);
     }
 
     updateFilters(camera: Camera, map: Map) {
-        const sw = camera.m_screenWidth;
-        const sh = camera.m_screenHeight;
         const grade = this.on("grade");
         const filters = [
             ...(this.on("weather") ? [this.weather.filter] : []),
             ...(grade ? [this.grade.filter] : []),
         ];
         const filtered = filters.length > 0;
+        this.screen.width = camera.m_screenWidth;
+        this.screen.height = camera.m_screenHeight;
         this.world.filters = filtered ? filters : null;
-        this.world.filterArea = filtered ? new PIXI.Rectangle(0, 0, sw, sh) : (null as unknown as PIXI.Rectangle);
+        this.world.filterArea = this.screen;
         this.grass.visible = filtered;
-        this.grass.width = sw;
-        this.grass.height = sh;
+        this.grass.width = this.screen.width;
+        this.grass.height = this.screen.height;
         this.grass.tint = map.mapLoaded ? map.getMapDef().biome.colors.grass : 0x80af49;
         if (grade) this.grade.update(this.look);
     }
@@ -172,8 +178,7 @@ export class MapFx {
         const indoors = underground || w.map.insideBuildingCeiling(collider.createCircle(w.activePos, 0.01), true);
         // Rain outside is quieter but still there; underground almost nothing gets through.
         const muffle = muffleFor(underground, indoors);
-        this.weather.splashLayer.visible = on && !underground;
-        this.weather.airLayer.visible = on && !underground;
+        this.weather.setVisible(on && !underground);
         if (on) {
             this.weather.setDryZones(dryZones(w.map));
             this.weather.update(dt, camera, w.map, this.look.fog, 1 - this.look.night, (dist) => {
@@ -200,8 +205,6 @@ export class MapFx {
     }
 
     free() {
-        this.panel?.free();
-        this.panel = null;
         this.lights.free();
         this.weatherAudio?.free();
     }

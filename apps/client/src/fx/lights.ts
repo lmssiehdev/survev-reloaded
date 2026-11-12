@@ -3,7 +3,7 @@ import { math } from "@survev/shared/utils/math.ts";
 import type { Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "../camera.ts";
-import { type FxWorld, WarmLight } from "./common.ts";
+import { additiveSprite, type FxWorld, onScreen, SpritePool, WarmLight } from "./common.ts";
 import { type Look, rgbToHex } from "./look.ts";
 
 interface Flash {
@@ -22,19 +22,20 @@ export class Lights {
     rt: PIXI.RenderTexture | null = null;
     scene = new PIXI.Container();
     ambient = new PIXI.Sprite(PIXI.Texture.WHITE);
-    sprites: PIXI.Sprite[] = [];
+    lights: SpritePool;
     overlay = new PIXI.Sprite();
     // Additive glow for flashes, so they pop in daylight too.
     glow = new PIXI.Container();
-    glowSprites: PIXI.Sprite[] = [];
-    count = 0;
+    glows: SpritePool;
 
     flashes: Flash[] = [];
     seenBullets = new WeakSet<Vec2>();
     seenExplosions = new WeakSet<Vec2>();
 
-    constructor(public falloff: PIXI.Texture) {
+    constructor(falloff: PIXI.Texture) {
         this.scene.addChild(this.ambient);
+        this.lights = new SpritePool(this.scene, additiveSprite(falloff));
+        this.glows = new SpritePool(this.glow, additiveSprite(falloff));
         this.overlay.blendMode = PIXI.BLEND_MODES.MULTIPLY;
     }
 
@@ -100,39 +101,21 @@ export class Lights {
         const amb = look.ambient;
         const dark = 1 - (amb[0] + amb[1] + amb[2]) / 3 > 0.01;
 
-        let n = 0;
+        this.lights.begin();
+        this.glows.begin();
         const addLight = (pos: Vec2, rad: number, color: number, alpha: number) => {
             const sp = camera.m_pointToScreen(pos);
             const r = camera.m_scaleToScreen(rad);
-            if (sp.x < -r || sp.y < -r || sp.x > sw + r || sp.y > sh + r) return;
-            let s = this.sprites[n];
-            if (!s) {
-                s = new PIXI.Sprite(this.falloff);
-                s.anchor.set(0.5, 0.5);
-                s.blendMode = PIXI.BLEND_MODES.ADD;
-                this.sprites.push(s);
-                this.scene.addChild(s);
-            }
-            n++;
-            s.visible = true;
+            if (!onScreen(camera, sp.x, sp.y, r)) return;
+            const s = this.lights.next();
             s.position.set(sp.x * k, sp.y * k);
             s.width = s.height = r * 2 * k;
             s.tint = color;
             s.alpha = alpha;
         };
-        let g = 0;
         const addGlow = (pos: Vec2, rad: number, color: number, alpha: number) => {
-            let s = this.glowSprites[g];
-            if (!s) {
-                s = new PIXI.Sprite(this.falloff);
-                s.anchor.set(0.5, 0.5);
-                s.blendMode = PIXI.BLEND_MODES.ADD;
-                this.glowSprites.push(s);
-                this.glow.addChild(s);
-            }
-            g++;
             const sp = camera.m_pointToScreen(pos);
-            s.visible = true;
+            const s = this.glows.next();
             s.position.set(sp.x, sp.y);
             s.width = s.height = camera.m_scaleToScreen(rad) * 2;
             s.tint = color;
@@ -165,9 +148,8 @@ export class Lights {
             if (dark) addLight(f.pos, f.rad * 1.8, f.color, Math.min(1, f.intensity * fade));
             addGlow(f.pos, f.rad * 0.6, f.color, 0.35 * f.intensity * fade);
         }
-        for (let i = n; i < this.sprites.length; i++) this.sprites[i].visible = false;
-        for (let i = g; i < this.glowSprites.length; i++) this.glowSprites[i].visible = false;
-        this.count = n + g;
+        this.lights.end();
+        this.glows.end();
 
         this.overlay.visible = dark;
         if (dark) {

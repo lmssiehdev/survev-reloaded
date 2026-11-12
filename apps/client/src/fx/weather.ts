@@ -262,6 +262,11 @@ export class Weather {
         if (snap) this.cur = { ...this.target };
     }
 
+    setVisible(visible: boolean) {
+        this.splashLayer.visible = visible;
+        this.airLayer.visible = visible;
+    }
+
     setDryZones(zones: AABB[]) {
         this.dryZones = zones;
     }

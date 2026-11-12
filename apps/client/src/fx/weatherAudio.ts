@@ -15,6 +15,8 @@ const Beds = {
     crickets: "fx_crickets_loop",
 };
 type BedKey = keyof typeof Beds;
+const BedKeys = Object.keys(Beds) as BedKey[];
+const bedRecord = <T>(init: () => T) => Object.fromEntries(BedKeys.map((k) => [k, init()])) as Record<BedKey, T>;
 export type BedLevels = Record<BedKey, number>;
 
 const ThunderNear = ["fx_thunder_near_01", "fx_thunder_near_02"];
@@ -43,9 +45,10 @@ interface EventDef {
 }
 
 export class WeatherAudio {
-    inst: Record<BedKey, SoundHandle | null> = { rain: null, storm: null, roof: null, crickets: null };
-    level: BedLevels = { rain: 0, storm: 0, roof: 0, crickets: 0 };
-    phase: Record<BedKey, number> = { rain: 0, storm: 0, roof: 0, crickets: 0 };
+    inst = bedRecord((): SoundHandle | null => null);
+    level: BedLevels = bedRecord(() => 0);
+    // Each bed swells on its own offset so they never breathe in step.
+    phase = bedRecord(() => Math.random() * 100);
     time = 0;
     hush = 0;
     chorus = { on: true, left: 12 };
@@ -53,16 +56,15 @@ export class WeatherAudio {
     listener: Vec2 = { x: 0, y: 0 };
 
     constructor(public audio: AudioManager) {
-        for (const name of [...Object.values(Beds), ...ThunderNear, ...ThunderFar, ...Gusts]) {
-            audio.loadSound({ name, channel: "ambient", path: `audio/ambient/${name}.mp3`, options: { volume: 1 } });
-        }
-        for (const name of [...Gusts, ...ThunderFar]) {
-            audio.loadSound({ name, channel: "sfx", path: `audio/ambient/${name}.mp3`, options: { volume: 1 } });
-        }
-        for (const name of [...Creaks, Howl, Snap]) {
-            audio.loadSound({ name, channel: "sfx", path: `audio/sfx/${name}.mp3`, options: { volume: 1 } });
-        }
-        for (const key of Object.keys(this.phase) as BedKey[]) this.phase[key] = Math.random() * 100;
+        const load = (names: string[], channel: string, dir: string) => {
+            for (const name of names) {
+                audio.loadSound({ name, channel, path: `audio/${dir}/${name}.mp3`, options: { volume: 1 } });
+            }
+        };
+        load([...Object.values(Beds), ...ThunderNear, ...ThunderFar, ...Gusts], "ambient", "ambient");
+        // Gusts and far thunder also play positionally, which goes through the sfx channel.
+        load([...Gusts, ...ThunderFar], "sfx", "ambient");
+        load([...Creaks, Howl, Snap], "sfx", "sfx");
 
         const defs: EventDef[] = [
             {
@@ -140,7 +142,7 @@ export class WeatherAudio {
             ev.play(mood);
         }
 
-        for (const key of Object.keys(Beds) as BedKey[]) {
+        for (const key of BedKeys) {
             let want = target[key] * this.swell(key);
             let rate = 0.6;
             if (key == "crickets") {
@@ -175,7 +177,7 @@ export class WeatherAudio {
     }
 
     free() {
-        for (const key of Object.keys(this.inst) as BedKey[]) {
+        for (const key of BedKeys) {
             const inst = this.inst[key];
             if (inst) this.audio.stopSound(inst);
             this.inst[key] = null;

@@ -1,18 +1,8 @@
-import type { ObstacleDef } from "@survev/shared/defs/mapObjects/obstacles/obstacleDefs.ts";
 import { MapObjectDefs } from "@survev/shared/defs/register.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import type { Camera } from "../camera.ts";
 import type { Obstacle } from "../objects/obstacle.ts";
-import type { FxWorld } from "./common.ts";
-
-type Foliage = "tree" | "bush" | "none";
-
-function foliageKind(def: ObstacleDef): Foliage {
-    const z = def.img.zIdx ?? 0;
-    if (z >= 200) return "tree";
-    if (z >= 50) return "bush";
-    return "none";
-}
+import { type FxWorld, obstacleKind, onScreen } from "./common.ts";
 
 interface ObstacleState {
     id: number;
@@ -35,17 +25,14 @@ export class Sway {
     update(dt: number, time: number, camera: Camera, w: FxWorld, wind: SwayWind | null) {
         const players = w.playerBarn.playerPool.m_getPool();
         const obstacles = w.map.m_obstaclePool.m_getPool();
-        const sw = camera.m_screenWidth;
-        const sh = camera.m_screenHeight;
         const windX = Math.cos(wind?.angle ?? 0);
         const windY = Math.sin(wind?.angle ?? 0);
         for (let i = 0; i < obstacles.length; i++) {
             const o = obstacles[i];
             if (!o.active || !o.sprite.visible || !o.img) continue;
-            const sp = o.sprite.position;
-            if (sp.x < -300 || sp.y < -300 || sp.x > sw + 300 || sp.y > sh + 300) continue;
-            const def = MapObjectDefs.typeToDef(o.type, "obstacle");
-            const kind = foliageKind(def);
+            if (!onScreen(camera, o.sprite.position.x, o.sprite.position.y, 300)) continue;
+            const kind = obstacleKind(MapObjectDefs.typeToDef(o.type, "obstacle"));
+            const foliage = kind == "tree" || kind == "bush";
 
             let st = this.state.get(o);
             if (!st || st.id != o.__id) {
@@ -80,7 +67,7 @@ export class Sway {
             const punch = st.punch;
             let rot = 0.05 * punch;
             let scale = 1 + 0.08 * punch;
-            if (kind != "none" && !o.dead) {
+            if (foliage && !o.dead) {
                 // Rolling gusts: a slow wave across the map scales a faster sway.
                 const phase = o.pos.x * 0.11 + o.pos.y * 0.07;
                 // Gust bands travel downwind, the same direction as rain, clouds and leaves.
