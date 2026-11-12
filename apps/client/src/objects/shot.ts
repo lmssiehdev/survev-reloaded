@@ -226,7 +226,7 @@ export class ShotBarn {
                         const leftHand = shot.offhand || !weaponDef.isDual;
                         const rightHand = !shot.offhand || !weaponDef.isDual;
                         player.addRecoil(weaponDef.worldImg.recoil * feel.handKick, leftHand, rightHand);
-                        player.playShotFeel(feel);
+                        player.playShotFeel(feel, weaponDef);
                         if (shot.playerId == activePlayerId) {
                             camera.m_addKick(player.m_dir, -feel.cameraKick);
                             camera.m_addTrauma(feel.shake);

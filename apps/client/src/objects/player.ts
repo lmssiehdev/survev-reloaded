@@ -22,11 +22,13 @@ import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
-import { Animator } from "../anim/animator.ts";
+import { Animator, type ClipLayer } from "../anim/animator.ts";
 import { FeelLayer, heavyHit, heavyHitStop } from "../anim/feel.ts";
+import { cycleMove, drawMove, reloadMove } from "../anim/gun.ts";
 import type { GunFeel } from "../anim/gunFeel.ts";
 import { hitStop } from "../anim/hitStop.ts";
 import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
+import type { Move } from "../anim/move.ts";
 import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
 import type { AudioManager } from "../audioManager.ts";
@@ -226,6 +228,8 @@ export class Player implements AbstractObject {
     feel = new FeelLayer(this.bodyContainer);
     /** The weapon the playing moves belong to, they stop if it changes */
     moveWeapon = "";
+    meleeClip: ClipLayer | null = null;
+    reloadClip: ClipLayer | null = null;
     /** The body scale updateVisuals last set, the rest scale moves squash from */
     bodyScale = 1;
     /** The body's colour updateVisuals last set, for skin coloured particles */
@@ -496,6 +500,8 @@ export class Player implements AbstractObject {
         this.playAnim(Anim.None, -1);
         this.animator?.clear();
         this.moveWeapon = "";
+        this.meleeClip = null;
+        this.reloadClip = null;
     }
 
     m_free() {
@@ -867,6 +873,7 @@ export class Player implements AbstractObject {
 
         const weapTypeDirty = this.weapTypeOld != this.m_netData.m_activeWeapon;
         this.weapTypeOld = this.m_netData.m_activeWeapon;
+        if (weapTypeDirty && !this.isNew) this.playDrawMove();
 
         this.lastThrowablePickupSfxTicker -= dt;
         this.noCeilingRevealTicker -= dt;
@@ -1132,6 +1139,7 @@ export class Player implements AbstractObject {
             if (playEffect) {
                 this.playActionStartEffect(isActivePlayer, particleBarn, audioManager);
             }
+            this.playActionMoves();
         }
         this.m_action.seqOld = this.m_action.seq;
         this.updateActionEffect(isActivePlayer, playerInfo, particleBarn, audioManager);
@@ -2239,19 +2247,42 @@ export class Player implements AbstractObject {
 
     /** Starts the additive moves that go with an anim from the server, after playAnim picked it */
     playMoves(type: Anim) {
-        if (type != Anim.Melee) {
-            this.animator?.stop(0.08);
-            return;
-        }
+        // A new anim replaces the swing, the last one blends into the next
+        this.meleeClip?.stop(type == Anim.Melee ? 0.05 : 0.08);
+        this.meleeClip = null;
+        if (type != Anim.Melee) return;
         const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
         if (def?.type != "melee") return;
 
-        this.animator ??= new Animator(this, [this.weaponDrag]);
-        // The last swing blends into this one
-        this.animator.stop(0.05);
-        this.animator.play(meleeAttackMove(def, this.anim.data.mirror));
+        this.meleeClip = this.playWeaponMove(meleeAttackMove(def, this.anim.data.mirror));
         this.weaponDrag.weight = meleeWeight(def);
+    }
+
+    /** Plays a clip that belongs to the held weapon, it blends away if the weapon changes */
+    playWeaponMove(move: Move) {
+        this.animator ??= new Animator(this, [this.weaponDrag]);
         this.moveWeapon = this.m_netData.m_activeWeapon;
+        return this.animator.play(move);
+    }
+
+    /** The new weapon swings in from the hip. Melee weapons have their own deploy anims */
+    playDrawMove() {
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "gun" && def?.type != "throwable") return;
+        this.animator?.stop(0.05);
+        this.playWeaponMove(drawMove());
+    }
+
+    /** A reload starts or is cut short, the server only says which and the def says how long */
+    playActionMoves() {
+        this.reloadClip?.stop(0.1);
+        this.reloadClip = null;
+        const type = this.m_action.type;
+        if (type != Action.Reload && type != Action.ReloadAlt) return;
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "gun") return;
+        const total = type == Action.ReloadAlt ? (def.reloadTimeAlt ?? def.reloadTime) : def.reloadTime;
+        this.reloadClip = this.playWeaponMove(reloadMove(total));
     }
 
     /** Puts the feel layer back in the animator if it had settled, so it can be shoved */
@@ -2264,10 +2295,12 @@ export class Player implements AbstractObject {
         return this.feel;
     }
 
-    playShotFeel(feel: GunFeel) {
+    playShotFeel(feel: GunFeel, def: GunDef) {
         // Guns don't trail turns like a blade does
         this.weaponDrag.weight = 0;
         this.wakeFeel().shot(feel);
+        const cycle = cycleMove(def);
+        if (cycle) this.playWeaponMove(cycle);
     }
 
     /** A bullet or blade landed: dir is the way it travels, contact where it touched the body */

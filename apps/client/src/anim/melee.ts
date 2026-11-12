@@ -13,9 +13,9 @@ export function meleeWeight(def: MeleeDef) {
 
 /**
  * Body follow through for a melee attack, on top of the hand keyframes in animData:
- * the shoulders wind back, turn into the strike and the body squashes on it. Peaks on
- * the weapon's first damage time and has settled by its cooldown, so it stays in step
- * with the server. Heavier weapons turn further.
+ * the shoulders wind back, turn into the strike, the body leans in and squashes on it.
+ * Peaks on the weapon's first damage time and has settled by its cooldown, so it stays
+ * in step with the server. Heavier weapons turn and lean further.
  */
 export function meleeAttackMove(def: MeleeDef, mirror: boolean): Move {
     const hit = def.attack.damageTimes[0];
@@ -24,13 +24,17 @@ export function meleeAttackMove(def: MeleeDef, mirror: boolean): Move {
     // Strikes come from the right hand and bring the right shoulder forward, a
     // counterclockwise turn. Mirrored attacks use the left hand.
     const side = mirror ? 1 : -1;
-    const turn = (0.1 + 0.25 * heft) * side;
+    const turn = (0.14 + 0.3 * heft) * side;
     const squash = 0.05 + 0.05 * heft;
+    /** Body pixels, well inside the hitbox */
+    const lean = 1.5 + 2.5 * heft;
+    const strike = Math.max(hit - 0.035, 0);
     return {
         duration: end,
         tracks: {
             bodyRot: path([0, 0], [hit * 0.5, -turn * 0.4, "out"], [hit, turn, "in"], [end, 0, "inOut"]),
-            squash: beats(kick(Math.max(hit - 0.035, 0), squash, end - hit)),
+            bodyX: beats(kick(strike, lean, end - hit)),
+            squash: beats(kick(strike, squash, end - hit)),
         },
     };
 }
