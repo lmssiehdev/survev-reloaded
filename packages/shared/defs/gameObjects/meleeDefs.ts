@@ -25,6 +25,11 @@ export interface MeleeDef extends BaseWeaponDef, BaseLoadoutItem {
         & {
             idlePose: string;
             attackAnims: string[];
+            /**
+             * How heavy the weapon looks in the client's additive moves: 0 is weightless,
+             * 1 a machete, 2 a sledgehammer. Visual only.
+             */
+            weight?: number;
         }
         & ({
             deployAnimTime: number;
@@ -103,6 +108,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["fists"],
+            weight: 0,
         },
         sound: {
             pickup: "none",
@@ -201,6 +207,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "slash",
             attackAnims: ["slash", "stab"],
+            weight: 0.25,
             deployAnims: ["karambit_spin", "karambit_rapidSpin"],
             deployAnimTime: 0.65,
             idleAnims: ["karambit_frontSpin", "karambit_backSpin"],
@@ -260,6 +267,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["cut", "thrust"],
+            weight: 0.3,
             deployAnims: ["bayonet_unsheathe"],
             deployAnimTime: 0.65,
             idleAnims: ["knife_inspect"],
@@ -430,6 +438,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "machete",
             attackAnims: ["cutReverse"],
+            weight: 0.9,
         },
         sound: {
             pickup: "frag_pickup_01",
@@ -594,6 +603,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeTwoHanded",
             attackAnims: ["axeSwing"],
+            weight: 1.3,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -650,6 +660,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeKatana",
             attackAnims: ["katanaSwing"],
+            weight: 0.6,
         },
         sound: {
             pickup: "frag_pickup_01",
@@ -706,6 +717,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeNaginata",
             attackAnims: ["naginataSwing"],
+            weight: 1.1,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -762,6 +774,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeTwoHanded",
             attackAnims: ["hammerSwing"],
+            weight: 1.8,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -925,6 +938,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["pan"],
+            weight: 1,
         },
         sound: {
             pickup: "pan_pickup_01",

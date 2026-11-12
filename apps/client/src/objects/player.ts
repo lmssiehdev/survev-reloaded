@@ -22,6 +22,9 @@ import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { Animator } from "../anim/animator.ts";
+import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
+import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
@@ -97,11 +100,12 @@ class Gun {
 
     container = new PIXI.Container();
     magTop = false;
+    readonly restRotation = Math.PI * 0.5;
 
     constructor() {
         this.container.addChild(this.gunBarrel);
         this.container.addChild(this.gunMag);
-        this.container.rotation = Math.PI * 0.5;
+        this.container.rotation = this.restRotation;
         this.container.visible = false;
     }
 
@@ -211,6 +215,14 @@ export class Player implements AbstractObject {
             pose: Pose;
         }>,
     };
+
+    // Additive moves on top of the bone pose, the animator is created by the first one
+    animator: Animator | null = null;
+    weaponDrag = new WeaponDrag();
+    /** The weapon the playing moves belong to, they stop if it changes */
+    moveWeapon = "";
+    /** The body scale updateVisuals last set, the rest scale moves squash from */
+    bodyScale = 1;
 
     perks: Array<{
         type: string;
@@ -475,11 +487,14 @@ export class Player implements AbstractObject {
         };
 
         this.playAnim(Anim.None, -1);
+        this.animator?.clear();
+        this.moveWeapon = "";
     }
 
     m_free() {
         this.container.visible = false;
         this.auraContainer.visible = false;
+        this.animator?.clear();
         for (const emitter of this.useItemEmitters) {
             emitter.stop();
         }
@@ -551,6 +566,7 @@ export class Player implements AbstractObject {
             this.m_netData.m_perks = data.perks;
             if (data.animSeq != this.anim.seq) {
                 this.playAnim(data.animType, data.animSeq);
+                this.playMoves(data.animType);
             }
             this.m_action.type = data.actionType;
             this.m_action.seq = data.actionSeq;
@@ -1293,6 +1309,18 @@ export class Player implements AbstractObject {
             displayingStats,
         );
 
+        const animator = this.animator;
+        if (animator?.awake) {
+            if (this.m_netData.m_dead) {
+                animator.clear();
+            } else {
+                if (this.downed || this.m_netData.m_activeWeapon != this.moveWeapon) {
+                    animator.stop(0.06);
+                }
+                animator.update(dt);
+            }
+        }
+
         // @NOTE: There's an off-by-one frame issue for effects spawned earlier
         // in this frame that reference renderLayer / zOrd / zIdx. This issue is
         // prevalent for other effects that reference the player outside of
@@ -1807,6 +1835,7 @@ export class Player implements AbstractObject {
         } else {
             this.visorSprite.visible = false;
         }
+        this.bodyScale = bodyScale;
         this.bodyContainer.scale.set(bodyScale, bodyScale);
     }
 
@@ -2197,6 +2226,23 @@ export class Player implements AbstractObject {
             a.weight = 0;
             a.pose.copy(this.bones[i]);
         }
+    }
+
+    /** Starts the additive moves that go with an anim from the server, after playAnim picked it */
+    playMoves(type: Anim) {
+        if (type != Anim.Melee) {
+            this.animator?.stop(0.08);
+            return;
+        }
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "melee") return;
+
+        this.animator ??= new Animator(this, [this.weaponDrag]);
+        // The last swing blends into this one
+        this.animator.stop(0.05);
+        this.animator.play(meleeAttackMove(def, this.anim.data.mirror));
+        this.weaponDrag.weight = meleeWeight(def);
+        this.moveWeapon = this.m_netData.m_activeWeapon;
     }
 
     updateAnim(dt: number, animCtx: AnimCtx) {
