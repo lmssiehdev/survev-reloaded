@@ -40,8 +40,21 @@ export class GameRunner {
     /** does nothing while a game is still running */
     create(id: string, config: GameMode) {
         if (this.game) return;
-        const game = new Game(id, config, this.host.gameOptions(id, config), this.hooks);
-        this.game = game;
+        this.game = new Game(id, config, this.host.gameOptions(id, config), this.hooks);
+        this.resume();
+    }
+
+    /** stops ticking the game, it picks up where it left off on resume */
+    pause() {
+        for (const timer of this.timers) clearInterval(timer);
+        this.timers = [];
+    }
+
+    resume() {
+        const game = this.game;
+        if (!game || this.timers.length) return;
+        // the paused time isn't game time
+        game.now = performance.now();
         this.timers = [
             setInterval(() => game.update(), 1000 / game.options.gameTps),
             setInterval(() => game.netSync(), 1000 / game.options.netSyncTps),
@@ -70,8 +83,7 @@ export class GameRunner {
     }
 
     private drop() {
-        for (const timer of this.timers) clearInterval(timer);
-        this.timers = [];
+        this.pause();
         this.game = undefined;
     }
 }

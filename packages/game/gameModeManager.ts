@@ -128,6 +128,9 @@ export class GameModeManager {
     }
 
     isGameStarted(): boolean {
+        if (!this.game.options.waitForActivePlayers) {
+            return this.aliveCount() >= this.game.options.minPlayers;
+        }
         return this.cantDespawnAliveCount() >= this.game.options.minPlayers;
     }
 

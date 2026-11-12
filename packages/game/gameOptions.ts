@@ -88,6 +88,12 @@ export interface GameOptions {
      */
     minPlayers: number;
     /**
+     * Count only players past their despawn grace (GameConfig.player.minActiveTime) towards minPlayers,
+     * so a matchmade game doesn't start with a player who may still leave.
+     * Off for a game that should start as soon as its players join.
+     */
+    waitForActivePlayers: boolean;
+    /**
      * Limits how many simultaneous connections an IP can have in a game.
      */
     rateLimitsEnabled: boolean;
@@ -106,6 +112,7 @@ export function defaultGameOptions(logger: GameLogger): GameOptions {
         gameTps: 100,
         netSyncTps: 33,
         minPlayers: 2,
+        waitForActivePlayers: true,
         rateLimitsEnabled: false,
         uniqueInGameNames: true,
         defaultItems: {},
