@@ -16,7 +16,8 @@ const PlayerHeight = 0.35;
 export class Shadows {
     container = new PIXI.Container();
     pool = new SpritePool(this.container, () => new PIXI.Sprite());
-    blur = new PIXI.BlurFilter(3, 2, 0.5);
+    // One blur pass at half resolution: soft enough, and cheap on integrated GPUs.
+    blur = new PIXI.BlurFilter(3, 1, 0.5);
 
     constructor(public falloff: PIXI.Texture) {
         this.container.filters = [this.blur];
