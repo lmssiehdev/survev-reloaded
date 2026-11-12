@@ -749,6 +749,66 @@ const BaseDefs: Record<string, MeleeDef> = {
             leftHandOntop: true,
         },
     },
+    // The naginata's reach and timings, a thrust instead of a sweep. Not in any loot
+    // table: it comes from the account loadout, like the other non default melee weapons
+    trident: {
+        name: "Trident",
+        type: "melee",
+        quality: 1,
+        armorPiercing: true,
+        cleave: true,
+        autoAttack: false,
+        switchDelay: 0.25,
+        damage: 56,
+        obstacleDamage: 1.92,
+        attack: {
+            offset: {
+                x: 3.5,
+                y: 0,
+            },
+            rad: 2,
+            damageTimes: [0.27],
+            cooldownTime: 0.54,
+        },
+        speed: {
+            equip: 1,
+        },
+        anim: {
+            idlePose: "meleeNaginata",
+            attackAnims: ["tridentThrust"],
+            weight: 1.2,
+        },
+        sound: {
+            pickup: "heavy_pickup_01",
+            swing: "heavy_swing_01",
+            deploy: "stow_weapon_01",
+            playerHit: "axe_hit_01",
+        },
+        lootImg: {
+            sprite: "loot-melee-trident.img",
+            tint: 0xffffff,
+            border: "loot-circle-outer-02.img",
+            borderTint: 0xffffff,
+            scale: 0.26,
+            mirror: true,
+            rot: 2.35619,
+        },
+        worldImg: {
+            sprite: "loot-melee-trident.img",
+            pos: {
+                x: 42.5,
+                y: -3,
+            },
+            // The naginata's grip turned end for end, so the head leads instead of trailing
+            rot: -1.2416,
+            scale: {
+                x: 0.35,
+                y: 0.35,
+            },
+            tint: 0xffffff,
+            leftHandOntop: true,
+        },
+    },
     stonehammer: {
         name: "Stone Hammer",
         type: "melee",

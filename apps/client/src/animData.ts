@@ -423,6 +423,34 @@ export const Animations: Record<
             effect(def("naginata").attack.damageTimes[0], "animMeleeCollision", {}),
         ],
     },
+    // A straight thrust from the naginata grip: draw back, then both hands drive forward
+    tridentThrust: {
+        keyframes: [
+            frame(0, {
+                [Bones.HandL]: new Pose(v2.create(19, -7.25)),
+                [Bones.HandR]: new Pose(v2.create(8.5, 24.25)),
+            }),
+            frame(def("trident").attack.damageTimes[0] * 0.45, {
+                [Bones.HandL]: new Pose(v2.create(9, -7.25)),
+                [Bones.HandR]: new Pose(v2.create(-1.5, 24.25)),
+            }),
+            // Swung round so the shaft lines up with the aim as it drives forward
+            frame(def("trident").attack.damageTimes[0], {
+                [Bones.HandL]: new Pose(v2.create(33, -7.25)).rotate(Math.PI * 0.36),
+                [Bones.HandR]: new Pose(v2.create(22.5, 24.25)).rotate(Math.PI * 0.36),
+            }),
+            frame(def("trident").attack.cooldownTime, {
+                [Bones.HandL]: new Pose(v2.create(19, -7.25)),
+                [Bones.HandR]: new Pose(v2.create(8.5, 24.25)),
+            }),
+        ],
+        effects: [
+            effect(def("trident").attack.damageTimes[0] * 0.5, "animPlaySound", {
+                sound: "swing",
+            }),
+            effect(def("trident").attack.damageTimes[0], "animMeleeCollision", {}),
+        ],
+    },
     sawSwing: {
         keyframes: [
             frame(0, { [Bones.HandR]: new Pose(v2.create(1, 17.75)) }),

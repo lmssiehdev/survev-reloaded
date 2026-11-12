@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="84" viewBox="0 0 400 84">
+  <defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4e5e6"/><stop offset="1" stop-color="#a1a3a6"/></linearGradient>
+    <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4d51"/><stop offset="1" stop-color="#2b2d30"/></linearGradient>
+  </defs>
+  <g stroke="#000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- shaft -->
+    <rect x="52" y="34" width="210" height="16" rx="3" fill="url(#iron)"/>
+    <!-- wrapped grip -->
+    <rect x="96" y="31" width="74" height="22" rx="3" fill="#6b4a2f"/>
+    <!-- collar -->
+    <path d="M84 30 L98 34 L98 50 L84 54 Z" fill="url(#steel)"/>
+    <!-- pommel: crescent guard and ring -->
+    <path d="M56 26 Q40 42 56 58 L60 48 L60 36 Z" fill="url(#steel)"/>
+    <circle cx="30" cy="42" r="10" fill="none"/>
+    <!-- head: rear prongs, front barbs, flame blade with diamond cutout -->
+    <path fill-rule="evenodd" fill="url(#steel)" d="
+      M256 36 L270 30 Q262 18 268 6 Q278 22 296 26
+      L318 30 Q314 20 320 12 Q328 24 342 28
+      Q372 32 394 42
+      Q372 52 342 56 Q328 60 320 72 Q314 64 318 54
+      L296 58 Q278 62 268 78 Q262 66 270 54 L256 48 Z
+      M326 42 L348 33 L372 42 L348 51 Z"/>
+  </g>
+  <!-- one flat shade, like the naginata's edge highlight -->
+  <path d="M284 33 L322 33 L314 40 L296 40 Z" fill="#fff" opacity="0.35"/>
+</svg>

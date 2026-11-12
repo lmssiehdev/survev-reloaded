@@ -2254,7 +2254,7 @@ export class Player implements AbstractObject {
         const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
         if (def?.type != "melee") return;
 
-        this.meleeClip = this.playWeaponMove(meleeAttackMove(def, this.anim.data.mirror));
+        this.meleeClip = this.playWeaponMove(meleeAttackMove(def, this.anim.data.type, this.anim.data.mirror));
         this.weaponDrag.weight = meleeWeight(def);
     }
 
