@@ -2,6 +2,7 @@ import { math } from "@survev/shared/utils/math.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
+import { hitStop } from "../anim/hitStop.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
@@ -297,7 +298,9 @@ export class ParticleBarn {
         return emitter;
     }
 
-    m_update(dt: number, camera: Camera) {
+    m_update(realDt: number, camera: Camera) {
+        // Purely visual, so particles hold still through a hit stop
+        const dt = realDt * hitStop.scale;
         // Update emitters
         for (let i = 0; i < this.emitters.length; i++) {
             const e = this.emitters[i];
@@ -428,6 +431,95 @@ const ParticleDefs: Record<string, ParticleDef> = {
         },
         color: function() {
             return util.rgbToInt(util.hsvToRgb(0.06, 0.84, util.random(0.46, 0.48)));
+        },
+    },
+    // Body hits and the death pop. They hold full alpha and fade at the end instead of
+    // shrinking away; the white flare is only on screen for a frame or two.
+    bodyHitFlash: {
+        image: ["part-flare-01.img"],
+        life: 0.034,
+        drag: 0,
+        rotVel: 0,
+        scale: { start: 0.14, end: 0.12, lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 1, lerp: new Range(0, 1) },
+        color: 0xffffff,
+        ignoreValueAdjust: true,
+    },
+    /** Takes the hit player's skin colour from setColor */
+    bodyHitChip: {
+        image: ["part-spark-02.img"],
+        life: 0.5,
+        drag: new Range(1, 10),
+        rotVel: 0,
+        scale: { start: new Range(0.056, 0.08), end: new Range(0.013, 0.024), lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 0, lerp: new Range(0.95, 1) },
+        color: 0xf8c574,
+    },
+    bodyHitSpark: {
+        image: ["part-spark-02.img"],
+        life: new Range(0.3, 0.45),
+        drag: new Range(3, 6),
+        rotVel: new Range(Math.PI * 2, Math.PI * 4),
+        scale: { start: new Range(0.053, 0.07), end: new Range(0.011, 0.019), lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 0, lerp: new Range(0.9, 1) },
+        color: function() {
+            return util.rgbToInt(util.hsvToRgb(0.58, util.random(0.04, 0.1), util.random(0.92, 1)));
+        },
+    },
+    deathPopFlash: {
+        image: ["part-flare-01.img"],
+        life: 0.034,
+        drag: 0,
+        rotVel: 0,
+        scale: { start: 0.3, end: 0.26, lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 1, lerp: new Range(0, 1) },
+        color: 0xffffff,
+        ignoreValueAdjust: true,
+    },
+    /** Torn skin, break pieces that spin and drag to a stop. Takes the skin colour from setColor */
+    deathPopScrap: {
+        image: ["part-cloth-01.img"],
+        life: new Range(0.9, 1.2),
+        drag: new Range(3, 5),
+        rotVel: new Range(Math.PI * 2.5, Math.PI * 3.5),
+        scale: { start: new Range(0.19, 0.26), end: new Range(0.16, 0.21), lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 0, lerp: new Range(0.9, 1) },
+        color: 0xf8c574,
+    },
+    deathPopChip: {
+        image: ["part-spark-02.img"],
+        life: new Range(0.4, 0.6),
+        drag: new Range(2, 6),
+        rotVel: 0,
+        scale: { start: new Range(0.04, 0.06), end: new Range(0.011, 0.019), lerp: new Range(0, 1) },
+        alpha: { start: 1, end: 0, lerp: new Range(0.9, 1) },
+        color: function() {
+            return util.rgbToInt(util.hsvToRgb(0, 1, util.random(0.45, 0.8)));
+        },
+    },
+    deathPopSplat: {
+        image: ["part-splat-01.img", "part-splat-02.img", "part-splat-03.img"],
+        life: 1.1,
+        drag: 0,
+        rotVel: 0,
+        scale: { start: 0.056, end: new Range(0.255, 0.3), lerp: new Range(0, 0.3) },
+        alpha: { start: 1, end: 0, lerp: new Range(0.7, 1) },
+        color: function() {
+            return util.rgbToInt(util.hsvToRgb(0, 1, util.random(0.45, 0.8)));
+        },
+    },
+    /** Pale warm smoke kicked up by a step, fades over the last part of its life */
+    stepDust: {
+        image: ["part-smoke-02.img"],
+        life: new Range(0.45, 0.6),
+        drag: 2,
+        rotVel: new Range(Math.PI * 0.25, Math.PI * 0.5),
+        scale: { start: 0.0375, end: new Range(0.0625, 0.072), lerp: new Range(0, 1) },
+        alpha: { start: 0.9, end: 0, lerp: new Range(0.6, 1) },
+        color: function() {
+            return util.rgbToInt(
+                util.hsvToRgb(util.random(0.09, 0.11), util.random(0.08, 0.14), util.random(0.88, 0.94)),
+            );
         },
     },
     bloodSplat: {

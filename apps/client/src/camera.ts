@@ -1,5 +1,11 @@
 import { math } from "@survev/shared/utils/math.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { Spring } from "./anim/spring.ts";
+
+/** Trauma lost a second */
+const traumaDecay = 2.6;
+/** World units of shake at full trauma */
+const maxTraumaShake = 1.1;
 
 export default class Camera {
     m_pos = v2.create(0, 0);
@@ -10,6 +16,10 @@ export default class Camera {
     m_screenHeight = 1;
     m_shakeEnabled = true;
     m_shakeInt = 0;
+    m_kickX = new Spring(150, 16);
+    m_kickY = new Spring(150, 16);
+    m_trauma = 0;
+    m_feelTime = 0;
 
     m_interpEnabled = true;
     m_localRotationEnabled = false;
@@ -59,9 +69,29 @@ export default class Camera {
         this.m_shakeInt = Math.max(this.m_shakeInt, newInt);
     }
 
-    m_applyShake() {
+    /** Directional shove, world units, springs back on its own */
+    m_addKick(dir: Vec2, amount: number) {
+        this.m_kickX.shove(dir.x * amount);
+        this.m_kickY.shove(dir.y * amount);
+    }
+
+    /** Shake grows with trauma squared, so small shots stay readable and only big events move the view */
+    m_addTrauma(amount: number) {
+        this.m_trauma = Math.min(this.m_trauma + amount, 1);
+    }
+
+    m_applyShake(dt: number) {
+        this.m_kickX.update(dt);
+        this.m_kickY.update(dt);
+        this.m_trauma = Math.max(this.m_trauma - traumaDecay * dt, 0);
+        this.m_feelTime += dt;
         if (this.m_shakeEnabled) {
             this.m_pos = v2.add(this.m_pos, v2.randomUnit(this.m_shakeInt));
+            // Sums of fast sines read like noise and need no allocation
+            const t = this.m_feelTime;
+            const shake = this.m_trauma * this.m_trauma * maxTraumaShake;
+            this.m_pos.x += this.m_kickX.pos + shake * Math.sin(t * 61) * Math.cos(t * 37);
+            this.m_pos.y += this.m_kickY.pos + shake * Math.sin(t * 53 + 1.7) * Math.cos(t * 41);
         }
         this.m_shakeInt = 0;
     }

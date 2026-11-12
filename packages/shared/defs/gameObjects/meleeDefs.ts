@@ -25,6 +25,11 @@ export interface MeleeDef extends BaseWeaponDef, BaseLoadoutItem {
         & {
             idlePose: string;
             attackAnims: string[];
+            /**
+             * How heavy the weapon looks in the client's additive moves: 0 is weightless,
+             * 1 a machete, 2 a sledgehammer. Visual only.
+             */
+            weight?: number;
         }
         & ({
             deployAnimTime: number;
@@ -103,6 +108,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["fists"],
+            weight: 0,
         },
         sound: {
             pickup: "none",
@@ -201,6 +207,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "slash",
             attackAnims: ["slash", "stab"],
+            weight: 0.25,
             deployAnims: ["karambit_spin", "karambit_rapidSpin"],
             deployAnimTime: 0.65,
             idleAnims: ["karambit_frontSpin", "karambit_backSpin"],
@@ -260,6 +267,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["cut", "thrust"],
+            weight: 0.3,
             deployAnims: ["bayonet_unsheathe"],
             deployAnimTime: 0.65,
             idleAnims: ["knife_inspect"],
@@ -430,6 +438,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "machete",
             attackAnims: ["cutReverse"],
+            weight: 0.9,
         },
         sound: {
             pickup: "frag_pickup_01",
@@ -594,6 +603,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeTwoHanded",
             attackAnims: ["axeSwing"],
+            weight: 1.3,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -650,6 +660,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeKatana",
             attackAnims: ["katanaSwing"],
+            weight: 0.6,
         },
         sound: {
             pickup: "frag_pickup_01",
@@ -706,6 +717,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeNaginata",
             attackAnims: ["naginataSwing"],
+            weight: 1.1,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -729,6 +741,66 @@ const BaseDefs: Record<string, MeleeDef> = {
                 y: -3,
             },
             rot: 1.9,
+            scale: {
+                x: 0.35,
+                y: 0.35,
+            },
+            tint: 0xffffff,
+            leftHandOntop: true,
+        },
+    },
+    // The naginata's reach and timings, a thrust instead of a sweep. Not in any loot
+    // table: it comes from the account loadout, like the other non default melee weapons
+    trident: {
+        name: "Trident",
+        type: "melee",
+        quality: 1,
+        armorPiercing: true,
+        cleave: true,
+        autoAttack: false,
+        switchDelay: 0.25,
+        damage: 56,
+        obstacleDamage: 1.92,
+        attack: {
+            offset: {
+                x: 3.5,
+                y: 0,
+            },
+            rad: 2,
+            damageTimes: [0.27],
+            cooldownTime: 0.54,
+        },
+        speed: {
+            equip: 1,
+        },
+        anim: {
+            idlePose: "meleeNaginata",
+            attackAnims: ["tridentThrust"],
+            weight: 1.2,
+        },
+        sound: {
+            pickup: "heavy_pickup_01",
+            swing: "heavy_swing_01",
+            deploy: "stow_weapon_01",
+            playerHit: "axe_hit_01",
+        },
+        lootImg: {
+            sprite: "loot-melee-trident.img",
+            tint: 0xffffff,
+            border: "loot-circle-outer-02.img",
+            borderTint: 0xffffff,
+            scale: 0.26,
+            mirror: true,
+            rot: 2.35619,
+        },
+        worldImg: {
+            sprite: "loot-melee-trident.img",
+            pos: {
+                x: 42.5,
+                y: -3,
+            },
+            // The naginata's grip turned end for end, so the head leads instead of trailing
+            rot: -1.2416,
             scale: {
                 x: 0.35,
                 y: 0.35,
@@ -762,6 +834,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "meleeTwoHanded",
             attackAnims: ["hammerSwing"],
+            weight: 1.8,
         },
         sound: {
             pickup: "heavy_pickup_01",
@@ -925,6 +998,7 @@ const BaseDefs: Record<string, MeleeDef> = {
         anim: {
             idlePose: "fists",
             attackAnims: ["pan"],
+            weight: 1,
         },
         sound: {
             pickup: "pan_pickup_01",

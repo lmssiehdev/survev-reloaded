@@ -22,6 +22,14 @@ import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { Animator, type ClipLayer } from "../anim/animator.ts";
+import { FeelLayer, heavyHit, heavyHitStop } from "../anim/feel.ts";
+import { cycleMove, drawMove, reloadMove } from "../anim/gun.ts";
+import type { GunFeel } from "../anim/gunFeel.ts";
+import { hitStop } from "../anim/hitStop.ts";
+import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
+import type { Move } from "../anim/move.ts";
+import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
@@ -36,6 +44,7 @@ import type { SoundHandle } from "../lib/createJS.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
 import type { UiManager2 } from "../ui/ui2.ts";
+import { playBodyHitFx, playStepDustFx } from "./bodyFx.ts";
 import { AbstractObject, Pool } from "./objectPool.ts";
 import type { Obstacle } from "./obstacle.ts";
 import type { Emitter, EmitterOptions, ParticleBarn } from "./particles.ts";
@@ -97,11 +106,12 @@ class Gun {
 
     container = new PIXI.Container();
     magTop = false;
+    readonly restRotation = Math.PI * 0.5;
 
     constructor() {
         this.container.addChild(this.gunBarrel);
         this.container.addChild(this.gunMag);
-        this.container.rotation = Math.PI * 0.5;
+        this.container.rotation = this.restRotation;
         this.container.visible = false;
     }
 
@@ -211,6 +221,19 @@ export class Player implements AbstractObject {
             pose: Pose;
         }>,
     };
+
+    // Additive moves on top of the bone pose, the animator is created by the first one
+    animator: Animator | null = null;
+    weaponDrag = new WeaponDrag();
+    feel = new FeelLayer(this.bodyContainer);
+    /** The weapon the playing moves belong to, they stop if it changes */
+    moveWeapon = "";
+    meleeClip: ClipLayer | null = null;
+    reloadClip: ClipLayer | null = null;
+    /** The body scale updateVisuals last set, the rest scale moves squash from */
+    bodyScale = 1;
+    /** The body's colour updateVisuals last set, for skin coloured particles */
+    skinTint = 0xf8c574;
 
     perks: Array<{
         type: string;
@@ -475,11 +498,16 @@ export class Player implements AbstractObject {
         };
 
         this.playAnim(Anim.None, -1);
+        this.animator?.clear();
+        this.moveWeapon = "";
+        this.meleeClip = null;
+        this.reloadClip = null;
     }
 
     m_free() {
         this.container.visible = false;
         this.auraContainer.visible = false;
+        this.animator?.clear();
         for (const emitter of this.useItemEmitters) {
             emitter.stop();
         }
@@ -551,6 +579,7 @@ export class Player implements AbstractObject {
             this.m_netData.m_perks = data.perks;
             if (data.animSeq != this.anim.seq) {
                 this.playAnim(data.animType, data.animSeq);
+                this.playMoves(data.animType);
             }
             this.m_action.type = data.actionType;
             this.m_action.seq = data.actionSeq;
@@ -844,6 +873,7 @@ export class Player implements AbstractObject {
 
         const weapTypeDirty = this.weapTypeOld != this.m_netData.m_activeWeapon;
         this.weapTypeOld = this.m_netData.m_activeWeapon;
+        if (weapTypeDirty && !this.isNew) this.playDrawMove();
 
         this.lastThrowablePickupSfxTicker -= dt;
         this.noCeilingRevealTicker -= dt;
@@ -978,6 +1008,7 @@ export class Player implements AbstractObject {
                 });
             } else if (this.stepDistance > 4 && !inWater) {
                 this.stepDistance = 0;
+                playStepDustFx(particleBarn, this, v2.normalizeSafe(v2.sub(this.m_pos, this.m_posOld), this.m_dir));
                 audioManager.playGroup(`footstep_${this.surface.type}`, {
                     soundPos: this.m_pos,
                     fallOff: 3,
@@ -1108,6 +1139,7 @@ export class Player implements AbstractObject {
             if (playEffect) {
                 this.playActionStartEffect(isActivePlayer, particleBarn, audioManager);
             }
+            this.playActionMoves();
         }
         this.m_action.seqOld = this.m_action.seq;
         this.updateActionEffect(isActivePlayer, playerInfo, particleBarn, audioManager);
@@ -1293,6 +1325,18 @@ export class Player implements AbstractObject {
             displayingStats,
         );
 
+        const animator = this.animator;
+        if (animator?.awake) {
+            if (this.m_netData.m_dead) {
+                animator.clear();
+            } else {
+                if (this.downed || this.m_netData.m_activeWeapon != this.moveWeapon) {
+                    animator.stop(0.06);
+                }
+                animator.update(dt * hitStop.scale);
+            }
+        }
+
         // @NOTE: There's an off-by-one frame issue for effects spawned earlier
         // in this frame that reference renderLayer / zOrd / zIdx. This issue is
         // prevalent for other effects that reference the player outside of
@@ -1463,9 +1507,10 @@ export class Player implements AbstractObject {
         const bodyScale = this.m_bodyRad / GameConfig.player.radius;
 
         this.bodySprite.texture = PIXI.Texture.from(outfitImg.baseSprite);
-        this.bodySprite.tint = outfitDef.ghillie
+        this.skinTint = outfitDef.ghillie
             ? map.getMapDef().biome.colors.playerGhillie
             : outfitImg.baseTint;
+        this.bodySprite.tint = this.skinTint;
         this.bodySprite.scale.set(0.25, 0.25);
         this.bodySprite.visible = true;
 
@@ -1807,6 +1852,7 @@ export class Player implements AbstractObject {
         } else {
             this.visorSprite.visible = false;
         }
+        this.bodyScale = bodyScale;
         this.bodyContainer.scale.set(bodyScale, bodyScale);
     }
 
@@ -2199,6 +2245,72 @@ export class Player implements AbstractObject {
         }
     }
 
+    /** Starts the additive moves that go with an anim from the server, after playAnim picked it */
+    playMoves(type: Anim) {
+        // A new anim replaces the swing, the last one blends into the next
+        this.meleeClip?.stop(type == Anim.Melee ? 0.05 : 0.08);
+        this.meleeClip = null;
+        if (type != Anim.Melee) return;
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "melee") return;
+
+        this.meleeClip = this.playWeaponMove(meleeAttackMove(def, this.anim.data.type, this.anim.data.mirror));
+        this.weaponDrag.weight = meleeWeight(def);
+    }
+
+    /** Plays a clip that belongs to the held weapon, it blends away if the weapon changes */
+    playWeaponMove(move: Move) {
+        this.animator ??= new Animator(this, [this.weaponDrag]);
+        this.moveWeapon = this.m_netData.m_activeWeapon;
+        return this.animator.play(move);
+    }
+
+    /** The new weapon swings in from the hip. Melee weapons have their own deploy anims */
+    playDrawMove() {
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "gun" && def?.type != "throwable") return;
+        this.animator?.stop(0.05);
+        this.playWeaponMove(drawMove());
+    }
+
+    /** A reload starts or is cut short, the server only says which and the def says how long */
+    playActionMoves() {
+        this.reloadClip?.stop(0.1);
+        this.reloadClip = null;
+        const type = this.m_action.type;
+        if (type != Action.Reload && type != Action.ReloadAlt) return;
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        if (def?.type != "gun") return;
+        const total = type == Action.ReloadAlt ? (def.reloadTimeAlt ?? def.reloadTime) : def.reloadTime;
+        this.reloadClip = this.playWeaponMove(reloadMove(total));
+    }
+
+    /** Puts the feel layer back in the animator if it had settled, so it can be shoved */
+    wakeFeel() {
+        this.animator ??= new Animator(this, [this.weaponDrag]);
+        if (this.feel.done) {
+            this.feel.wake();
+            this.animator.add(this.feel);
+        }
+        return this.feel;
+    }
+
+    playShotFeel(feel: GunFeel, def: GunDef) {
+        // Guns don't trail turns like a blade does
+        this.weaponDrag.weight = 0;
+        this.wakeFeel().shot(feel);
+        const cycle = cycleMove(def);
+        if (cycle) this.playWeaponMove(cycle);
+    }
+
+    /** A bullet or blade landed: dir is the way it travels, contact where it touched the body */
+    playHitFeel(dir: Vec2, contact: Vec2, damage: number) {
+        if (this.m_netData.m_dead) return 0;
+        const offX = contact.x - this.m_pos.x;
+        const offY = contact.y - this.m_pos.y;
+        return this.wakeFeel().hit(dir, offX * dir.y - offY * dir.x, damage);
+    }
+
     updateAnim(dt: number, animCtx: AnimCtx) {
         if (this.anim.data.type == "none") {
             this.playAnim(Anim.None, this.anim.seq);
@@ -2339,6 +2451,8 @@ export class Player implements AbstractObject {
             particle: string;
             sound: string | undefined;
             soundFn: "playSound" | "playGroup";
+            /** The player hit, null for obstacles */
+            target: Player | null;
         }> = [];
 
         // Obstacles
@@ -2399,6 +2513,7 @@ export class Player implements AbstractObject {
                 particle: obstacleDef.hitParticle,
                 sound: obstacleDef.sound.punch,
                 soundFn: "playGroup",
+                target: null,
             });
         }
 
@@ -2463,6 +2578,7 @@ export class Player implements AbstractObject {
                 particle: "bloodSplat",
                 sound: hitSound,
                 soundFn: "playSound",
+                target: playerCol,
             });
         }
 
@@ -2497,6 +2613,16 @@ export class Player implements AbstractObject {
                     layer: this.layer,
                     filter: "muffled",
                 });
+            }
+            if (hit.target) {
+                const dir = v2.normalizeSafe(v2.sub(hit.target.m_pos, this.m_pos), this.m_dir);
+                const contact = v2.sub(hit.target.m_pos, v2.mul(dir, hit.target.m_rad));
+                const amount = hit.target.playHitFeel(dir, contact, meleeDef.damage);
+                const activeId = animCtx.playerBarn.activeId;
+                if (amount >= heavyHit && (this.__id == activeId || hit.target.__id == activeId)) {
+                    hitStop.add(heavyHitStop);
+                }
+                playBodyHitFx(animCtx.particleBarn, hit.target, contact, dir, this.m_netData.m_activeWeapon != "fists");
             }
         }
     }
@@ -2628,6 +2754,8 @@ export interface ClientPlayerStatus extends PlayerStatus {
 
 export class PlayerBarn {
     playerPool = new Pool(Player);
+    /** The player the camera follows, ourselves or whoever we spectate */
+    activeId = 0;
     playerInfo: Record<number, PlayerInfo & { nameTruncated: string; anonName: string }> = {};
 
     playerIds: number[] = [];
@@ -2664,6 +2792,7 @@ export class PlayerBarn {
         displayingStats: boolean,
         isSpectating?: boolean,
     ) {
+        this.activeId = activeId;
         // Update players
         const players = this.playerPool.m_getPool();
         for (let i = 0; i < players.length; i++) {
