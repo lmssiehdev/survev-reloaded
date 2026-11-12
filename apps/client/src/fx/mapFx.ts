@@ -6,7 +6,6 @@ import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import { createFalloffTexture, type FxWorld } from "./common.ts";
-import { Grade } from "./grade.ts";
 import { Lights } from "./lights.ts";
 import { type Look, sampleLook } from "./look.ts";
 import { Shadows } from "./shadows.ts";
@@ -42,18 +41,35 @@ function devOverrides(fx: MatchFx): MatchFx {
     return out;
 }
 
-// Footprints of ground-level buildings, where no rain falls.
-function dryZones(map: Map) {
-    const zones: AABB[] = [];
-    const buildings = map.m_buildingPool.m_getPool();
-    for (let i = 0; i < buildings.length; i++) {
-        const b = buildings[i];
-        if (!b.active || b.layer != 0) continue;
-        for (const region of b.ceiling.zoomRegions) {
-            if (region.zoomIn) zones.push(collider.toAabb(region.zoomIn));
+// Footprints of ground-level buildings, where no rain falls. Buildings never move, so the
+// list is only rebuilt when one streams in or out.
+class DryZones {
+    zones: AABB[] = [];
+    // Which buildings the list was built from: count and id sum catch one swapped for another.
+    key = "";
+
+    update(map: Map) {
+        const buildings = map.m_buildingPool.m_getPool();
+        let count = 0;
+        let ids = 0;
+        for (let i = 0; i < buildings.length; i++) {
+            const b = buildings[i];
+            if (!b.active || b.layer != 0) continue;
+            count++;
+            ids += b.__id;
+        }
+        const key = `${count}:${ids}`;
+        if (key == this.key) return;
+        this.key = key;
+        this.zones = [];
+        for (let i = 0; i < buildings.length; i++) {
+            const b = buildings[i];
+            if (!b.active || b.layer != 0) continue;
+            for (const region of b.ceiling.zoomRegions) {
+                if (region.zoomIn) this.zones.push(collider.toAabb(region.zoomIn));
+            }
         }
     }
-    return zones;
 }
 
 export class MapFx {
@@ -72,12 +88,12 @@ export class MapFx {
     look: Look = sampleLook(15, null);
 
     falloff = createFalloffTexture();
-    grade = new Grade();
     shadows = new Shadows(this.falloff);
     lights = new Lights(this.falloff);
     sway = new Sway();
     weather = new Weather("clear");
     weatherAudio: WeatherAudio | null = null;
+    dryZones = new DryZones();
 
     constructor(public canvasMode: boolean) {
         this.world.addChild(this.grass);
@@ -153,22 +169,19 @@ export class MapFx {
         else this.lights.hide();
     }
 
+    // Weather and grade share one full-screen pass; either one turns it on.
     updateFilters(camera: Camera, map: Map) {
         const grade = this.on("grade");
-        const filters = [
-            ...(this.on("weather") ? [this.weather.filter] : []),
-            ...(grade ? [this.grade.filter] : []),
-        ];
-        const filtered = filters.length > 0;
+        const filtered = grade || this.on("weather");
         this.screen.width = camera.m_screenWidth;
         this.screen.height = camera.m_screenHeight;
-        this.world.filters = filtered ? filters : null;
+        this.world.filters = filtered ? [this.weather.filter] : null;
         this.world.filterArea = this.screen;
         this.grass.visible = filtered;
         this.grass.width = this.screen.width;
         this.grass.height = this.screen.height;
         this.grass.tint = map.mapLoaded ? map.getMapDef().biome.colors.grass : 0x80af49;
-        if (grade) this.grade.update(this.look);
+        this.weather.setGrade(grade ? this.look : null);
     }
 
     updateWeather(dt: number, camera: Camera, w: FxWorld) {
@@ -179,8 +192,10 @@ export class MapFx {
         // Rain outside is quieter but still there; underground almost nothing gets through.
         const muffle = muffleFor(underground, indoors);
         this.weather.setVisible(on && !underground);
+        if (!on) this.weather.clearAtmosphere();
         if (on) {
-            this.weather.setDryZones(dryZones(w.map));
+            this.dryZones.update(w.map);
+            this.weather.setDryZones(this.dryZones.zones);
             this.weather.update(dt, camera, w.map, this.look.fog, 1 - this.look.night, (dist) => {
                 if (dist < 0.4 && !underground) camera.m_addShake(camera.m_pos, 0.15 * (1 - dist));
                 this.weatherAudio?.thunder(dist, muffle);

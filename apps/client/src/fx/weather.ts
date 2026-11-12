@@ -5,6 +5,7 @@ import type { Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
+import type { Look } from "./look.ts";
 
 // Weather: one world-space atmosphere pass plus particle layers.
 
@@ -51,6 +52,9 @@ uniform float uRain;
 uniform vec2 uWindDir;
 uniform float uVignette;
 uniform vec4 uShock[${MaxShocks}];
+uniform vec3 uShade;
+uniform float uSat;
+uniform float uContrast;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -101,21 +105,26 @@ void main() {
     vec2 world = uCam + vec2(px.x - uScreen.x * 0.5, uScreen.y * 0.5 - px.y) / uZoom;
 
     // Cloud shadows drifting with the wind. Kept to 10-20%, and cool: red drops most, blue least.
-    float cl = fbm((world + uCloudOff) * 0.011);
-    float lo = 0.62 - 0.28 * uCloud;
-    float shade = smoothstep(lo, lo + 0.22, cl) * (0.1 + 0.1 * uCloud);
-    col *= 1.0 - shade * vec3(1.0, 0.9, 0.7);
+    // Noise is the expensive part, so each layer is skipped when it is off.
+    if (uCloud > 0.0) {
+        float cl = fbm((world + uCloudOff) * 0.011);
+        float lo = 0.62 - 0.28 * uCloud;
+        float shade = smoothstep(lo, lo + 0.22, cl) * (0.1 + 0.1 * uCloud);
+        col *= 1.0 - shade * vec3(1.0, 0.9, 0.7);
+    }
 
     // Wet ground: deeper, cooler, more contrast.
     col = pow(max(col, 0.0), vec3(1.0 + 0.3 * uWet)) * mix(vec3(1.0), vec3(0.9, 0.95, 1.04), uWet);
 
     // Rolling fog banks, thinner around the player.
-    vec2 sc = (px - uScreen * 0.5) / min(uScreen.x, uScreen.y);
-    float r = length(sc);
-    float f = fbm((world + uFogOff) * 0.03 + vec2(0.0, uTime * 0.015));
-    float fogAmt = uFog * smoothstep(0.3, 0.75, f + 0.25 * uFog) * mix(0.3, 1.0, smoothstep(0.08, 0.5, r));
-    // Capped so nothing within scope range ever fully disappears.
-    col = mix(col, uFogColor, clamp(fogAmt, 0.0, 0.5));
+    if (uFog > 0.0) {
+        vec2 sc = (px - uScreen * 0.5) / min(uScreen.x, uScreen.y);
+        float r = length(sc);
+        float f = fbm((world + uFogOff) * 0.03 + vec2(0.0, uTime * 0.015));
+        float fogAmt = uFog * smoothstep(0.3, 0.75, f + 0.25 * uFog) * mix(0.3, 1.0, smoothstep(0.08, 0.5, r));
+        // Capped so nothing within scope range ever fully disappears.
+        col = mix(col, uFogColor, clamp(fogAmt, 0.0, 0.5));
+    }
 
     // Distant rain sheets: stretched noise sliding along the wind, far cheaper than more drops.
     if (uRain > 0.01) {
@@ -132,7 +141,14 @@ void main() {
     col += uFlash * vec3(0.7, 0.78, 1.0) * (0.45 + 0.55 * l);
 
     vec2 e = (px - uScreen * 0.5) / (uScreen * 0.5);
-    col *= 1.0 - uVignette * smoothstep(0.5, 1.5, length(e));
+    col = clamp(col * (1.0 - uVignette * smoothstep(0.5, 1.5, length(e))), 0.0, 1.0);
+
+    // Colour grade, in the same pass to save a full-screen draw. It never tints: the lightmap
+    // owns colour, this only shapes it. Darks sink into the shade colour instead of black.
+    float gl = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(vec3(gl), col, uSat);
+    col = (col - 0.5) * uContrast + 0.5;
+    col += uShade * (1.0 - smoothstep(0.0, 0.5, gl)) * 0.5;
     gl_FragColor = vec4(clamp(col, 0.0, 1.0) * c.a, c.a);
 }
 `;
@@ -219,6 +235,9 @@ export class Weather {
         uWindDir: [1, 0],
         uVignette: 0.3,
         uShock: new Float32Array(MaxShocks * 4),
+        uShade: [0, 0, 0],
+        uSat: 1,
+        uContrast: 1,
     });
 
     // Ground-level splashes sit under the lightmap; rain and leaves fall on top of everything.
@@ -260,6 +279,26 @@ export class Weather {
         this.name = name;
         this.target = WeatherPresets[name];
         if (snap) this.cur = { ...this.target };
+    }
+
+    /** grades the screen pass with the look, or leaves colour alone with null */
+    setGrade(look: Look | null) {
+        const u = this.filter.uniforms;
+        u.uShade = look?.shade ?? [0, 0, 0];
+        u.uSat = look?.sat ?? 1;
+        u.uContrast = look?.contrast ?? 1;
+    }
+
+    /** turns the weather part of the screen pass off, for grade-only setups */
+    clearAtmosphere() {
+        const u = this.filter.uniforms;
+        u.uCloud = 0;
+        u.uFog = 0;
+        u.uWet = 0;
+        u.uFlash = 0;
+        u.uRain = 0;
+        u.uVignette = 0;
+        (u.uShock as Float32Array).fill(0);
     }
 
     setVisible(visible: boolean) {
