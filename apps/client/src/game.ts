@@ -422,7 +422,7 @@ export class Game {
         this.updateAmbience();
 
         this.m_camera.m_pos = v2.copy(this.m_activePlayer.m_visualPos);
-        this.m_camera.m_applyShake();
+        this.m_camera.m_applyShake(dt);
         const zoom = this.m_activePlayer.m_getZoom();
 
         const minDim = math.min(
@@ -855,6 +855,7 @@ export class Game {
             this.m_playerBarn,
             this.m_particleBarn,
             this.m_audioManager,
+            this.m_camera,
         );
         this.m_particleBarn.m_update(dt, this.m_camera);
         this.m_deadBodyBarn.m_update(

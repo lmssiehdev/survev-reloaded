@@ -2,7 +2,9 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { FactionTeam, GameConfig } from "@survev/shared/gameConfig.ts";
 import type { Bullet } from "@survev/shared/net/updateMsg.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { gunFeel } from "../anim/gunFeel.ts";
 import type { AudioManager } from "../audioManager.ts";
+import type { Camera } from "../camera.ts";
 import type { ParticleBarn } from "./particles.ts";
 import type { PlayerBarn } from "./player.ts";
 
@@ -104,6 +106,7 @@ export class ShotBarn {
         playerBarn: PlayerBarn,
         particleBarn: ParticleBarn,
         audioManager: AudioManager,
+        camera: Camera,
     ) {
         for (let i = 0; i < this.shots.length; i++) {
             const shot = this.shots[i];
@@ -218,10 +221,16 @@ export class ShotBarn {
                             );
                         }
 
-                        // Hands and gun recoil
+                        // Hands and gun recoil, then the rest of the shot goes back through the body
+                        const feel = gunFeel(shot.weaponType);
                         const leftHand = shot.offhand || !weaponDef.isDual;
                         const rightHand = !shot.offhand || !weaponDef.isDual;
-                        player.addRecoil(weaponDef.worldImg.recoil, leftHand, rightHand);
+                        player.addRecoil(weaponDef.worldImg.recoil * feel.handKick, leftHand, rightHand);
+                        player.playShotFeel(feel);
+                        if (shot.playerId == activePlayerId) {
+                            camera.m_addKick(player.m_dir, -feel.cameraKick);
+                            camera.m_addTrauma(feel.shake);
+                        }
 
                         // Add fireDelay
                         player.fireDelay = weaponDef.fireDelay;

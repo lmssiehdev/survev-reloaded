@@ -23,6 +23,8 @@ import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { Animator } from "../anim/animator.ts";
+import { FeelLayer } from "../anim/feel.ts";
+import type { GunFeel } from "../anim/gunFeel.ts";
 import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
 import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
@@ -219,6 +221,7 @@ export class Player implements AbstractObject {
     // Additive moves on top of the bone pose, the animator is created by the first one
     animator: Animator | null = null;
     weaponDrag = new WeaponDrag();
+    feel = new FeelLayer();
     /** The weapon the playing moves belong to, they stop if it changes */
     moveWeapon = "";
     /** The body scale updateVisuals last set, the rest scale moves squash from */
@@ -2243,6 +2246,22 @@ export class Player implements AbstractObject {
         this.animator.play(meleeAttackMove(def, this.anim.data.mirror));
         this.weaponDrag.weight = meleeWeight(def);
         this.moveWeapon = this.m_netData.m_activeWeapon;
+    }
+
+    /** Puts the feel layer back in the animator if it had settled, so it can be shoved */
+    wakeFeel() {
+        this.animator ??= new Animator(this, [this.weaponDrag]);
+        if (this.feel.done) {
+            this.feel.wake();
+            this.animator.add(this.feel);
+        }
+        return this.feel;
+    }
+
+    playShotFeel(feel: GunFeel) {
+        // Guns don't trail turns like a blade does
+        this.weaponDrag.weight = 0;
+        this.wakeFeel().shot(feel);
     }
 
     updateAnim(dt: number, animCtx: AnimCtx) {

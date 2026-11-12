@@ -32,7 +32,8 @@ export class WeaponDrag implements Modifier {
             into.gunRot += this.lag;
             return;
         }
-        const angle = into.bodyRot + into.spin * Math.PI * 2 + into.rigRot + into.gunRot;
+        // Its own output goes into gunRot, so only the turns it trails are read
+        const angle = into.bodyRot + into.spin * Math.PI * 2 + into.rigRot;
         const turn = this.lastAngle == null ? 0 : (angle - this.lastAngle) / dt;
         this.lastAngle = angle;
 

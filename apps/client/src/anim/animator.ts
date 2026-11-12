@@ -131,6 +131,7 @@ export class Animator {
 
     /** Drops everything at once and puts the Player back at rest */
     clear() {
+        for (const layer of this.layers) layer.done = true;
         this.layers.length = 0;
         this.sleep();
     }
