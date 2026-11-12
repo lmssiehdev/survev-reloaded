@@ -8,6 +8,8 @@ import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { heavyHit, heavyHitStop } from "../anim/feel.ts";
+import { hitStop } from "../anim/hitStop.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
@@ -435,7 +437,13 @@ export class BulletBarn {
                                 1,
                                 collidedPlayer.container,
                             );
-                            collidedPlayer.playHitFeel(b.dir, col.point, b.damage);
+                            const amount = collidedPlayer.playHitFeel(b.dir, col.point, b.damage);
+                            if (
+                                amount >= heavyHit
+                                && (b.playerId == activePlayer.__id || collidedPlayer == activePlayer)
+                            ) {
+                                hitStop.add(heavyHitStop);
+                            }
                             playBodyHitFx(particleBarn, collidedPlayer, col.point, b.dir, false);
                             audioManager.playGroup("player_bullet_hit", {
                                 soundPos: collidedPlayer.m_pos,

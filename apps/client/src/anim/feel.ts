@@ -20,6 +20,10 @@ const maxHitTwist = 0.4;
 /** Body pixels, hands stay on the body */
 const maxHandKick = 11;
 const maxHitSquash = 0.1;
+/** From this weight a hit stops the world for a moment, if the active player is in it */
+export const heavyHit = 0.6;
+/** Seconds of that stop */
+export const heavyHitStop = 0.05;
 
 /** Curved so small hits stay small and a big one is much more than a few small ones */
 export function hitWeight(damage: number) {

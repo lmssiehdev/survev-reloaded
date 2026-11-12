@@ -2,6 +2,7 @@ import { math } from "@survev/shared/utils/math.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import * as PIXI from "pixi.js-legacy";
+import { hitStop } from "../anim/hitStop.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
@@ -297,7 +298,9 @@ export class ParticleBarn {
         return emitter;
     }
 
-    m_update(dt: number, camera: Camera) {
+    m_update(realDt: number, camera: Camera) {
+        // Purely visual, so particles hold still through a hit stop
+        const dt = realDt * hitStop.scale;
         // Update emitters
         for (let i = 0; i < this.emitters.length; i++) {
             const e = this.emitters[i];

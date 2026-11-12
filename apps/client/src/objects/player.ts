@@ -23,8 +23,9 @@ import { math } from "@survev/shared/utils/math.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { Animator } from "../anim/animator.ts";
-import { FeelLayer } from "../anim/feel.ts";
+import { FeelLayer, heavyHit, heavyHitStop } from "../anim/feel.ts";
 import type { GunFeel } from "../anim/gunFeel.ts";
+import { hitStop } from "../anim/hitStop.ts";
 import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
 import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
@@ -1324,7 +1325,7 @@ export class Player implements AbstractObject {
                 if (this.downed || this.m_netData.m_activeWeapon != this.moveWeapon) {
                     animator.stop(0.06);
                 }
-                animator.update(dt);
+                animator.update(dt * hitStop.scale);
             }
         }
 
@@ -2583,7 +2584,11 @@ export class Player implements AbstractObject {
             if (hit.target) {
                 const dir = v2.normalizeSafe(v2.sub(hit.target.m_pos, this.m_pos), this.m_dir);
                 const contact = v2.sub(hit.target.m_pos, v2.mul(dir, hit.target.m_rad));
-                hit.target.playHitFeel(dir, contact, meleeDef.damage);
+                const amount = hit.target.playHitFeel(dir, contact, meleeDef.damage);
+                const activeId = animCtx.playerBarn.activeId;
+                if (amount >= heavyHit && (this.__id == activeId || hit.target.__id == activeId)) {
+                    hitStop.add(heavyHitStop);
+                }
                 playBodyHitFx(animCtx.particleBarn, hit.target, contact, dir, this.m_netData.m_activeWeapon != "fists");
             }
         }
@@ -2716,6 +2721,8 @@ export interface ClientPlayerStatus extends PlayerStatus {
 
 export class PlayerBarn {
     playerPool = new Pool(Player);
+    /** The player the camera follows, ourselves or whoever we spectate */
+    activeId = 0;
     playerInfo: Record<number, PlayerInfo & { nameTruncated: string; anonName: string }> = {};
 
     playerIds: number[] = [];
@@ -2752,6 +2759,7 @@ export class PlayerBarn {
         displayingStats: boolean,
         isSpectating?: boolean,
     ) {
+        this.activeId = activeId;
         // Update players
         const players = this.playerPool.m_getPool();
         for (let i = 0; i < players.length; i++) {

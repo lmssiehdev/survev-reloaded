@@ -20,6 +20,8 @@ import { GameObjectDefs } from "@survev/shared/defs/register.ts";
 import { type Connection, ConnectionState, WebsocketConnection } from "@survev/shared/net/connection.ts";
 import { SpectateAction } from "@survev/shared/net/spectateMsg.ts";
 import type { GameWsDisconnectReason } from "@survev/shared/types/api.ts";
+import { gunFeel } from "./anim/gunFeel.ts";
+import { hitStop } from "./anim/hitStop.ts";
 import { device } from "./device.ts";
 import { EmoteBarn } from "./emote.ts";
 import { Gas } from "./gas.ts";
@@ -207,6 +209,7 @@ export class Game {
 
     init() {
         this.m_canvasMode = this.m_pixi.renderer.type == PIXI.RENDERER_TYPE.CANVAS;
+        hitStop.reset();
 
         // Modules
         this.m_touch = new Touch(this.m_input, this.m_config);
@@ -337,6 +340,7 @@ export class Game {
     }
 
     free() {
+        hitStop.reset();
         if (this.m_connection) {
             this.m_connection.resetAndClose();
             this.m_connection = null;
@@ -381,6 +385,7 @@ export class Game {
 
     update(dt: number) {
         this.debugHUD.m_update(dt, this);
+        hitStop.update(dt);
 
         if (IS_DEV) {
             if (this.m_input.keyPressed(Key.Tilde)) {
@@ -1233,6 +1238,17 @@ export class Game {
             ? v2.normalizeSafe(v2.sub(target.m_visualPos, killer.m_visualPos), v2.randomUnit())
             : v2.randomUnit();
         playDeathPopFx(this.m_particleBarn, target, dir);
+        if (msg.killerId == this.m_activeId || msg.targetId == this.m_activeId) {
+            hitStop.add(this.killPause(msg.itemSourceType));
+        }
+    }
+
+    /** Bigger guns stop the world a little longer on a kill */
+    killPause(weapon: string) {
+        const def = GameObjectDefs.typeToDefSafe(weapon);
+        if (def?.type == "gun") return math.lerp(gunFeel(weapon).power, 0.03, 0.08);
+        if (def?.type == "melee") return 0.06;
+        return 0.05;
     }
 
     // Socket functions
