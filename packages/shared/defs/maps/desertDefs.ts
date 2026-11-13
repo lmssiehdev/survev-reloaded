@@ -43,7 +43,6 @@ const mapDef: PartialMapDef = {
         particles: {},
     },
     gameMode: { maxPlayers: 80, desertMode: true },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -350,7 +349,6 @@ const mapDef: PartialMapDef = {
         ],
         importantSpawns: ["desert_town_01", "desert_town_02", "river_town_02"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Desert = util.mergeDeep({}, Main, mapDef) as MapDef;

@@ -105,7 +105,6 @@ const mapDef: PartialMapDef = {
         killLeaderEnabled: true,
         spookyKillSounds: true,
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -274,7 +273,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Halloween = util.mergeDeep({}, Main, mapDef) as MapDef;

@@ -1,3 +1,4 @@
+import { deserializeMatchFx, type MatchFx, NoFx, serializeMatchFx } from "../defs/mapFxDefs.ts";
 import type { TeamMode } from "../gameConfig.ts";
 import type { AbstractMsg, BitStream } from "./net.ts";
 
@@ -6,9 +7,9 @@ export class JoinedMsg implements AbstractMsg {
     playerId = 0;
     started = false;
     emotes: string[] = [];
+    fx: MatchFx = NoFx;
 
     serialize(s: BitStream) {
-        /* STRIP_FROM_PROD_CLIENT:START */
         s.writeUint8(this.teamMode);
         s.writeUint16(this.playerId);
         s.writeBoolean(this.started);
@@ -16,7 +17,7 @@ export class JoinedMsg implements AbstractMsg {
         s.writeArray(this.emotes, 8, (emote) => {
             s.writeGameType(emote);
         });
-        /* STRIP_FROM_PROD_CLIENT:END */
+        serializeMatchFx(s, this.fx);
     }
 
     deserialize(s: BitStream) {
@@ -27,5 +28,6 @@ export class JoinedMsg implements AbstractMsg {
         this.emotes = s.readArray(8, () => {
             return s.readGameType();
         });
+        this.fx = deserializeMatchFx(s);
     }
 }

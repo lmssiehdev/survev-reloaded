@@ -1,0 +1,10 @@
+// PR previews only, see .github/workflows/preview.yml
+{
+  "$schema": "https://www.unpkg.com/wrangler/config-schema.json",
+  "name": "survev-client",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist"
+  },
+  "previews": {}
+}

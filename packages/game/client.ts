@@ -481,6 +481,7 @@ export class Client {
             joinedMsg.playerId = this.player?.__id ?? 0;
             joinedMsg.started = game.started;
             joinedMsg.teamMode = game.teamMode;
+            joinedMsg.fx = game.currentFx();
             if (this.player) {
                 joinedMsg.emotes = this.player.loadout.emotes;
             }

@@ -24,6 +24,9 @@ export interface RegionView {
 const defaultModes = (): ModeView[] =>
     ["solo", "duo", "squad"].map((buttonText) => ({ buttonText, icon: "", buttonCss: "", enabled: true }));
 
+/** marks Play Offline as pending in `pendingModeIdx`, it isn't a mode the server knows */
+export const offlineModeIdx = 3;
+
 /** what the start menu (components/StartMenu.tsx) shows; Application, SiteInfo and TeamMenu write it */
 export const [startMenu, setStartMenu] = createStore({
     // from site_info
@@ -32,6 +35,8 @@ export const [startMenu, setStartMenu] = createStore({
     supportsTeam: true,
     streamers: [] as SiteInfoRes["twitch"],
     youtube: null as SiteInfoRes["youtube"] | null,
+    /** site_info failed to load: only Play Offline is left */
+    offline: false,
 
     /** the start menu is showing (not in a game) */
     active: true,

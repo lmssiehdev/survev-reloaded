@@ -46,7 +46,6 @@ for (let i = 1; i <= config.botCount; i++) {
                     gameModeIdx: config.gameModeIdx,
                     playerCount: 1,
                     version: GameConfig.protocolVersion,
-                    zones: [config.region],
                 } satisfies FindGameBody,
             ),
         })

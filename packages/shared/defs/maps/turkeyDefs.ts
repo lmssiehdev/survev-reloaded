@@ -45,7 +45,6 @@ const mapDef: PartialMapDef = {
     },
     gameMode: { turkeyMode: true },
 
-    /* STRIP_FROM_PROD_CLIENT:START */
     mapGen: {
         densitySpawns: [
             {
@@ -114,7 +113,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const Turkey = util.mergeDeep({}, Main, mapDef);

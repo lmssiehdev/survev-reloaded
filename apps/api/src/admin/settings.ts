@@ -1,6 +1,6 @@
 import { getLogger } from "@survev/logger/node.ts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
-import { TeamMode } from "@survev/shared/gameConfig.ts";
+import { defaultPlayModes, type PlayMode } from "@survev/shared/gameConfig.ts";
 import { Result } from "better-result";
 import { db } from "../db/index.ts";
 import { serverSettings } from "../db/schema.ts";
@@ -8,14 +8,8 @@ import { type DatabaseError, InvalidParams, query } from "../lib/errors.ts";
 
 const logger = getLogger(["api", "settings"]);
 
-export interface Mode {
-    mapName: MapDefKey;
-    teamMode: TeamMode;
-    enabled: boolean;
-}
-
 interface Values {
-    modes: Mode[];
+    modes: PlayMode[];
     clientTheme: MapDefKey;
     captchaEnabled: boolean;
 }
@@ -26,16 +20,12 @@ interface Values {
  */
 class Settings {
     #values: Values = {
-        modes: [
-            { mapName: "main", teamMode: TeamMode.Solo, enabled: true },
-            { mapName: "main", teamMode: TeamMode.Duo, enabled: true },
-            { mapName: "main", teamMode: TeamMode.Squad, enabled: true },
-        ],
+        modes: [...defaultPlayModes],
         clientTheme: "main",
         captchaEnabled: false,
     };
 
-    get modes(): readonly Mode[] {
+    get modes(): readonly PlayMode[] {
         return this.#values.modes;
     }
 
@@ -69,7 +59,7 @@ class Settings {
         return Result.ok(undefined);
     }
 
-    async setMode(index: number, patch: Partial<Mode>): Promise<Result<void, InvalidParams | DatabaseError>> {
+    async setMode(index: number, patch: Partial<PlayMode>): Promise<Result<void, InvalidParams | DatabaseError>> {
         const mode = this.#values.modes[index];
         if (!mode) return Result.err(new InvalidParams({ message: "Invalid mode index" }));
         const modes = this.#values.modes.with(index, {

@@ -1,8 +1,10 @@
-import type { FindGamePrivateBody } from "@survev/contracts";
+import type { FindGamePrivateBody, SaveGameBody } from "@survev/contracts";
 import type { MapDefKey } from "@survev/shared/defs/mapDefs.ts";
+import type { MatchFx } from "@survev/shared/defs/mapFxDefs.ts";
 import { TeamMode } from "@survev/shared/gameConfig.ts";
 import type { Loadout } from "@survev/shared/utils/loadout.ts";
 import { math } from "@survev/shared/utils/math.ts";
+import { util } from "@survev/shared/utils/util.ts";
 import { ClientBarn } from "./client.ts";
 import { GameModeManager } from "./gameModeManager.ts";
 import type { GameLogger, GameMode, GameOptions } from "./gameOptions.ts";
@@ -42,6 +44,43 @@ export interface SpectateTokenData {
     noSpecCooldown: boolean;
 }
 
+/** what the game server's process manager knows about a game, sent on every change */
+export interface GameData {
+    id: string;
+    teamMode: TeamMode;
+    mapName: MapDefKey;
+    canJoin: boolean;
+    aliveCount: number;
+    startedTime: number;
+    stopped: boolean;
+    timeRunning: number;
+
+    livingPlayers: Array<{
+        id: number;
+        userId: string | null;
+        name: string;
+        disconnected: boolean;
+    }>;
+}
+
+/** a match stats row per player, the host adds where the game ran */
+export type MatchDataRow = Omit<SaveGameBody["matchData"][number], "region">;
+
+export type QuestProgress = Array<{ id: string; delta: number }>;
+
+/**
+ * The game's I/O, implemented by whoever hosts it (see GameRunner).
+ * This keeps the game free of nodejs imports and network requests,
+ * which keeps offline mode and unit tests easy to maintain
+ */
+export interface GameHooks {
+    /** getData() changed: created, a player joined or left, game over, stopped */
+    updateData?(game: Game): void;
+    /** the game stopped, save its matchData() */
+    saveGame?(game: Game): void;
+    sendQuestProgress?(userId: string, progress: QuestProgress): void;
+}
+
 type JoinToken = {
     type: "join";
     expiresAt: number;
@@ -79,6 +118,8 @@ export class Game {
     tickWindow = new TickStats();
     netSyncWindow = new TickStats();
     startedAt = Date.now();
+    /** this match's time of day and weather, rolled from the map def */
+    fx: MatchFx;
     playersPeak = 0;
     playersTotal = 0;
     slowTickCount = 0;
@@ -111,16 +152,18 @@ export class Game {
     mapIndicatorBarn: MapIndicatorBarn;
 
     readonly options: GameOptions;
+    readonly hooks: GameHooks;
     logger: GameLogger;
 
     // for debug
     preventStart = false;
     debugSpeedMulti = 1;
 
-    constructor(id: string, config: GameMode, options: GameOptions) {
+    constructor(id: string, config: GameMode, options: GameOptions, hooks: GameHooks = {}) {
         const start = Date.now();
         this.id = id;
         this.options = options;
+        this.hooks = hooks;
         this.logger = options.logger;
         this.logger.debug("game.creating");
 
@@ -159,9 +202,25 @@ export class Game {
 
         this.map.init();
 
+        const fxDef = this.map.mapDef.biome.fx;
+        this.fx = {
+            effects: fxDef.effects,
+            hour: fxDef.startHour,
+            dayLength: fxDef.dayLength,
+            weather: util.weightedRandom(fxDef.weather).name,
+        };
+
         this.logger.debug("game.created", { durationMs: Date.now() - start });
 
         this.updateData();
+    }
+
+    /** the match fx with the clock moved to now, for a client that is joining */
+    currentFx(): MatchFx {
+        const { dayLength, hour } = this.fx;
+        if (dayLength <= 0) return this.fx;
+        const elapsed = (Date.now() - this.startedAt) / 1000;
+        return { ...this.fx, hour: (hour + (elapsed / dayLength) * 24) % 24 };
     }
 
     update(dt?: number) {
@@ -331,7 +390,8 @@ export class Game {
     checkGameOver() {
         if (this.over) return;
 
-        const didGameEnd = this.started && this.modeManager.aliveCount() <= 1;
+        const didGameEnd = this.started
+            && this.modeManager.aliveCount() < this.options.minPlayers;
 
         if (didGameEnd) {
             this.over = true;
@@ -400,17 +460,80 @@ export class Game {
             slowNetSyncs: this.slowNetSyncCount,
             reason: this.started && this.over ? "finished" : "stopped",
         });
-        this._saveGameToDatabase();
+        this.hooks.saveGame?.(this);
         this.updateData();
     }
 
-    // implementation of those is on gameProcess.ts
-    // this keeps the base Game class free of nodejs imports and the ability to make network requests
-    // to make offline mode and unit tests easier to maintain
+    updateData() {
+        this.hooks.updateData?.(this);
+    }
 
-    updateData() {}
-    protected _saveGameToDatabase() {}
-    sendQuestProgress(_userId: string, _progress: Array<{ id: string; delta: number }>) {}
+    getData(): GameData {
+        return {
+            id: this.id,
+            teamMode: this.teamMode,
+            mapName: this.mapName,
+            canJoin: this.canJoin,
+            aliveCount: this.aliveCount,
+            startedTime: this.startedTime,
+            stopped: this.stopped,
+            timeRunning: this.timeRunning,
+            livingPlayers: this.playerBarn.livingPlayers.map(p => {
+                return {
+                    id: p.__id,
+                    userId: p.userId,
+                    name: p.name,
+                    disconnected: p.disconnected,
+                };
+            }),
+        };
+    }
+
+    matchData(): MatchDataRow[] {
+        const players = this.modeManager.getPlayersSortedByRank();
+        /**
+         * teamTotal is for total teams that started the match, i hope?
+         *
+         * it also seems to be unused by the client so we could also remove it?
+         */
+        const teamTotal = new Set(players.map(({ player }) => player.teamId)).size;
+
+        const teamKills = players.reduce(
+            (acc, curr) => {
+                acc[curr.player.teamId] = (acc[curr.player.teamId] ?? 0) + curr.player.kills;
+                return acc;
+            },
+            {} as Record<string, number>,
+        );
+
+        return players.map(({ player, rank }) => {
+            return {
+                // *NOTE: userId is optional; we save the game stats for non logged users too
+                userId: player.userId,
+                username: player.name,
+                playerId: player.matchDataId,
+                teamMode: this.teamMode,
+                teamCount: player.group?.players.length ?? 1,
+                teamTotal: teamTotal,
+                teamId: player.teamId,
+                timeAlive: Math.round(player.timeAlive),
+                died: player.dead,
+                kills: player.kills,
+                teamKills: teamKills[player.teamId] ?? 0,
+                damageDealt: Math.round(player.damageDealt),
+                damageTaken: Math.round(player.damageTaken),
+                killerId: player.killedBy?.matchDataId || 0,
+                gameId: this.id,
+                mapId: this.map.mapId,
+                mapSeed: this.map.seed,
+                killedIds: player.killedIds,
+                rank: rank,
+                ip: player.client.ip,
+                findGameIp: player.client.findGameIp,
+                role: player.role,
+            };
+        });
+    }
 
     /**
      * Steps the game X seconds in the future

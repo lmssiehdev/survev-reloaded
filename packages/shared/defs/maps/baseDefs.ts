@@ -58,12 +58,18 @@ export const Main: MapDef = {
             planeSound: "plane_01",
             airdropImg: "map-chute-01.img",
         },
+        // off until a map opts in, see mapFxDefs.ts
+        fx: {
+            effects: [],
+            startHour: 15,
+            dayLength: 0,
+            weather: [{ name: "clear", weight: 1 }],
+        },
     },
     gameMode: {
         maxPlayers: 80,
         killLeaderEnabled: true,
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     gameConfig: {
         planes: {
             timings: [
@@ -954,7 +960,6 @@ export const Main: MapDef = {
         spawnReplacements: [{}],
         importantSpawns: ["club_complex_01"],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export type PartialMapDef = DeepPartial<MapDef>;

@@ -61,6 +61,7 @@
         "@kobalte/core": "2.0.0-alpha.3",
         "@solidjs/router": "2.0.0-next.39",
         "@solidjs/web": "2.0.0-rc.15",
+        "@survev/game": "workspace:*",
         "@survev/shared": "workspace:*",
         "@taufik-nurrohman/color-picker": "1.4.2",
         "better-auth": "^1.7.8",

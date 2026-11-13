@@ -1,10 +1,9 @@
 import { z } from "zod";
 import type { MapDefKey } from "../defs/mapDefs.ts";
-import type { TeamMode } from "../gameConfig.ts";
+import type { PlayMode, TeamMode } from "../gameConfig.ts";
 
 export const zFindGameBody = z.object({
     region: z.string(),
-    zones: z.array(z.string()),
     version: z.number(),
     playerCount: z.number(),
     autoFill: z.boolean(),
@@ -86,11 +85,7 @@ export interface SiteInfoRes {
     country: string;
     gitRevision: string;
     captchaEnabled: boolean;
-    modes: Array<{
-        mapName: string;
-        teamMode: TeamMode;
-        enabled: boolean;
-    }>;
+    modes: PlayMode[];
     clientTheme: MapDefKey;
     /** the game servers currently up */
     regions: Record<

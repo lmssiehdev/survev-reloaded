@@ -42,7 +42,6 @@ const mapDef: PartialMapDef = {
             camera: "falling_leaf_potato",
         },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     lootTable: {
         tier_chrys_case: [
             { name: "", count: 1, weight: 2 }, // ?
@@ -103,7 +102,6 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 
 export const PotatoSpring = util.mergeDeep({}, Potato, mapDef) as MapDef;

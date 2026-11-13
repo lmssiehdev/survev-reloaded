@@ -36,7 +36,6 @@ const mapDef: PartialMapDef = {
     },
     gameMode: { maxPlayers: 80, woodsMode: true },
     gameConfig: {
-        /* STRIP_FROM_PROD_CLIENT:START */
         planes: {
             timings: [
                 {
@@ -55,13 +54,11 @@ const mapDef: PartialMapDef = {
                 { name: "airdrop_crate_02", weight: 1 },
             ],
         },
-        /* STRIP_FROM_PROD_CLIENT:END */
         bagSizes: {
             frag: [6, 12, 15, 18, 20],
             smoke: [6, 12, 15, 18, 20],
         },
     },
-    /* STRIP_FROM_PROD_CLIENT:START */
     lootTable: {
         tier_toilet: [
             { name: "tier_guns", count: 1, weight: 0.1 },
@@ -264,6 +261,5 @@ const mapDef: PartialMapDef = {
             },
         ],
     },
-    /* STRIP_FROM_PROD_CLIENT:END */
 };
 export const Woods = util.mergeDeep({}, Main, mapDef) as MapDef;

@@ -11,6 +11,7 @@
   "dependencies": {
     "@elysia/eden": "2.0.0-rc.0",
     "@kobalte/core": "2.0.0-alpha.3",
+    "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
     "@solidjs/router": "2.0.0-next.39",
     "@solidjs/web": "2.0.0-rc.15",
