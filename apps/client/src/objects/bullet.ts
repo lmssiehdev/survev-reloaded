@@ -8,10 +8,13 @@ import { collider } from "@survev/shared/utils/collider.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { heavyHit, heavyHitStop } from "../anim/feel.ts";
+import { hitStop } from "../anim/hitStop.ts";
 import type { AudioManager } from "../audioManager.ts";
 import type { Camera } from "../camera.ts";
 import type { Map } from "../map.ts";
 import type { Renderer } from "../renderer.ts";
+import { playBodyHitFx } from "./bodyFx.ts";
 import type { FlareBarn } from "./flare.ts";
 import type { ParticleBarn } from "./particles.ts";
 import type { Player, PlayerBarn } from "./player.ts";
@@ -77,6 +80,8 @@ export class BulletBarn {
         tracerAlphaMin?: number;
         combatStims: boolean;
         particleTicker: number;
+        /** Only for how hard a hit looks, the server decides the real damage */
+        damage: number;
     }> = [];
 
     tracerColors = {} as typeof GameConfig["tracerColors"];
@@ -128,6 +133,7 @@ export class BulletBarn {
         b.startPos = v2.copy(bullet.pos);
         b.pos = v2.copy(bullet.pos);
         b.dir = v2.copy(bullet.dir);
+        b.damage = bulletDef.damage;
         b.layer = bullet.layer;
         b.speed = bulletDef.speed * bullet.speedMult * variance;
         b.distance = distance * bullet.distanceMult * variance + distAdj;
@@ -431,6 +437,14 @@ export class BulletBarn {
                                 1,
                                 collidedPlayer.container,
                             );
+                            const amount = collidedPlayer.playHitFeel(b.dir, col.point, b.damage);
+                            if (
+                                amount >= heavyHit
+                                && (b.playerId == activePlayer.__id || collidedPlayer == activePlayer)
+                            ) {
+                                hitStop.add(heavyHitStop);
+                            }
+                            playBodyHitFx(particleBarn, collidedPlayer, col.point, b.dir, false);
                             audioManager.playGroup("player_bullet_hit", {
                                 soundPos: collidedPlayer.m_pos,
                                 fallOff: 1,
