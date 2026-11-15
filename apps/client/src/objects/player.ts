@@ -29,6 +29,7 @@ import type { GunFeel } from "../anim/gunFeel.ts";
 import { hitStop } from "../anim/hitStop.ts";
 import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
 import type { Move } from "../anim/move.ts";
+import { BladeSmear } from "../anim/smear.ts";
 import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
 import type { AudioManager } from "../audioManager.ts";
@@ -225,6 +226,9 @@ export class Player implements AbstractObject {
     // Additive moves on top of the bone pose, the animator is created by the first one
     animator: Animator | null = null;
     weaponDrag = new WeaponDrag();
+    bladeSmear = new BladeSmear();
+    /** The last update's dt, the smear samples the blade in render */
+    frameDt = 0;
     feel = new FeelLayer(this.bodyContainer);
     /** The weapon the playing moves belong to, they stop if it changes */
     moveWeapon = "";
@@ -508,6 +512,7 @@ export class Player implements AbstractObject {
         this.container.visible = false;
         this.auraContainer.visible = false;
         this.animator?.clear();
+        this.bladeSmear.clear();
         for (const emitter of this.useItemEmitters) {
             emitter.stop();
         }
@@ -813,6 +818,7 @@ export class Player implements AbstractObject {
         displayingStats: boolean,
         isSpectating: boolean,
     ) {
+        this.frameDt = dt;
         const curWeapDef = GameObjectDefs.typeToDef(this.m_netData.m_activeWeapon);
         const isActivePlayer = this.__id == activeId;
         const activePlayer = playerBarn.getPlayerById(activeId)!;
@@ -1364,6 +1370,12 @@ export class Player implements AbstractObject {
             this.renderZOrd,
             this.renderZIdx,
         );
+        renderer.addPIXIObj(
+            this.bladeSmear.graphics,
+            this.renderLayer,
+            this.renderZOrd - 1,
+            this.renderZIdx,
+        );
 
         this.isNew = false;
     }
@@ -1376,6 +1388,26 @@ export class Player implements AbstractObject {
         this.container.visible = !this.m_netData.m_dead;
         this.auraContainer.position.set(screenPos.x, screenPos.y);
         this.auraContainer.scale.set(screenScale, screenScale);
+        const meleeDef = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        const swingsBlade = !this.m_netData.m_dead
+            && this.m_netData.m_activeWeapon != "fists"
+            && meleeDef?.type == "melee";
+        // The smear draws the cut only, up to just past the last hit, not the recovery
+        const cutting = swingsBlade
+            && this.currentAnim() == Anim.Melee
+            && this.anim.ticker <= meleeDef.attack.damageTimes[meleeDef.attack.damageTimes.length - 1] + 0.05;
+        if (this.container.parent) {
+            this.bladeSmear.update(
+                this.frameDt,
+                camera,
+                swingsBlade ? this.meleeSprite : null,
+                this.bodyContainer,
+                this.container.parent,
+                this.m_visualPos,
+                cutting,
+            );
+        }
+        this.frameDt = 0;
 
         if (IS_DEV && debug.players) {
             debugLines.addCircle(this.m_pos, this.m_rad, 0xff0000, 0);
