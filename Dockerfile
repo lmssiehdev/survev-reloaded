@@ -9,7 +9,7 @@
 
 # The repo targets Bun canary (package.json engines), which has no versioned image tag: pin the digest.
 # Update: docker pull oven/bun:canary-slim && docker image inspect oven/bun:canary-slim --format '{{index .RepoDigests 0}}'
-ARG BUN_IMAGE=oven/bun:canary-slim@sha256:3efab1f24f84fb4ea4c5ee0b6497d1663199204bccbfdb100a3e0725e6426fd3
+ARG BUN_IMAGE=oven/bun:canary-slim@sha256:70c011b9b78cc945cf7fab9764357920774fe74262bf72f6ae2658e1b3774e4b
 ARG CADDY_IMAGE=caddy:2.11-alpine
 
 FROM ${BUN_IMAGE} AS base
