@@ -20,6 +20,7 @@ import { coldet } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
 import { math } from "@survev/shared/utils/math.ts";
+import { meleeReachHit } from "@survev/shared/utils/meleeReach.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import { Animator, type ClipLayer } from "../anim/animator.ts";
@@ -29,6 +30,7 @@ import type { GunFeel } from "../anim/gunFeel.ts";
 import { hitStop } from "../anim/hitStop.ts";
 import { meleeAttackMove, meleeWeight } from "../anim/melee.ts";
 import type { Move } from "../anim/move.ts";
+import { RopeDart } from "../anim/ropeDart.ts";
 import { BladeSmear } from "../anim/smear.ts";
 import { WeaponDrag } from "../anim/weaponDrag.ts";
 import { Animations, Bones, IdlePoses, Pose } from "../animData.ts";
@@ -227,6 +229,10 @@ export class Player implements AbstractObject {
     animator: Animator | null = null;
     weaponDrag = new WeaponDrag();
     bladeSmear = new BladeSmear();
+    /** The head and chain of a held rope dart, made the first time one is held */
+    ropeDart: RopeDart | null = null;
+    /** Who a thrown rope dart head can bite this frame */
+    private dartTargets: Player[] = [];
     /** The last update's dt, the smear samples the blade in render */
     frameDt = 0;
     feel = new FeelLayer(this.bodyContainer);
@@ -513,6 +519,8 @@ export class Player implements AbstractObject {
         this.auraContainer.visible = false;
         this.animator?.clear();
         this.bladeSmear.clear();
+        this.ropeDart?.destroy();
+        this.ropeDart = null;
         for (const emitter of this.useItemEmitters) {
             emitter.stop();
         }
@@ -1376,6 +1384,18 @@ export class Player implements AbstractObject {
             this.renderZOrd - 1,
             this.renderZIdx,
         );
+        const dartReach = this.dartReach();
+        if (dartReach !== undefined && !this.ropeDart) {
+            this.ropeDart = new RopeDart(renderer.game.m_pixi.renderer, dartReach);
+        }
+        if (this.ropeDart) {
+            // The chain goes under the players so the fist closes over it, the head over them
+            renderer.addPIXIObj(this.ropeDart.under, this.renderLayer, this.renderZOrd - 1, this.renderZIdx);
+            renderer.addPIXIObj(this.ropeDart.over, this.renderLayer, this.renderZOrd + 1, this.renderZIdx);
+            this.dartTargets = playerBarn.playerPool.m_getPool().filter((p) => {
+                return p.active && p != this && !p.m_netData.m_dead && util.sameLayer(p.layer, this.layer);
+            });
+        }
 
         this.isNew = false;
     }
@@ -1406,6 +1426,17 @@ export class Player implements AbstractObject {
                 this.m_visualPos,
                 cutting,
             );
+        }
+        if (this.ropeDart) {
+            const dartReach = this.dartReach();
+            if (dartReach !== undefined && !this.m_netData.m_dead && this.container.parent) {
+                const swing = this.currentAnim() == Anim.Melee && meleeDef?.type == "melee"
+                    ? { t: this.anim.ticker, hitTime: meleeDef.attack.damageTimes[0] }
+                    : null;
+                this.ropeDart.update(this.frameDt * hitStop.scale, camera, this, this.dartTargets, swing);
+            } else {
+                this.ropeDart.hide();
+            }
         }
         this.frameDt = 0;
 
@@ -1765,8 +1796,9 @@ export class Player implements AbstractObject {
                 this.bodyContainer.addChildAt(this.handRContainer, bodyEffectIdx);
             }
         }
-        if (activeWeapDef.type == "melee" && this.m_netData.m_activeWeapon != "fists") {
-            const imgDef = activeWeapDef.worldImg!;
+        // Fists and the rope dart, whose head is drawn by RopeDart, have nothing in the hand
+        if (activeWeapDef.type == "melee" && activeWeapDef.worldImg && this.m_netData.m_activeWeapon != "fists") {
+            const imgDef = activeWeapDef.worldImg;
             this.meleeSprite.texture = PIXI.Texture.from(imgDef.sprite);
 
             this.meleeSprite.rotation = imgDef.rot;
@@ -2336,6 +2368,12 @@ export class Player implements AbstractObject {
     }
 
     /** A bullet or blade landed: dir is the way it travels, contact where it touched the body */
+    /** How far the held weapon's thrown head reaches, undefined unless it's a rope dart */
+    dartReach() {
+        const def = GameObjectDefs.typeToDefSafe(this.m_netData.m_activeWeapon);
+        return def?.type == "melee" ? def.attack.reach : undefined;
+    }
+
     playHitFeel(dir: Vec2, contact: Vec2, damage: number) {
         if (this.m_netData.m_dead) return 0;
         const offX = contact.x - this.m_pos.x;
@@ -2492,7 +2530,9 @@ export class Player implements AbstractObject {
             return coldet.test(obj.collider, meleeCol);
         });
 
-        for (let i = 0; i < obstacles.length; i++) {
+        const reach = meleeDef.attack.reach;
+        // A thrown head flies past obstacles and only hits players
+        for (let i = 0; reach === undefined && i < obstacles.length; i++) {
             const obstacle = obstacles[i];
             if (!obstacle.active) continue;
             if (obstacle.dead || obstacle.isSkin) continue;
@@ -2558,12 +2598,9 @@ export class Player implements AbstractObject {
             if (playerCol.__id === this.__id || playerCol.m_netData.m_dead) continue;
             if (!util.sameLayer(playerCol.layer, this.layer)) continue;
 
-            const res = coldet.intersectCircleCircle(
-                meleeCol.pos,
-                meleeCol.rad,
-                playerCol.m_pos,
-                playerCol.m_rad,
-            );
+            const res = reach === undefined
+                ? coldet.intersectCircleCircle(meleeCol.pos, meleeCol.rad, playerCol.m_pos, playerCol.m_rad)
+                : meleeReachHit(this.m_pos, this.m_dir, reach, playerCol.m_pos, playerCol.m_rad);
             if (!res) continue;
 
             const meleeDir = v2.normalizeSafe(

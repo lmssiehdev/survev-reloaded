@@ -10,6 +10,7 @@ import { coldet } from "@survev/shared/utils/coldet.ts";
 import { collider } from "@survev/shared/utils/collider.ts";
 import { collisionHelpers } from "@survev/shared/utils/collisionHelpers.ts";
 import { math } from "@survev/shared/utils/math.ts";
+import { meleeReachHit } from "@survev/shared/utils/meleeReach.ts";
 import { assert, util } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
 import type { BulletParams } from "./objects/bullet.ts";
@@ -1057,9 +1058,10 @@ export class WeaponManager {
         const obstacles = objs.filter((obj) => {
             return obj.__type === ObjectType.Obstacle && coldet.test(obj.collider, meleeCol);
         }) as Obstacle[];
+        const reach = meleeDef.attack.reach;
 
-        // Obstacles
-        for (let i = 0; i < obstacles.length; i++) {
+        // Obstacles, a thrown head flies past them and only hits players
+        for (let i = 0; reach === undefined && i < obstacles.length; i++) {
             const obstacle = obstacles[i];
             if (obstacle.dead || obstacle.isSkin) continue;
             if (obstacle.height < GameConfig.player.meleeHeight) continue;
@@ -1112,12 +1114,9 @@ export class WeaponManager {
             if (playerCol.__id === this.player.__id || playerCol.dead) continue;
             if (!util.sameLayer(playerCol.layer, this.player.layer)) continue;
 
-            const res = coldet.intersectCircleCircle(
-                meleeCol.pos,
-                meleeCol.rad,
-                playerCol.pos,
-                playerCol.rad,
-            );
+            const res = reach === undefined
+                ? coldet.intersectCircleCircle(meleeCol.pos, meleeCol.rad, playerCol.pos, playerCol.rad)
+                : meleeReachHit(this.player.pos, this.player.dir, reach, playerCol.pos, playerCol.rad);
             if (!res) continue;
 
             const meleeDir = v2.normalizeSafe(
