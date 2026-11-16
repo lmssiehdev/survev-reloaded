@@ -14,6 +14,11 @@ export interface MeleeDef extends BaseWeaponDef, BaseLoadoutItem {
     attack: {
         offset: Vec2;
         rad: number;
+        /**
+         * Thrown heads (the rope dart): hits the first player along the aim out to this
+         * far instead of everything in the circle, and never hits obstacles
+         */
+        reach?: number;
         damageTimes: number[];
         cooldownTime: number;
     };
@@ -690,6 +695,45 @@ const BaseDefs: Record<string, MeleeDef> = {
             },
             tint: 0xffffff,
             leftHandOntop: true,
+        },
+    },
+    ropedart: {
+        name: "Rope Dart",
+        type: "melee",
+        quality: 1,
+        autoAttack: false,
+        switchDelay: 0.25,
+        damage: 34,
+        obstacleDamage: 0,
+        attack: {
+            // The circle only gathers candidates, reach decides the hit
+            offset: { x: 3.3, y: 0 },
+            rad: 3.4,
+            reach: 6.6,
+            damageTimes: [0.38],
+            cooldownTime: 1,
+        },
+        speed: {
+            equip: 1,
+        },
+        anim: {
+            idlePose: "fists",
+            attackAnims: ["ropeDart"],
+            weight: 0.4,
+        },
+        sound: {
+            pickup: "frag_pickup_01",
+            swing: "medium_swing_01",
+            deploy: "stow_weapon_01",
+            playerHit: "hook_hit_01",
+        },
+        lootImg: {
+            sprite: "loot-melee-ropedart.img",
+            tint: 0xffffff,
+            border: "loot-circle-outer-02.img",
+            borderTint: 0xffffff,
+            scale: 0.3,
+            rot: 0.785,
         },
     },
     naginata: {

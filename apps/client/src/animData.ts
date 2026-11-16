@@ -3,6 +3,7 @@ import { GameConfig } from "@survev/shared/gameConfig.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { assert } from "@survev/shared/utils/util.ts";
 import { v2, type Vec2 } from "@survev/shared/utils/v2.ts";
+import { ropeDartTimes } from "./anim/ropeDart.ts";
 import type { AnimCtx, Player } from "./objects/player.ts";
 
 function frame(time: number, bones: Partial<Record<Bones, Pose>>, easing?: (t: number) => number) {
@@ -343,6 +344,19 @@ export const Animations: Record<
                 sound: "swing",
             }),
             effect(def("woodaxe").attack.damageTimes[0], "animMeleeCollision", {}),
+        ],
+    },
+    // The hands stay at the fists pose, the throw itself is the body move in anim/melee.ts
+    ropeDart: {
+        keyframes: [
+            frame(0, { [Bones.HandR]: new Pose(v2.create(14, 12.25)) }),
+            frame(def("ropedart").attack.cooldownTime, {
+                [Bones.HandR]: new Pose(v2.create(14, 12.25)),
+            }),
+        ],
+        effects: [
+            effect(ropeDartTimes.release, "animPlaySound", { sound: "swing" }),
+            effect(def("ropedart").attack.damageTimes[0], "animMeleeCollision", {}),
         ],
     },
     hammerSwing: {

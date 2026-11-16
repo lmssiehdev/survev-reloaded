@@ -1,6 +1,7 @@
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { beats, kick, type Move, path } from "./move.ts";
+import { ropeDartTimes } from "./ropeDart.ts";
 
 /** For melee weapons whose def doesn't say how heavy they are */
 const defaultWeight = 0.5;
@@ -175,6 +176,85 @@ function twirlMove(def: MeleeDef, mirror: boolean): Move {
     };
 }
 
+/**
+ * The body side of a rope dart throw, from the anim lab: the hand draws back, whips the
+ * head out, holds, hauls on the chain and takes the catch. RopeDart flies the head on
+ * the same times.
+ */
+function ropeDartMove(def: MeleeDef): Move {
+    const { release, yank, catch: caught } = ropeDartTimes;
+    const end = def.attack.cooldownTime;
+    const settle = end - 0.05;
+    return {
+        duration: end,
+        tracks: {
+            // Throwing hand: draws back and out, whips across the front, holds, hauls back, takes the catch
+            handRX: path(
+                [0, 0],
+                [0.2, -4, "out"],
+                [0.24, -5],
+                [release + 0.02, 19, "in"],
+                [0.42, 17, "out"],
+                [yank - 0.02, 16],
+                [yank + 0.05, -11, "snap"],
+                [caught - 0.02, -8],
+                [caught + 0.04, -15, "snap"],
+                [settle, 0, "inOut"],
+            ),
+            handRY: path(
+                [0, 0],
+                [0.2, 14, "out"],
+                [0.24, 15],
+                [release + 0.02, -5, "in"],
+                [0.42, -3, "out"],
+                [yank - 0.02, -3],
+                [yank + 0.05, 5, "snap"],
+                [caught + 0.04, 7, "snap"],
+                [settle, 0, "inOut"],
+            ),
+            // Guard hand tucks in on the throw and reaches up the chain for the haul
+            handLX: path([0, 0], [0.2, 2, "out"], [release + 0.02, -4, "in"], [yank - 0.02, -3], [
+                yank + 0.05,
+                -7,
+                "snap",
+            ], [settle - 0.05, 0, "inOut"]),
+            handLY: path([0, 0], [0.2, -2, "out"], [release + 0.02, 3, "in"], [yank + 0.05, 2, "snap"], [
+                settle - 0.05,
+                0,
+                "inOut",
+            ]),
+            bodyRot: path(
+                [0, 0],
+                [0.22, 0.3, "out"],
+                [release + 0.03, -0.32, "in"],
+                [0.46, -0.22, "out"],
+                [yank - 0.02, -0.2],
+                [yank + 0.06, 0.28, "snap"],
+                [caught, 0.18],
+                [caught + 0.05, 0.3, "snap"],
+                [end, 0, "inOut"],
+            ),
+            bodyX: path(
+                [0, 0],
+                [0.22, -1.8, "out"],
+                [release + 0.03, 3.2, "in"],
+                [0.46, 2.2, "out"],
+                [yank - 0.02, 2],
+                [yank + 0.06, -2.6, "snap"],
+                [caught, -1.6],
+                [caught + 0.05, -3, "snap"],
+                [end, 0, "inOut"],
+            ),
+            squash: beats(
+                { at: 0.04, to: -0.07, attack: 0.18, settle: 0.06, attackEase: "out", settleEase: "in" },
+                kick(release, 0.13, 0.22),
+                kick(yank, -0.08, 0.2),
+                kick(caught, 0.1, 0.25),
+            ),
+        },
+    };
+}
+
 /** Attack anims with a body of their own, by the animData name the def picks; the rest swing */
 const attackMoves: Partial<Record<string, (def: MeleeDef, mirror: boolean) => Move>> = {
     tridentThrust: thrustMove,
@@ -185,6 +265,7 @@ const attackMoves: Partial<Record<string, (def: MeleeDef, mirror: boolean) => Mo
     thrust: stabMove,
     stab: stabMove,
     slash: twirlMove,
+    ropeDart: ropeDartMove,
 };
 
 /** The body move for the attack anim playAnim picked */
