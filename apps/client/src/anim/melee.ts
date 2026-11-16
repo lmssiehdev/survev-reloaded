@@ -1,6 +1,7 @@
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import { math } from "@survev/shared/utils/math.ts";
 import { beats, kick, type Move, path } from "./move.ts";
+import { ropeDartTimes } from "./ropeDart.ts";
 
 /** For melee weapons whose def doesn't say how heavy they are */
 const defaultWeight = 0.5;
@@ -60,12 +61,214 @@ function thrustMove(def: MeleeDef): Move {
     };
 }
 
+/**
+ * Katana draw cut: the blade coils back over the shoulder, the body snaps through the
+ * cut on the hit and the blade is twirled once and resheathed while it recovers.
+ */
+function katanaMove(def: MeleeDef): Move {
+    const hit = def.attack.damageTimes[0];
+    const end = def.attack.cooldownTime;
+    const coil = hit * 0.6;
+    return {
+        duration: end,
+        tracks: {
+            gunRot: path([0, 0], [hit, 0], [end, -Math.PI * 2, "inOut"]),
+            bodyRot: path([0, 0], [coil, 0.3, "out"], [hit, -0.35, "in"], [end, 0, "inOut"]),
+            bodyX: beats({
+                at: hit - 0.03,
+                to: 5,
+                attack: 0.04,
+                settle: end - hit,
+                attackEase: "snap",
+                settleEase: "inOut",
+            }),
+            squash: beats(
+                { at: 0, to: -0.06, attack: coil, settle: hit - coil, attackEase: "out", settleEase: "in" },
+                kick(hit - 0.03, 0.14, end - hit),
+            ),
+        },
+    };
+}
+
+/** Overhead chop: a long wind up, a slam that sticks in for a beat, then pulled free */
+function chopMove(def: MeleeDef): Move {
+    const hit = def.attack.damageTimes[0];
+    const end = def.attack.cooldownTime;
+    const raise = hit * 0.6;
+    const stuck = hit + (end - hit) * 0.35;
+    return {
+        duration: end,
+        tracks: {
+            rigX: path([0, 0], [raise, -6, "out"], [hit, 8, "in"], [stuck, 8], [end, 0, "inOut"]),
+            bodyX: path([0, 0], [raise, -2, "out"], [hit, 4.5, "in"], [stuck, 4.5], [end, 0, "inOut"]),
+            bodyRot: path([0, 0], [raise, 0.3, "out"], [hit, -0.2, "in"], [stuck, -0.2], [end, 0, "inOut"]),
+            squash: path([0, 0], [raise, -0.1, "out"], [hit, 0.2, "in"], [stuck, 0.06, "out"], [end, 0, "inOut"]),
+        },
+    };
+}
+
+/**
+ * Sledgehammer slam: a long heave up and back, then the whole body drops onto the
+ * hit and squashes hard. No spin: a fast body turn makes the weapon drag pull the
+ * head off the second hand.
+ */
+function slamMove(def: MeleeDef): Move {
+    const hit = def.attack.damageTimes[0];
+    const end = def.attack.cooldownTime;
+    const raise = hit * 0.7;
+    const settle = hit + (end - hit) * 0.3;
+    return {
+        duration: end,
+        tracks: {
+            rigX: path([0, 0], [raise, -5, "out"], [hit, 7, "in"], [settle, 7], [end, 0, "inOut"]),
+            bodyX: path([0, 0], [raise, -2.5, "out"], [hit, 5, "in"], [settle, 5], [end, 0, "inOut"]),
+            bodyRot: path([0, 0], [raise, 0.18, "out"], [hit, -0.08, "in"], [end, 0, "inOut"]),
+            squash: path([0, 0], [raise, -0.14, "out"], [hit, 0.26, "in"], [settle, 0.08, "out"], [end, 0, "inOut"]),
+        },
+    };
+}
+
+/** Pan bonk: a cartoon wind up, a flat whack that squashes hard and wobbles back */
+function bonkMove(def: MeleeDef): Move {
+    const hit = def.attack.damageTimes[0];
+    const end = def.attack.cooldownTime;
+    const raise = hit * 0.7;
+    return {
+        duration: end,
+        tracks: {
+            gunRot: path([0, 0], [raise, 0.5, "out"], [hit, -0.1, "in"], [end, 0, "inOut"]),
+            bodyRot: path([0, 0], [raise, 0.35, "out"], [hit, -0.08, "in"], [end, 0, "inOut"]),
+            bodyX: path([0, 0], [raise, -2, "out"], [hit, 3.5, "in"], [end, 0, "inOut"]),
+            squash: path([0, 0], [raise, -0.12, "out"], [hit, 0.22, "in"], [hit + (end - hit) * 0.4, -0.05, "out"], [
+                end,
+                0,
+                "inOut",
+            ]),
+        },
+    };
+}
+
+/** Knife stab: a small coil, then the body lunges in behind the point */
+function stabMove(def: MeleeDef): Move {
+    const hit = def.attack.damageTimes[0];
+    const end = def.attack.cooldownTime;
+    return {
+        duration: end,
+        tracks: {
+            bodyX: beats(kick(hit - 0.03, 5, end - hit)),
+            bodyRot: beats(kick(hit - 0.03, -0.15, end - hit)),
+            squash: beats(
+                { at: 0, to: -0.06, attack: hit * 0.6, settle: hit * 0.4, attackEase: "out", settleEase: "in" },
+                kick(hit - 0.03, 0.16, end - hit),
+            ),
+        },
+    };
+}
+
+/** Karambit: the slash, then the knife spins once on its finger ring */
+function twirlMove(def: MeleeDef, mirror: boolean): Move {
+    const swing = swingMove(def, mirror);
+    const hit = def.attack.damageTimes[0];
+    const turn = Math.PI * 2 * (mirror ? -1 : 1);
+    return {
+        ...swing,
+        tracks: { ...swing.tracks, gunRot: path([0, 0], [hit, 0], [def.attack.cooldownTime, turn, "inOut"]) },
+    };
+}
+
+/**
+ * The body side of a rope dart throw, from the anim lab: the hand draws back, whips the
+ * head out, holds, hauls on the chain and takes the catch. RopeDart flies the head on
+ * the same times.
+ */
+function ropeDartMove(def: MeleeDef): Move {
+    const { release, yank, catch: caught } = ropeDartTimes;
+    const end = def.attack.cooldownTime;
+    const settle = end - 0.05;
+    return {
+        duration: end,
+        tracks: {
+            // Throwing hand: draws back and out, whips across the front, holds, hauls back, takes the catch
+            handRX: path(
+                [0, 0],
+                [0.2, -4, "out"],
+                [0.24, -5],
+                [release + 0.02, 19, "in"],
+                [0.42, 17, "out"],
+                [yank - 0.02, 16],
+                [yank + 0.05, -11, "snap"],
+                [caught - 0.02, -8],
+                [caught + 0.04, -15, "snap"],
+                [settle, 0, "inOut"],
+            ),
+            handRY: path(
+                [0, 0],
+                [0.2, 14, "out"],
+                [0.24, 15],
+                [release + 0.02, -5, "in"],
+                [0.42, -3, "out"],
+                [yank - 0.02, -3],
+                [yank + 0.05, 5, "snap"],
+                [caught + 0.04, 7, "snap"],
+                [settle, 0, "inOut"],
+            ),
+            // Guard hand tucks in on the throw and reaches up the chain for the haul
+            handLX: path([0, 0], [0.2, 2, "out"], [release + 0.02, -4, "in"], [yank - 0.02, -3], [
+                yank + 0.05,
+                -7,
+                "snap",
+            ], [settle - 0.05, 0, "inOut"]),
+            handLY: path([0, 0], [0.2, -2, "out"], [release + 0.02, 3, "in"], [yank + 0.05, 2, "snap"], [
+                settle - 0.05,
+                0,
+                "inOut",
+            ]),
+            bodyRot: path(
+                [0, 0],
+                [0.22, 0.3, "out"],
+                [release + 0.03, -0.32, "in"],
+                [0.46, -0.22, "out"],
+                [yank - 0.02, -0.2],
+                [yank + 0.06, 0.28, "snap"],
+                [caught, 0.18],
+                [caught + 0.05, 0.3, "snap"],
+                [end, 0, "inOut"],
+            ),
+            bodyX: path(
+                [0, 0],
+                [0.22, -1.8, "out"],
+                [release + 0.03, 3.2, "in"],
+                [0.46, 2.2, "out"],
+                [yank - 0.02, 2],
+                [yank + 0.06, -2.6, "snap"],
+                [caught, -1.6],
+                [caught + 0.05, -3, "snap"],
+                [end, 0, "inOut"],
+            ),
+            squash: beats(
+                { at: 0.04, to: -0.07, attack: 0.18, settle: 0.06, attackEase: "out", settleEase: "in" },
+                kick(release, 0.13, 0.22),
+                kick(yank, -0.08, 0.2),
+                kick(caught, 0.1, 0.25),
+            ),
+        },
+    };
+}
+
 /** Attack anims with a body of their own, by the animData name the def picks; the rest swing */
-const attackMoves: Partial<Record<string, (def: MeleeDef) => Move>> = {
+const attackMoves: Partial<Record<string, (def: MeleeDef, mirror: boolean) => Move>> = {
     tridentThrust: thrustMove,
+    katanaSwing: katanaMove,
+    axeSwing: chopMove,
+    hammerSwing: slamMove,
+    pan: bonkMove,
+    thrust: stabMove,
+    stab: stabMove,
+    slash: twirlMove,
+    ropeDart: ropeDartMove,
 };
 
 /** The body move for the attack anim playAnim picked */
 export function meleeAttackMove(def: MeleeDef, attackAnim: string, mirror: boolean): Move {
-    return attackMoves[attackAnim]?.(def) ?? swingMove(def, mirror);
+    return attackMoves[attackAnim]?.(def, mirror) ?? swingMove(def, mirror);
 }

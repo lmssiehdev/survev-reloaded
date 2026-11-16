@@ -377,6 +377,7 @@ export const Main: MapDef = {
             { name: "fireaxe", count: 1, weight: 5 }, // ?
             { name: "tier_katanas", count: 1, weight: 3 }, // ?
             { name: "stonehammer", count: 1, weight: 1 }, // ?
+            { name: "ropedart", count: 1, weight: 2 },
         ],
         tier_fireaxe: [
             { name: "fireaxe", count: 1, weight: 5 },
