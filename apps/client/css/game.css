@@ -405,8 +405,8 @@ img {
     height: 340px;
 }
 
+/* the hidden tab panel carries `hidden` (ui-sdk Tabs) */
 #ui-game-tab-keybinds {
-    display: none;
     height: 345px;
 }
 
