@@ -4,6 +4,7 @@ import { device, layout } from "../../device.ts";
 import { gameTabs, gameUi, gameView, px } from "../gameView.ts";
 import { small } from "../hudLayout.ts";
 import { type MessageKey, t } from "../i18n.ts";
+import { RangeSlider } from "./Controls.tsx";
 import { GameKeybindsTab } from "./Keybinds.tsx";
 import { TouchControls } from "./TouchControls.tsx";
 
@@ -85,14 +86,13 @@ export function GameMenu() {
                             {(slider) => (
                                 <div class="slider-container ui-slider-container">
                                     <p class="slider-text">{t(slider.label)}</p>{" "}
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
+                                    <RangeSlider
                                         class={`slider ${slider.class}`}
+                                        label={t(slider.label)}
+                                        min={0}
+                                        max={100}
                                         value={config.state[slider.key] * 100}
-                                        onMouseDown={stop}
-                                        onInput={(e) => config.set(slider.key, Number(e.currentTarget.value) / 100)}
+                                        onChange={(value) => config.set(slider.key, value / 100)}
                                     />
                                 </div>
                             )}

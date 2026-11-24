@@ -19,7 +19,6 @@ import {
     type LoadoutItemView,
     setLoadoutMenu,
     setLoadoutView,
-    SORT_TYPES,
     type SortType,
 } from "./loadoutView.ts";
 import { MenuModal } from "./menuModal.ts";
@@ -219,7 +218,7 @@ export class LoadoutMenu {
     highlightOpacityMin = 0.4;
 
     picker: ColorPicker | null = null;
-    crosshairInputs = { hex: "", size: "0.5", stroke: "0.0" };
+    crosshairInputs = { hex: "", size: 0.5, stroke: 0 };
     readonly dom: LoadoutDom = {};
 
     modal = new MenuModal();
@@ -461,9 +460,7 @@ export class LoadoutMenu {
     }
 
     /** the sort select changed */
-    sortItems(value: string) {
-        const sort = SORT_TYPES.find((s) => s === value);
-        if (!sort) return;
+    sortItems(sort: SortType) {
         this.sortType = sort;
         setLoadoutView((s) => {
             s.sort = sort;
@@ -502,8 +499,8 @@ export class LoadoutMenu {
         this.picker?.set(crosshairHex);
         this.setCrosshairInputs({
             hex: crosshairHex.slice(1),
-            size: String(this.loadout.crosshair.size),
-            stroke: String(this.loadout.crosshair.stroke),
+            size: Number(this.loadout.crosshair.size),
+            stroke: Number(this.loadout.crosshair.stroke),
         });
     }
 
@@ -581,12 +578,12 @@ export class LoadoutMenu {
         }
     }
 
-    onCrosshairSize(value: string) {
+    onCrosshairSize(value: number) {
         this.setCrosshairInputs({ size: value });
         this.updateLoadoutFromInputs();
     }
 
-    onCrosshairStroke(value: string) {
+    onCrosshairStroke(value: number) {
         this.setCrosshairInputs({ stroke: value });
         this.updateLoadoutFromInputs();
     }
@@ -615,9 +612,7 @@ export class LoadoutMenu {
                 }
             }
         } else if (loadoutType == "crosshair") {
-            const size = parseFloat(this.crosshairInputs.size);
-            const color = this.crosshairInputs.hex;
-            const stroke = parseFloat(this.crosshairInputs.stroke);
+            const { hex: color, size, stroke } = this.crosshairInputs;
             this.loadout.crosshair = {
                 type: this.selectedItem.type ?? "",
                 color: util.hexToInt(color),

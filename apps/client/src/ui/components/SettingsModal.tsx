@@ -3,7 +3,8 @@ import { config } from "../../appConfig.ts";
 import type { ConfigKey } from "../../config.ts";
 import { device, layout } from "../../device.ts";
 import { settingsModal } from "../appModals.ts";
-import { isLocale, locale, Locales, locales, type MessageKey, t } from "../i18n.ts";
+import { locale, Locales, locales, type MessageKey, t } from "../i18n.ts";
+import { Checkbox, MenuSelect, RangeSlider } from "./Controls.tsx";
 import { Modal } from "./Modal.tsx";
 
 type BoolKey = { [K in ConfigKey]: (typeof config.state)[K] extends boolean ? K : never }[ConfigKey];
@@ -27,17 +28,14 @@ const sliders: { key: VolumeKey; label: MessageKey; class: string }[] = [
 export function LanguageSelect() {
     return (
         <div class="language-select-wrap">
-            <select
+            <MenuSelect
                 class="language-select"
-                onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    if (isLocale(value)) config.set("language", value);
-                }}
-            >
-                <For each={locales}>
-                    {(loc) => <option value={loc} selected={loc === locale()}>{Locales[loc]}</option>}
-                </For>
-            </select>
+                label={t("index-language")}
+                value={locale()}
+                values={locales}
+                itemLabel={(loc) => Locales[loc]}
+                onChange={(loc) => config.set("language", loc)}
+            />
         </div>
     );
 }
@@ -57,11 +55,11 @@ export function SettingsModal() {
             <For each={checkboxes}>
                 {(item) => (
                     <div id={item.id} class={["modal-settings-item", { "hide-on-mobile": item.hideOnMobile }]}>
-                        <input
+                        <Checkbox
                             id={item.key}
-                            type="checkbox"
+                            label={t(item.label)}
                             checked={config.state[item.key]}
-                            onChange={(e) => config.set(item.key, e.currentTarget.checked)}
+                            onChange={(checked) => config.set(item.key, checked)}
                         />
                         <p class="modal-settings-checkbox-text">{t(item.label)}</p>
                     </div>
@@ -75,13 +73,13 @@ export function SettingsModal() {
                         style={device.model == "iphonex" && layout.landscape ? { width: "90%" } : undefined}
                     >
                         <p class="modal-slider-text">{t(slider.label)}</p>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
+                        <RangeSlider
                             class={`slider ${slider.class}`}
+                            label={t(slider.label)}
+                            min={0}
+                            max={100}
                             value={config.state[slider.key] * 100}
-                            onInput={(e) => config.set(slider.key, Number(e.currentTarget.value) / 100)}
+                            onChange={(value) => config.set(slider.key, value / 100)}
                         />
                     </div>
                 )}
