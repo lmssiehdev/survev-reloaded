@@ -119,6 +119,8 @@ export default defineConfig(({ mode }) => {
             IS_DEV: isDev,
         },
         plugins,
+        // one copy of @ui-sdk/core for both our imports and @ui-sdk/solid's
+        optimizeDeps: { exclude: ["@ui-sdk/core"] },
         json: {
             stringify: true,
         },

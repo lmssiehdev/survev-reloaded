@@ -14,6 +14,9 @@ import { helpers } from "../helpers.ts";
 import type { StatsKey } from "./i18n.ts";
 
 export const gameModes = helpers.getGameModes();
+/** the map ids the map filters offer, as the URL spells them */
+export const mapIds = gameModes.map((mode) => String(mode.mapId));
+export const mapName = (mapId: string) => gameModes.find((mode) => String(mode.mapId) === mapId)?.desc.name ?? mapId;
 export const formatTime = helpers.formatTime;
 
 /** label of a team mode as the leaderboard URL spells it */

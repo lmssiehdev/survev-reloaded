@@ -1,3 +1,6 @@
+/* declared first so our styles win over the few rules ui-sdk adds */
+@layer ui-sdk;
+
 @font-face {
     font-family: "Phantom Guardians";
     src: url("/fonts/phantom-guardians-bold.otf") format("opentype");
@@ -761,7 +764,7 @@ table.player-stats-overview td {
     width: 100%;
 }
 
-.extra-team-mode-filter[aria-pressed="true"] {
+.extra-team-mode-filter[data-checked] {
     background-color: orange;
 }
 
@@ -1263,17 +1266,57 @@ td.data-player-status {
     text-transform: uppercase;
 }
 
-/* the language menu is positioned by Kobalte, not Bootstrap */
-[data-popper-positioner] > .dropdown-menu {
+/* the language menu is a ui-sdk popup in the top layer, placed by ui-sdk, not Bootstrap */
+.dropdown-menu[data-slot="menu-content"] {
     display: block;
-    position: static;
+    margin: 0;
 }
 
-.navbar-dark .navbar-nav .nav-link[data-expanded] {
+.navbar-dark .navbar-nav .nav-link[data-open] {
     color: #ffffff;
 }
 
 /* the open menu takes focus; the highlighted item shows where it is */
-[data-popper-positioner] > .dropdown-menu:focus {
+.dropdown-menu[data-slot="menu-content"]:focus, .dropdown-language:focus {
+    outline: none;
+}
+
+/* filter dropdowns (components/Select.tsx): a Bootstrap `custom-select` trigger and a matching list */
+.stats-select-trigger {
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stats-select-content {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-height: var(--available-height);
+    min-width: var(--anchor-width);
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+
+.stats-select-item {
+    color: #495057;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0.25rem 0.75rem;
+    white-space: nowrap;
+}
+
+.stats-select-item[data-highlighted] {
+    background-color: orange;
+    color: #000000;
+}
+
+.stats-select-item[data-selected] {
+    color: #000000;
+}
+
+.stats-select-content:focus, .stats-select-item:focus {
     outline: none;
 }

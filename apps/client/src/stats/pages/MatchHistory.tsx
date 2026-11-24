@@ -1,8 +1,8 @@
-import { ToggleGroup } from "@kobalte/core/toggle-group";
 import type { JSX } from "@solidjs/web";
 import { GameConfig } from "@survev/shared/gameConfig.ts";
 import type { MatchData, MatchHistory, MatchHistoryParams } from "@survev/shared/types/stats.ts";
 import { ALL_TEAM_MODES, TEAM_MODE_FILTERS, type TeamModeFilter } from "@survev/shared/types/statsFilters.ts";
+import { SegmentedControl, SegmentedControlItem } from "@ui-sdk/solid/segmented-control";
 import { createMemo, createSignal, Errored, For, Loading, onSettled, Repeat, Show } from "solid-js";
 import { getMatchData, getMatchHistory } from "../api.ts";
 import { Spinner } from "../components/Spinner.tsx";
@@ -37,10 +37,11 @@ export function MatchHistorySection(props: MatchListProps) {
 
     return (
         <>
-            <ToggleGroup
+            <SegmentedControl
                 class="container mt-3"
+                aria-label={t("stats-matches")}
                 value={String(filter())}
-                onChange={(value) => {
+                onValueChange={(value) => {
                     const next = TEAM_MODE_FILTERS.find((f) => String(f) === value);
                     if (next !== undefined) setFilter(next);
                 }}
@@ -49,14 +50,14 @@ export function MatchHistorySection(props: MatchListProps) {
                     <For each={TEAM_MODE_FILTERS}>
                         {(value, i) => (
                             <div class={["col-3 col-md-1 p-0", { "offset-0 offset-md-8": i() === 0 }]}>
-                                <ToggleGroup.Item class="extra-team-mode-filter btn-darken" value={String(value)}>
+                                <SegmentedControlItem class="extra-team-mode-filter btn-darken" value={String(value)}>
                                     {t(teamModeFilterLabel(value))}
-                                </ToggleGroup.Item>
+                                </SegmentedControlItem>
                             </div>
                         )}
                     </For>
                 </div>
-            </ToggleGroup>
+            </SegmentedControl>
             <div class="container mt-3">
                 <div class="row">
                     <div class="col-12 col-md-2">

@@ -1,3 +1,6 @@
+/* declared first so our styles win over the few rules ui-sdk adds */
+@layer ui-sdk;
+
 @font-face {
     font-family: "Phantom Guardians";
     src: url("/fonts/phantom-guardians-bold.otf") format("opentype");
