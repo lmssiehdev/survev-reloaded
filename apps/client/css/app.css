@@ -2344,6 +2344,27 @@ a:active {
     display: none;
 }
 
+/* the desktop menu under the name: a ui-sdk MenuContent in the top layer */
+.account-menu {
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 0;
+    border-radius: 5px;
+    box-sizing: border-box;
+    color: #ffffff;
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+    width: 232px;
+}
+
+.account-menu [data-slot="menu-item"] {
+    outline: none;
+}
+
+.account-menu [data-slot="menu-item"][data-highlighted] {
+    box-shadow: 0 0 0 2px #ffffff;
+}
+
 .account-buttons-link-account {
     display: none;
 }

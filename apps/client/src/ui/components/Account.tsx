@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import { loadout } from "@survev/shared/utils/loadout.ts";
-import { createSignal, Show } from "solid-js";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@ui-sdk/solid/menu";
+import { createSignal, For, Show } from "solid-js";
 import { accountItems, accountLoadout, accountView } from "../../account.ts";
+import { device } from "../../device.ts";
 import { helpers } from "../../helpers.ts";
 import { keybindModal, settingsModal } from "../appModals.ts";
 import { t } from "../i18n.ts";
@@ -220,94 +222,172 @@ export function DeleteAccountModal() {
     );
 }
 
+type LoginMethod = "discord" | "mock";
+
+/** the login methods the API supports */
+const loginMethods = (): LoginMethod[] => {
+    const methods: LoginMethod[] = [];
+    if (profile.logins.discord) methods.push("discord");
+    if (profile.logins.mock) methods.push("mock");
+    return methods;
+};
+
+const loginClass = (method: LoginMethod) => `menu-option btn-darken btn-standard btn-login-${method}`;
+
+function LoginLabel(props: { method: LoginMethod }) {
+    return (
+        <span class="login-button-name">
+            <span>{t(`index-${props.method}`)}</span>
+            <div class="icon"></div>
+        </span>
+    );
+}
+
+/** above the login buttons, when logging in links the account */
+function LoginLinkNote() {
+    return (
+        <Show when={profile.loginLink}>
+            <div class="account-login-desc">
+                <p>{t("index-link-account-to")}</p>
+            </div>
+        </Show>
+    );
+}
+
 /** the login buttons; above them, a note when logging in links the account */
 function LoginOptions() {
-    const option = (method: "discord" | "mock") => (
-        <div
-            class={`menu-option btn-darken btn-standard btn-login-${method}`}
-            onClick={() => profileUi()?.login(method)}
-        >
-            <span class="login-button-name">
-                <span>{t(`index-${method}`)}</span>
-                <div class="icon"></div>
-            </span>
-        </div>
-    );
     return (
         <div class="login-options-content">
-            <Show when={profile.loginLink}>
-                <div class="account-login-desc">
-                    <p>{t("index-link-account-to")}</p>
-                </div>
-            </Show>
+            <LoginLinkNote />
             <div class="account-buttons">
-                <Show when={profile.logins.discord}>{option("discord")}</Show>
-                <Show when={profile.logins.mock}>{option("mock")}</Show>
+                <For each={loginMethods()}>
+                    {(method) => (
+                        <div class={loginClass(method)} onClick={() => profileUi()?.login(method)}>
+                            <LoginLabel method={method} />
+                        </div>
+                    )}
+                </For>
             </div>
         </div>
     );
 }
 
-/** the account actions shown under the name (desktop) and in the phone menu */
-function AccountSettings(props: { class?: string; myStats?: boolean }) {
-    const action = (fn: () => void) => (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        fn();
+interface AccountAction {
+    class: string;
+    label: string;
+    run: () => void;
+}
+
+/** the logged-in account's actions; `myStats` adds the stats link (the phone menu has no top row) */
+function accountActions(myStats: boolean): AccountAction[] {
+    const confirmIn = (modal: MenuModal) => () => {
+        userSettingsModal.hide();
+        modal.show();
     };
+    const turq = "btn-account-turq menu-option btn-darken btn-standard";
+    const changeNameClass = accountView.usernameChangeTime > 0 ? " btn-account-disabled" : "";
+    const actions: AccountAction[] = [
+        {
+            class: `btn-account-change-name ${turq}${changeNameClass}`,
+            label: t("index-change-account-name"),
+            run: () => profileUi()?.changeName(),
+        },
+        { class: `btn-account-reset-stats ${turq}`, label: t("index-reset-stats"), run: confirmIn(resetStatsModal) },
+        { class: `btn-account-delete ${turq}`, label: t("index-delete-account"), run: confirmIn(deleteAccountModal) },
+        {
+            class: "btn-account-logout btn-account-grey menu-option btn-darken btn-standard",
+            label: t("index-log-out"),
+            run: () => profileUi()?.account.logout(),
+        },
+    ];
+    if (myStats) {
+        actions.unshift({
+            class: "account-stats-link btn-player-stats-link menu-option btn-darken btn-standard",
+            label: t("index-my-stats"),
+            run: () => profileUi()?.openMyStats(),
+        });
+    }
+    return actions;
+}
+
+/** the account actions in the phone menu */
+function AccountSettings() {
     return (
         <div
             class={[
                 "account-buttons-settings account-buttons-wrapper account-block-arrow modal-close",
-                props.class,
                 userSettingsModal.classes(),
             ]}
             ref={(el) => userSettingsModal.attach(el)}
         >
             <div class="account-buttons">
-                <Show when={props.myStats}>
-                    <div
-                        class="account-stats-link btn-player-stats-link menu-option btn-darken btn-standard"
-                        onClick={action(() => profileUi()?.openMyStats())}
-                    >
-                        {t("index-my-stats")}
-                    </div>
-                </Show>
-                <div
-                    class={[
-                        "btn-account-change-name btn-account-turq menu-option btn-darken btn-standard",
-                        { "btn-account-disabled": accountView.usernameChangeTime > 0 },
-                    ]}
-                    onClick={action(() => profileUi()?.changeName())}
-                >
-                    {t("index-change-account-name")}
-                </div>
-                <div
-                    class="btn-account-reset-stats btn-account-turq menu-option btn-darken btn-standard"
-                    onClick={action(() => {
-                        userSettingsModal.hide();
-                        resetStatsModal.show();
-                    })}
-                >
-                    {t("index-reset-stats")}
-                </div>
-                <div
-                    class="btn-account-delete btn-account-turq menu-option btn-darken btn-standard"
-                    onClick={action(() => {
-                        userSettingsModal.hide();
-                        deleteAccountModal.show();
-                    })}
-                >
-                    {t("index-delete-account")}
-                </div>
-                <div
-                    class="btn-account-logout btn-account-grey menu-option btn-darken btn-standard"
-                    onClick={action(() => profileUi()?.account.logout())}
-                >
-                    {t("index-log-out")}
-                </div>
+                <For each={accountActions(true)}>
+                    {(action) => (
+                        <div
+                            class={action.class}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                action.run();
+                            }}
+                        >
+                            {action.label}
+                        </div>
+                    )}
+                </For>
             </div>
         </div>
+    );
+}
+
+/** the desktop menu under the name is open: the account's actions, or the login buttons */
+const desktopMenuOpen = () => !device.mobile && (userSettingsModal.isOpen() || loginOptionsModal.isOpen());
+
+function closeAccountMenu() {
+    userSettingsModal.hide();
+    loginOptionsModal.hide();
+}
+
+/** the desktop menu under the name; the trigger is the name in StartTopRight */
+function AccountMenuContent() {
+    return (
+        <MenuContent
+            class="account-menu account-block-arrow modal-close hide-on-mobile"
+            side="bottom"
+            align="end"
+            sideOffset={10}
+        >
+            <Show
+                when={accountView.status == "loggedIn"}
+                fallback={
+                    <div class="login-options-content">
+                        <LoginLinkNote />
+                        <div class="account-buttons">
+                            <For each={loginMethods()}>
+                                {(method) => (
+                                    <MenuItem
+                                        class={loginClass(method)}
+                                        onSelect={() => profileUi()?.login(method)}
+                                    >
+                                        <LoginLabel method={method} />
+                                    </MenuItem>
+                                )}
+                            </For>
+                        </div>
+                    </div>
+                }
+            >
+                <div class="account-buttons">
+                    <For each={accountActions(false)}>
+                        {(action) => (
+                            <MenuItem class={action.class} onSelect={() => action.run()}>
+                                {action.label}
+                            </MenuItem>
+                        )}
+                    </For>
+                </div>
+            </Show>
+        </MenuContent>
     );
 }
 
@@ -326,7 +406,7 @@ export function MobileAccountModal() {
                     <h2>{t("index-account")}</h2>
                 </div>
                 <div id="modal-mobile-account-body">
-                    <AccountSettings myStats />
+                    <AccountSettings />
                     <div
                         id="account-login-options-mobile"
                         class={[
@@ -351,9 +431,7 @@ const itemAlert = () => accountItems().some((item) => item.status! < loadout.Ite
 /** the top-right corner of the start menu: loadout/stats/leaderboard, the name, its menus */
 export function StartTopRight() {
     // the row above the name hides while a menu under the name is open
-    const menuOpen = () =>
-        userSettingsModal.isOpen() || loginOptionsModal.isOpen() || loginOptionsModalMobile.isOpen()
-        || mobileAccountModal.isOpen();
+    const menuOpen = () => desktopMenuOpen() || loginOptionsModalMobile.isOpen() || mobileAccountModal.isOpen();
     const link = (fn: () => void) => (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -406,44 +484,47 @@ export function StartTopRight() {
                         </div>
                     </div>
                 </div>
-                <div class="account-overview">
-                    <div
-                        class="account-details-user account-details-block"
-                        onClick={link(() => profileUi()?.toggleAccountMenu())}
-                    >
-                        <div class="account-details">
-                            <div class="account-avatar" style={{ "background-image": `url(${avatar()})` }} />
-                            <div
-                                id="account-login"
-                                class="account-player-name account-name account-name-user"
-                                style={{ display: accountView.status == "loggedIn" ? "none" : "block" }}
-                            >
-                                {t("index-log-in-desc")}
-                            </div>
-                            <div
-                                id="account-player-name"
-                                class="account-player-name account-name account-name-user"
-                                style={{ display: accountView.status == "loggedIn" ? "block" : "none" }}
-                            >
-                                {accountView.username}
-                            </div>
-                            <div class="account-loading-container">
-                                <div class="account-loading" style={{ opacity: accountView.requests > 0 ? 1 : 0 }} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <AccountSettings class="hide-on-mobile" />
-                <div
-                    id="account-login-options"
-                    class={[
-                        "account-buttons-link-account account-buttons-wrapper account-block-arrow modal-close",
-                        loginOptionsModal.classes(),
-                    ]}
-                    ref={(el) => loginOptionsModal.attach(el)}
+                <Menu
+                    open={desktopMenuOpen()}
+                    onOpenChange={(open) => {
+                        if (open) profileUi()?.toggleAccountMenu();
+                        else closeAccountMenu();
+                    }}
                 >
-                    <LoginOptions />
-                </div>
+                    <div class="account-overview">
+                        <MenuTrigger
+                            class="account-details-user account-details-block"
+                            aria-label={t("index-account")}
+                            onClick={(e) => e.stopPropagation()}
+                            render={(triggerProps) => <div {...triggerProps} />}
+                        >
+                            <div class="account-details">
+                                <div class="account-avatar" style={{ "background-image": `url(${avatar()})` }} />
+                                <div
+                                    id="account-login"
+                                    class="account-player-name account-name account-name-user"
+                                    style={{ display: accountView.status == "loggedIn" ? "none" : "block" }}
+                                >
+                                    {t("index-log-in-desc")}
+                                </div>
+                                <div
+                                    id="account-player-name"
+                                    class="account-player-name account-name account-name-user"
+                                    style={{ display: accountView.status == "loggedIn" ? "block" : "none" }}
+                                >
+                                    {accountView.username}
+                                </div>
+                                <div class="account-loading-container">
+                                    <div
+                                        class="account-loading"
+                                        style={{ opacity: accountView.requests > 0 ? 1 : 0 }}
+                                    />
+                                </div>
+                            </div>
+                        </MenuTrigger>
+                    </div>
+                    <AccountMenuContent />
+                </Menu>
             </div>
         </div>
     );
