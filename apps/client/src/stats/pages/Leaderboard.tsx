@@ -5,7 +5,7 @@ import { createMemo, Errored, For, Loading, Show } from "solid-js";
 import { getLeaderboard } from "../api.ts";
 import { Select } from "../components/Select.tsx";
 import { Spinner } from "../components/Spinner.tsx";
-import { gameModes, leaderboardStatLabels, teamModeNameLabel } from "../format.ts";
+import { leaderboardStatLabels, mapIds, mapName, teamModeNameLabel } from "../format.ts";
 import { t } from "../i18n.ts";
 import { oneOf, text, useSearchState } from "../searchState.ts";
 
@@ -41,44 +41,46 @@ export function Leaderboard() {
                     <div class="col-lg-2 col-3 pr-lg-3 pr-1">
                         <Select
                             id="leaderboard-team-mode"
+                            name={t("stats-filter-team-mode")}
                             class="leaderboard-opt"
                             value={params.teamMode}
                             values={TEAM_MODE_NAMES}
-                            label={teamModeNameLabel}
+                            label={(teamMode) => t(teamModeNameLabel(teamMode))}
                             onChange={(teamMode) => update({ teamMode })}
                         />
                     </div>
                     <div class="col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1">
                         <Select
                             id="leaderboard-type"
+                            name={t("stats-filter-type")}
                             class="leaderboard-opt"
                             value={params.type}
                             values={LEADERBOARD_TYPES}
-                            label={(type) => LEADERBOARD_TITLE_KEYS[type]}
+                            label={(type) => t(LEADERBOARD_TITLE_KEYS[type])}
                             onChange={(type) => update({ type })}
                         />
                     </div>
                     <div class="col-lg-2 col-3 pl-lg-0 pr-lg-3 pl-0 pr-1">
                         <Select
                             id="leaderboard-time"
+                            name={t("stats-filter-time")}
                             class="leaderboard-opt"
                             value={params.interval}
                             values={STATS_INTERVALS}
-                            label={(interval) => INTERVAL_LABEL_KEYS[interval]}
+                            label={(interval) => t(INTERVAL_LABEL_KEYS[interval])}
                             onChange={(interval) => update({ interval })}
                         />
                     </div>
                     <div class="col-lg-2 col-3 pl-0">
-                        <select
+                        <Select
                             id="leaderboard-map-id"
-                            class="leaderboard-opt custom-select"
+                            name={t("stats-filter-map")}
+                            class="leaderboard-opt"
                             value={params.mapId}
-                            onChange={(e) => update({ mapId: e.currentTarget.value })}
-                        >
-                            <For each={gameModes}>
-                                {(mode) => <option value={mode.mapId}>{mode.desc.name}</option>}
-                            </For>
-                        </select>
+                            values={mapIds}
+                            label={mapName}
+                            onChange={(mapId) => update({ mapId })}
+                        />
                     </div>
                 </div>
             </div>

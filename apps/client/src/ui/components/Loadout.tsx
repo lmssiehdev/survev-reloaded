@@ -1,9 +1,18 @@
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/solid/tabs";
 import { For, Show } from "solid-js";
 import { accountView } from "../../account.ts";
 import { device, layout } from "../../device.ts";
-import { t, translate } from "../i18n.ts";
+import { type MessageKey, t, translate } from "../i18n.ts";
 import type { ItemRef, LoadoutMenu } from "../loadoutMenu.ts";
-import { loadoutView } from "../loadoutView.ts";
+import { loadoutView, SORT_TYPES, type SortType } from "../loadoutView.ts";
+import { MenuSelect, RangeSlider } from "./Controls.tsx";
+
+const SORT_LABELS: Record<SortType, MessageKey> = {
+    newest: "loadout-newest",
+    alpha: "loadout-alpha",
+    rarity: "loadout-rarity",
+    subcat: "loadout-subcat",
+};
 
 /** the open category's loadout type */
 const category = () => loadoutView.categories[loadoutView.catIdx]?.loadoutType;
@@ -12,21 +21,22 @@ function display(visible: boolean) {
     return visible ? "block" : "none";
 }
 
-/** the category tabs above the item grid */
-function Categories(props: { menu: LoadoutMenu }) {
+/** the category tabs above the item grid; the open category's items are the `#modal-customize-body` panel */
+function Categories() {
     return (
-        <div id="modal-customize-header" class="modal-header">
+        <TabsList id="modal-customize-header" class="modal-header" aria-label={t("loadout-categories")}>
             <For each={loadoutView.categories}>
                 {(cat, idx) => {
                     const selected = () => loadoutView.catIdx === idx();
                     return (
-                        <div
+                        <TabsTab
+                            value={cat.loadoutType}
                             id={idx() === loadoutView.categories.length - 1
                                 ? "modal-customize-cat-standalone"
                                 : undefined}
-                            class={["modal-customize-cat", { "modal-customize-cat-selected": selected() }]}
+                            class="modal-customize-cat"
+                            aria-label={translate(`loadout-title-${cat.loadoutType}`)}
                             data-idx={idx()}
-                            onMouseUp={() => props.menu.onCategoryMouseUp(idx())}
                         >
                             <div
                                 class={["modal-customize-cat-image", {
@@ -40,11 +50,11 @@ function Categories(props: { menu: LoadoutMenu }) {
                                 }]}
                             />
                             <div class="account-alert account-alert-cat" style={{ display: display(cat.alert) }} />
-                        </div>
+                        </TabsTab>
                     );
                 }}
             </For>
-        </div>
+        </TabsList>
     );
 }
 
@@ -126,28 +136,28 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                     <section id="color-picker" ref={(el) => (props.menu.dom.picker = el)} />
                     <div class="crosshair-slider-container">
                         <p>{t("loadout-size")}</p>{" "}
-                        <input
-                            type="range"
-                            min="0.25"
-                            max="1.0"
-                            step="0.025"
-                            class="crosshair-slider"
+                        <RangeSlider
                             id="crosshair-size"
+                            class="crosshair-slider"
+                            label={t("loadout-size")}
+                            min={0.25}
+                            max={1}
+                            step={0.025}
                             value={loadoutView.crosshairSize}
-                            onInput={(e) => props.menu.onCrosshairSize(e.currentTarget.value)}
+                            onChange={(size) => props.menu.onCrosshairSize(size)}
                         />
                     </div>
                     <div class="crosshair-slider-container">
                         <p>{t("loadout-stroke")}</p>{" "}
-                        <input
-                            type="range"
-                            min="0.0"
-                            max="1.5"
-                            step="0.025"
-                            class="crosshair-slider"
+                        <RangeSlider
                             id="crosshair-stroke"
+                            class="crosshair-slider"
+                            label={t("loadout-stroke")}
+                            min={0}
+                            max={1.5}
+                            step={0.025}
                             value={loadoutView.crosshairStroke}
-                            onInput={(e) => props.menu.onCrosshairStroke(e.currentTarget.value)}
+                            onChange={(stroke) => props.menu.onCrosshairStroke(stroke)}
                         />
                     </div>
                 </div>
@@ -286,34 +296,35 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
             style={{ cursor: loadoutView.cursorReset ? "initial" : undefined }}
         >
             <div id="modal-customize-wrapper" class="modal-close">
-                <div id="modal-content-left" class="modal-content-shadow">
+                <Tabs
+                    id="modal-content-left"
+                    class="modal-content-shadow"
+                    value={category()}
+                    onValueChange={(type) => {
+                        const idx = loadoutView.categories.findIndex((cat) => cat.loadoutType === type);
+                        if (idx >= 0) props.menu.onCategorySelect(idx);
+                    }}
+                >
                     <div id="modal-customize-cat-title">{title()}</div>
                     <div id="modal-customize-sort-wrap">
-                        <select
+                        <MenuSelect
                             id="modal-customize-sort"
+                            label={t("loadout-sort")}
                             value={loadoutView.sort}
-                            onChange={(e) => props.menu.sortItems(e.currentTarget.value)}
-                        >
-                            <option id="customize-sort-newest" value="newest">{t("loadout-newest")}</option>
-                            <option id="customize-sort-alpha" value="alpha">{t("loadout-alpha")}</option>
-                            <option id="customize-sort-rarity" value="rarity">{t("loadout-rarity")}</option>
-                            <option
-                                id="customize-sort-subcat"
-                                value="subcat"
-                                style={{ display: display(loadoutView.subcatSort) }}
-                            >
-                                {t("loadout-subcat")}
-                            </option>
-                        </select>
+                            values={SORT_TYPES.filter((sort) => sort !== "subcat" || loadoutView.subcatSort)}
+                            itemLabel={(sort) => t(SORT_LABELS[sort])}
+                            itemId={(sort) => `customize-sort-${sort}`}
+                            onChange={(sort) => props.menu.sortItems(sort)}
+                        />
                     </div>
                     <div id="modal-customize-close">
                         <span class="close close-corner" onClick={(e) => props.menu.modal.hide(e)} />
                     </div>
-                    <Categories menu={props.menu} />
+                    <Categories />
                     <div class="modal-disabled">
                         <div class="modal-disabled-message">The Edge browser does not support custom cursors.</div>
                     </div>
-                    <div id="modal-customize-body" class="modal-body">
+                    <TabsPanel id="modal-customize-body" class="modal-body" value={category() ?? ""}>
                         <div id="modal-customize-item-header">
                             <div
                                 id="modal-customize-item-name"
@@ -340,12 +351,12 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                             </div>
                         </div>
                         <ItemList menu={props.menu} />
-                    </div>
+                    </TabsPanel>
                     <div id="modal-customize-footer" class="modal-footer modal-footer-round">
                         <div id="modal-customize-item-source">{loadoutView.itemSource}</div>
                         <div id="modal-customize-item-lore">{loadoutView.itemLore}</div>
                     </div>
-                </div>
+                </Tabs>
                 <CrosshairPanel menu={props.menu} />
                 <EmotePanel menu={props.menu} />
             </div>

@@ -143,5 +143,9 @@
   "game-control_panel_01": "Control Panel",
   "game-control_panel_02": "Control Panel",
   "game-control_panel_03": "a computer terminal",
-  "game-power_box_01": "a power box"
+  "game-power_box_01": "a power box",
+  "stats-filter-team-mode": "Modo de equipo",
+  "stats-filter-type": "Clasificación",
+  "stats-filter-time": "Periodo",
+  "stats-filter-map": "Mapa"
 }

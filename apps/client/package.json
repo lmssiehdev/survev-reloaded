@@ -10,22 +10,23 @@
   },
   "dependencies": {
     "@elysia/eden": "2.0.0-rc.0",
-    "@kobalte/core": "2.0.0-alpha.3",
+    "@solidjs/router": "2.0.1",
+    "@solidjs/web": "2.0.3",
     "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
-    "@solidjs/router": "2.0.0-next.39",
-    "@solidjs/web": "2.0.0-rc.15",
     "@taufik-nurrohman/color-picker": "1.4.2",
+    "@ui-sdk/core": "0.1.0-beta.14",
+    "@ui-sdk/solid": "0.1.0-beta.14",
     "better-auth": "^1.7.8",
     "bootstrap": "^4.6.2",
     "pixi.js-legacy": "^7.4.3",
     "slugify": "^1.6.9",
-    "solid-js": "2.0.0-rc.15"
+    "solid-js": "2.0.3"
   },
   "devDependencies": {
     "@survev/api": "workspace:*",
     "@survev/config": "workspace:*",
-    "@solidjs/vite-plugin": "3.0.0-next.50",
+    "@solidjs/vite-plugin": "3.0.1",
     "@tweakpane/core": "^2.0.5",
     "@types/bun": "^1.4.3",
     "@types/svg-parser": "^2.0.6",

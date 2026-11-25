@@ -20,6 +20,7 @@ import {
     teamMenu,
 } from "../startMenu.ts";
 import { showToast } from "../toast.ts";
+import { MenuSelect } from "./Controls.tsx";
 import { PassPanel } from "./PassPanel.tsx";
 import { LanguageSelect } from "./SettingsModal.tsx";
 
@@ -38,33 +39,28 @@ const regionLabel = (region: RegionView) => `${translate(region.l10n)} [${region
 function RegionSelect(
     props: {
         id: string;
-        optgroupId: string;
         class: string;
         value: string;
         disabled?: boolean;
         onChange: (id: string) => void;
     },
 ) {
+    const label = (id: string) => {
+        const region = startMenu.regions.find((r) => r.id === id);
+        return region ? regionLabel(region) : "";
+    };
     return (
-        <select
+        <MenuSelect
             id={props.id}
             class={props.class}
+            label={t("index-region")}
+            heading={t("index-region")}
+            value={props.value}
+            values={startMenu.regions.map((r) => r.id)}
+            itemLabel={label}
             disabled={props.disabled}
-            onChange={(e) => {
-                const region = startMenu.regions.find((r) => r.id === e.currentTarget.value);
-                if (region) props.onChange(region.id);
-            }}
-        >
-            <optgroup id={props.optgroupId} label={t("index-region")}>
-                <For each={startMenu.regions} keyed={(region) => region.id}>
-                    {(region) => (
-                        <option value={region().id} selected={region().id === props.value}>
-                            {regionLabel(region())}
-                        </option>
-                    )}
-                </For>
-            </optgroup>
-        </select>
+            onChange={props.onChange}
+        />
     );
 }
 
@@ -248,7 +244,6 @@ function StartMenuColumn() {
                 <Show when={!startMenu.offline}>
                     <RegionSelect
                         id="server-select-main"
-                        optgroupId="server-opts"
                         class="server-select menu-option btn-hollow btn-hollow-selected"
                         value={startMenu.region}
                         onChange={(region) => {
@@ -533,7 +528,6 @@ function TeamMenuColumn() {
                         <div id="team-menu-options" class="team-menu-block">
                             <RegionSelect
                                 id="team-server-select"
-                                optgroupId="team-server-opts"
                                 class="btn-hollow btn-hollow-selected server-select menu-option"
                                 value={team.room.region}
                                 disabled={!team.isLeader}
@@ -737,7 +731,7 @@ export function StartTopLeft() {
                     <div class="streamer-list">
                         <For each={startMenu.streamers} keyed={(streamer) => streamer.name}>
                             {(streamer) => (
-                                <div class="featured-streamer streamer-tooltip">
+                                <div class="featured-streamer">
                                     <a
                                         href={streamer().url}
                                         target="_blank"

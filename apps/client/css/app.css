@@ -1,3 +1,6 @@
+/* declared first so our styles win over the few rules ui-sdk adds */
+@layer ui-sdk;
+
 @font-face {
     font-family: "Phantom Guardians";
     src: url("/fonts/phantom-guardians-bold.otf") format("opentype");
@@ -2789,42 +2792,6 @@ a:active {
     max-width: 60%;
 }
 
-.mobile-announce-tooltip .tooltiptext {
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 6px;
-    color: #ffffff;
-    left: 100%;
-    margin-left: -60px;
-    opacity: 0.9;
-    padding: 5px 0;
-    position: absolute;
-    text-align: center;
-    bottom: 120%;
-    visibility: hidden;
-    width: 210px;
-    z-index: 1;
-}
-
-.mobile-announce-tooltip .tooltiptext > span {
-    color: #ffe400;
-    font-weight: 700;
-}
-
-.mobile-announce-tooltip .tooltiptext::after {
-    border-color: #000000 transparent transparent transparent;
-    border-style: solid;
-    border-width: 5px;
-    bottom: 100%;
-    content: " ";
-    left: 10%;
-    bottom: -10px;
-    position: absolute;
-}
-
-.mobile-announce-tooltip:hover .tooltiptext {
-    visibility: visible;
-}
-
 @keyframes snow-pulse {
     from {
         background-color: #acd5f3;
@@ -3251,21 +3218,6 @@ a:active {
     text-align-last: center;
 }
 
-.server-select optgroup {
-    color: #000000;
-    background-color: #ffffff;
-}
-
-.server-select option {
-    opacity: 0.5;
-    color: #000000;
-    height: 24px;
-    width: 100px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-    background-color: #ffffff;
-}
-
 .btn-disabled {
     cursor: default !important;
     color: #ffffff !important;
@@ -3483,7 +3435,11 @@ a:active {
     font-size: 14px;
 }
 
+/* a ui-sdk TooltipTrigger button */
 #pass-progress-unlock-wrapper {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
     background-image: url(/img/pass/pass-unlock-bg.svg);
     background-repeat: no-repeat;
     background-size: 128px;
@@ -3829,19 +3785,26 @@ a:active {
         opacity: 0;
     }
 }
+/* a ui-sdk TooltipContent in the top layer, placed over the pass unlock icon */
 #pass-unlock-tooltip {
     background-color: rgba(0, 0, 0, 0.95);
     border-radius: 6px;
     color: #ffffff;
-    display: none;
     min-width: 180px;
     padding: 5px;
-    position: absolute;
-    right: -18px;
     text-align: center;
-    top: -14px;
     white-space: nowrap;
-    z-index: 4;
+    font-family: inherit;
+}
+
+.pass-unlock-tooltip-arrow {
+    border-color: rgba(0, 0, 0, 0.95) transparent transparent transparent;
+    border-style: solid;
+    border-width: 5px;
+}
+
+.pass-unlock-tooltip-arrow[data-side="bottom"] {
+    rotate: 180deg;
 }
 
 .tooltip-pass-title {
@@ -3858,17 +3821,6 @@ a:active {
     line-height: 24px;
     padding: 4px 8px 8px;
     text-transform: capitalize;
-}
-
-#pass-unlock-tooltip::after {
-    content: " ";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: rgba(0, 0, 0, 0.95) transparent transparent transparent;
 }
 
 #start-top-left {
@@ -3984,29 +3936,6 @@ a:active {
     margin-top: 8px;
 }
 
-.streamer-tooltip .tooltiptext {
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 6px;
-    color: #ffffff;
-    opacity: 0.9;
-    padding: 5px 0;
-    position: absolute;
-    text-align: center;
-    bottom: -54px;
-    visibility: hidden;
-    width: 210px;
-    z-index: 1;
-}
-
-.streamer-tooltip .tooltiptext span {
-    color: #ffe400;
-    font-weight: 700;
-}
-
-.streamer-tooltip:hover .tooltiptext {
-    visibility: visible;
-}
-
 .btn-streamer {
     background-size: 34px;
     background-repeat: no-repeat;
@@ -4076,15 +4005,6 @@ a:active {
     -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
-}
-
-.language-select option {
-    opacity: 0.5;
-    color: #000000;
-    height: 24px;
-    width: 100px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
 }
 
 #start-bottom-left {
@@ -4706,16 +4626,8 @@ input [type="image"]:focus {
     -webkit-transition: 0.2s;
 }
 
-.crosshair-slider::-webkit-slider-thumb {
+.crosshair-slider .range-slider-thumb {
     -webkit-appearance: none;
-    background: #000000;
-    border-radius: 50%;
-    cursor: pointer;
-    height: 25px;
-    width: 25px;
-}
-
-.crosshair-slider::-moz-range-thumb {
     background: #000000;
     border-radius: 50%;
     cursor: pointer;
@@ -4960,28 +4872,6 @@ input [type="image"]:focus {
     position: relative;
 }
 
-#modal-customize-sort > option {
-    opacity: 0.5;
-    color: #000000;
-    height: 24px;
-    width: 100px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-}
-
-#customize-sort-subcat {
-    display: none;
-}
-
-#modal-customize-sort option {
-    opacity: 0.5;
-    color: #000000;
-    height: 24px;
-    width: 100px;
-    border: 1px solid rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-}
-
 #modal-customize-close {
     position: absolute;
     right: 12px;
@@ -5016,13 +4906,18 @@ input [type="image"]:focus {
     border-bottom: solid 72px rgba(0, 0, 0, 0.5);
     content: "";
     cursor: default;
-    margin-left: -20px;
+    left: -20px;
     position: absolute;
+    top: 0;
     width: 8px;
 }
 
+/* a ui-sdk TabsTab button */
 .modal-customize-cat {
     background: rgba(0, 0, 0, 0.5);
+    border: 0;
+    padding: 0;
+    vertical-align: top;
     cursor: pointer;
     display: inline-block;
     height: 72px;
@@ -5054,8 +4949,8 @@ input [type="image"]:focus {
     width: 70px;
 }
 
-.modal-customize-cat-selected {
-    background: #82ad51 !important;
+.modal-customize-cat[data-selected] {
+    background: #82ad51;
 }
 
 .modal-customize-cat-image-selected {
@@ -5172,42 +5067,6 @@ input [type="image"]:focus {
 
 #customize-delete-items {
     display: inline-block;
-}
-
-.customize-social-tooltip {
-    position: relative;
-    margin-right: 8px;
-}
-
-.customize-social-tooltip .tooltiptext {
-    background-color: #000000;
-    bottom: 100%;
-    border-radius: 6px;
-    color: #ffffff;
-    left: 50%;
-    opacity: 0.9;
-    padding: 5px;
-    position: absolute;
-    text-align: center;
-    transform: translateX(-50%);
-    width: 175px;
-    visibility: hidden;
-    z-index: 1;
-}
-
-.customize-social-tooltip .tooltiptext::after {
-    content: " ";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #000000 transparent transparent transparent;
-}
-
-.customize-social-tooltip:hover .tooltiptext {
-    visibility: visible;
 }
 
 #modal-customize-wrapper {
@@ -5349,12 +5208,6 @@ input [type="image"]:focus {
     font-size: 14px;
 }
 
-.modal-body input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin-right: 8px;
-}
-
 .modal-footer {
     padding: 2px 16px;
     background-color: #3e3e3e;
@@ -5400,16 +5253,8 @@ input [type="image"]:focus {
     transition: opacity 0.2s;
 }
 
-.slider::-webkit-slider-thumb {
+.slider .range-slider-thumb {
     appearance: none;
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    background: #50afab;
-    cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
     width: 25px;
     height: 25px;
     border-radius: 50%;
@@ -5471,21 +5316,6 @@ input [type="image"]:focus {
         height: 28px;
         padding: 0 4px;
         text-align-last: center;
-    }
-
-    .server-select optgroup {
-        color: #000000;
-        background-color: #ffffff;
-    }
-
-    .server-select option {
-        opacity: 0.5;
-        color: #000000;
-        height: 28px;
-        width: 100px;
-        border: 1px solid rgba(0, 0, 0, 0.6);
-        border-radius: 5px;
-        background-color: #ffffff;
     }
 
     .team-menu-options-buttons {
@@ -5701,8 +5531,8 @@ input [type="image"]:focus {
     }
 
     #pass-unlock-tooltip {
-        right: -44px;
-        transform: scale(0.5);
+        scale: 0.5;
+        transform-origin: bottom center;
     }
 
     .right-column-toggle {
@@ -5777,15 +5607,6 @@ input [type="image"]:focus {
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;
-    }
-
-    .language-select option {
-        opacity: 0.5;
-        color: #000000;
-        height: 24px;
-        width: 100px;
-        border: 1px solid rgba(0, 0, 0, 0.6);
-        border-radius: 5px;
     }
 
     .language-select-wrap:after {
@@ -6052,16 +5873,8 @@ input [type="image"]:focus {
         transition: opacity 0.2s;
     }
 
-    .slider::-webkit-slider-thumb {
+    .slider .range-slider-thumb {
         appearance: none;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #50afab;
-        cursor: inherit;
-    }
-
-    .slider::-moz-range-thumb {
         width: 32px;
         height: 32px;
         border-radius: 50%;
@@ -6140,13 +5953,6 @@ input [type="image"]:focus {
 
     .modal-body p.modal-slider-text {
         bottom: 0;
-    }
-
-    .modal-body input[type="checkbox"] {
-        width: 24px;
-        height: 24px;
-        margin-right: 8px;
-        margin-left: 1px;
     }
 
     .modal-footer {
@@ -6869,4 +6675,124 @@ input [type="image"]:focus {
 #ui-game[data-minimap-hidden] #ui-spec-counter {
     bottom: 6px;
     left: 98px;
+}
+
+/*
+ * ui-sdk controls (ui/components/Controls.tsx).
+ * A slider's root draws the thin track (`.slider`, `.crosshair-slider`); the control around it
+ * is a taller invisible hit area, and the thumb is sized by the look's `.range-slider-thumb` rule.
+ */
+.range-slider {
+    margin-block: 12px;
+    position: relative;
+    touch-action: none;
+}
+
+.range-slider:hover, .range-slider[data-dragging] {
+    opacity: 1;
+}
+
+.range-slider-control {
+    align-items: center;
+    display: flex;
+    inset: -11px 0;
+    position: absolute;
+}
+
+.range-slider-track {
+    height: 100%;
+    width: 100%;
+}
+
+.range-slider-thumb:has(:focus-visible) {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.menu-checkbox {
+    align-items: center;
+    background-color: #ffffff;
+    border: 1px solid #767676;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    height: 18px;
+    justify-content: center;
+    margin-right: 8px;
+    padding: 0;
+    width: 18px;
+}
+
+.menu-checkbox[data-checked] {
+    background-color: #50afab;
+    border-color: #50afab;
+}
+
+.menu-checkbox-check {
+    border: solid #ffffff;
+    border-width: 0 3px 3px 0;
+    height: 65%;
+    margin-bottom: 15%;
+    rotate: 45deg;
+    width: 35%;
+}
+
+.menu-select-trigger {
+    font-family: inherit;
+    line-height: normal;
+}
+
+.menu-select-trigger[data-disabled] {
+    cursor: default;
+}
+
+.server-select.menu-select-trigger {
+    position: relative;
+    width: 100%;
+}
+
+.server-select.menu-select-trigger::after {
+    content: "\25BC";
+    font-size: 10px;
+    position: absolute;
+    right: 12px;
+}
+
+.menu-select-content {
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    color: #000000;
+    font-size: 14px;
+    max-height: var(--available-height);
+    min-width: var(--anchor-width);
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.menu-select-heading {
+    color: #6b6b6b;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 12px 4px;
+}
+
+.menu-select-item {
+    cursor: pointer;
+    padding: 4px 12px;
+    white-space: nowrap;
+}
+
+.menu-select-item[data-highlighted] {
+    background-color: #83af50;
+    color: #ffffff;
+}
+
+.menu-select-item[data-selected] {
+    font-weight: bold;
+}
+
+.menu-select-content:focus, .menu-select-item:focus {
+    outline: none;
 }

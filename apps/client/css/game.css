@@ -405,8 +405,8 @@ img {
     height: 340px;
 }
 
+/* the hidden tab panel carries `hidden` (ui-sdk Tabs) */
 #ui-game-tab-keybinds {
-    display: none;
     height: 345px;
 }
 
@@ -878,14 +878,7 @@ img {
 }
 
 @media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
-    .ui-slider-container > .slider::-webkit-slider-thumb {
-        width: 24px;
-        height: 24px;
-    }
-}
-
-@media (max-width: 850px), (max-width: 900px) and (min-resolution: 3dppx) {
-    .ui-slider-container > .slider::-moz-range-thumb {
+    .ui-slider-container > .slider .range-slider-thumb {
         width: 24px;
         height: 24px;
     }

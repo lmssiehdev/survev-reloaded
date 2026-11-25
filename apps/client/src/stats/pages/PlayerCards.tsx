@@ -3,7 +3,7 @@ import { ALL_MAPS, STATS_INTERVALS } from "@survev/shared/types/statsFilters.ts"
 import { INTERVAL_LABEL_KEYS } from "@survev/shared/types/statsLabels.ts";
 import { For, Show } from "solid-js";
 import { Select } from "../components/Select.tsx";
-import { gameModes, type ModeCard, type Profile } from "../format.ts";
+import { mapIds, mapName, type ModeCard, type Profile } from "../format.ts";
 import { t } from "../i18n.ts";
 
 export type PlayerCardsFilters = Pick<UserStatsRequest, "interval" | "mapIdFilter">;
@@ -85,25 +85,24 @@ export function PlayerFilters(props: {
                 <div class="col-lg-2 col-6">
                     <Select
                         id="player-time"
+                        name={t("stats-filter-time")}
                         class="player-opt"
                         value={props.filters.interval}
                         values={STATS_INTERVALS}
-                        label={(interval) => INTERVAL_LABEL_KEYS[interval]}
+                        label={(interval) => t(INTERVAL_LABEL_KEYS[interval])}
                         onChange={(interval) => props.onChange({ interval })}
                     />
                 </div>
                 <div class="col-lg-2 col-6 pl-0">
-                    <select
+                    <Select
                         id="player-map-id"
-                        class="player-opt custom-select"
+                        name={t("stats-filter-map")}
+                        class="player-opt"
                         value={props.filters.mapIdFilter}
-                        onChange={(e) => props.onChange({ mapIdFilter: e.currentTarget.value })}
-                    >
-                        <option value={ALL_MAPS}>{t("all")}</option>
-                        <For each={gameModes}>
-                            {(mode) => <option value={mode.mapId}>{mode.desc.name}</option>}
-                        </For>
-                    </select>
+                        values={[ALL_MAPS, ...mapIds]}
+                        label={(mapId) => (mapId === ALL_MAPS ? t("all") : mapName(mapId))}
+                        onChange={(mapIdFilter) => props.onChange({ mapIdFilter })}
+                    />
                 </div>
                 <div class="offset-6 col-2 col-rating-help">
                     <div class="rating-help">

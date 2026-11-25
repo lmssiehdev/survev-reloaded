@@ -1,9 +1,11 @@
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/solid/tabs";
 import { For } from "solid-js";
 import { config } from "../../appConfig.ts";
 import { device, layout } from "../../device.ts";
-import { gameTabs, gameUi, gameView, px } from "../gameView.ts";
+import { type GameTab, gameTabs, gameUi, gameView, px } from "../gameView.ts";
 import { small } from "../hudLayout.ts";
 import { type MessageKey, t } from "../i18n.ts";
+import { RangeSlider } from "./Controls.tsx";
 import { GameKeybindsTab } from "./Keybinds.tsx";
 import { TouchControls } from "./TouchControls.tsx";
 
@@ -15,9 +17,14 @@ const sliders: { key: VolumeKey; label: MessageKey; class: string }[] = [
     { key: "musicVolume", label: "index-music-volume", class: "sl-music-volume" },
 ];
 
-const tabIcons: Record<(typeof gameTabs)[number], string> = {
+const tabIcons: Record<GameTab, string> = {
     settings: "settings-icon",
     keybinds: "keybind-icon",
+};
+
+const tabLabels: Record<GameTab, MessageKey> = {
+    settings: "index-settings",
+    keybinds: "index-customize-keybinds",
 };
 
 /** the game reads mouse buttons on window: clicks on the menu must not shoot */
@@ -33,33 +40,45 @@ export function GameMenu() {
                 onMouseEnter={() => gameUi()?.setMenuHovered(true)}
                 onMouseLeave={() => gameUi()?.setMenuHovered(false)}
             >
-                <div
+                <Tabs
                     id="ui-game-menu"
                     class={{ "ui-game-menu-desktop": !small() }}
                     style={{ display: gameView.menu.open ? "block" : "none" }}
+                    value={gameView.menu.tab}
+                    onValueChange={(tab) => {
+                        if (tab) gameUi()?.setCurrentGameTab(tab);
+                    }}
                 >
-                    <div id="btn-game-tabs" class="btns-game-double-row" style={{ display: small() ? "none" : "flex" }}>
+                    <TabsList
+                        id="btn-game-tabs"
+                        class="btns-game-double-row"
+                        aria-label={t("game-menu")}
+                        style={{ display: small() ? "none" : "flex" }}
+                    >
                         <For each={gameTabs}>
                             {(tab) => (
                                 <div class="btn-game-container">
-                                    <a
+                                    <TabsTab
+                                        value={tab}
                                         id={`btn-game-${tab}`}
                                         class={[
                                             "btn-game-tab-select btn-game-menu btn-darken",
                                             { "btn-game-menu-selected": gameView.menu.tab === tab },
                                         ]}
-                                        onClick={() => gameUi()?.setCurrentGameTab(tab)}
-                                    >
-                                    </a>{" "}
+                                        aria-label={t(tabLabels[tab])}
+                                        onMouseDown={stop}
+                                        render={(props) => <a {...props} />}
+                                    />{" "}
                                     <div class={`btn-double-row game-menu-icon-static ${tabIcons[tab]}`}></div>
                                 </div>
                             )}
                         </For>
-                    </div>
-                    <div
+                    </TabsList>
+                    <TabsPanel
+                        value="settings"
                         id="ui-game-tab-settings"
                         class={["ui-game-tab", { "ui-game-tab-settings-desktop": !small() }]}
-                        style={{ display: gameView.menu.tab === "settings" ? "block" : "none" }}
+                        keepMounted
                     >
                         <a
                             id="btn-game-fullscreen"
@@ -85,14 +104,13 @@ export function GameMenu() {
                             {(slider) => (
                                 <div class="slider-container ui-slider-container">
                                     <p class="slider-text">{t(slider.label)}</p>{" "}
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
+                                    <RangeSlider
                                         class={`slider ${slider.class}`}
+                                        label={t(slider.label)}
+                                        min={0}
+                                        max={100}
                                         value={config.state[slider.key] * 100}
-                                        onMouseDown={stop}
-                                        onInput={(e) => config.set(slider.key, Number(e.currentTarget.value) / 100)}
+                                        onChange={(value) => config.set(slider.key, value / 100)}
                                     />
                                 </div>
                             )}
@@ -105,14 +123,10 @@ export function GameMenu() {
                         >
                             {t("game-quit-game")}
                         </a>
-                    </div>
-                    <div
-                        id="ui-game-tab-keybinds"
-                        class="ui-game-tab"
-                        style={{ display: gameView.menu.tab === "keybinds" ? "block" : "none" }}
-                    >
+                    </TabsPanel>
+                    <TabsPanel value="keybinds" id="ui-game-tab-keybinds" class="ui-game-tab" keepMounted>
                         <GameKeybindsTab />
-                    </div>
+                    </TabsPanel>
                     <a
                         id="btn-game-resume"
                         class="btn-game-menu btn-darken"
@@ -122,7 +136,7 @@ export function GameMenu() {
                     >
                         {t("game-return-to-game")}
                     </a>
-                </div>
+                </Tabs>
             </div>
             <div id="big-map" class="js-ui-map-show">
                 {/* on touch screens, the rotated screen */}

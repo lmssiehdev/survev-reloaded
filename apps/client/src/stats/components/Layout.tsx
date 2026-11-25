@@ -1,55 +1,61 @@
-import { Collapsible } from "@kobalte/core/collapsible";
-import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { useNavigate } from "@solidjs/router";
 import type { JSX } from "@solidjs/web";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@ui-sdk/solid/collapsible";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@ui-sdk/solid/menu";
 import slugify from "slugify";
-import { createSignal, For } from "solid-js";
+import { createSignal, For, onCleanup } from "solid-js";
 import { config } from "../config.ts";
 import { locale, setLocale, type StatsLocale, statsLocales, t } from "../i18n.ts";
 
 function LanguageSelect() {
     return (
         <li id="language-select" class="nav-item dropdown">
-            <DropdownMenu modal={false}>
-                <DropdownMenu.Trigger id="selected-language" class="nav-link dropdown-toggle">
+            <Menu modal={false}>
+                <MenuTrigger id="selected-language" class="nav-link dropdown-toggle">
                     {locale().toUpperCase()}
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                    <DropdownMenu.Content class="dropdown-menu">
-                        <For each={Object.keys(statsLocales) as StatsLocale[]}>
-                            {(code) => (
-                                <DropdownMenu.Item
-                                    class="dropdown-item dropdown-language"
-                                    onSelect={() => void setLocale(code)}
-                                >
-                                    {statsLocales[code]}
-                                </DropdownMenu.Item>
-                            )}
-                        </For>
-                    </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-            </DropdownMenu>
+                </MenuTrigger>
+                <MenuContent class="dropdown-menu" align="start">
+                    <For each={Object.keys(statsLocales) as StatsLocale[]}>
+                        {(code) => (
+                            <MenuItem
+                                class="dropdown-item dropdown-language"
+                                onSelect={() => void setLocale(code)}
+                            >
+                                {statsLocales[code]}
+                            </MenuItem>
+                        )}
+                    </For>
+                </MenuContent>
+            </Menu>
         </li>
     );
+}
+
+/** Bootstrap's `navbar-expand-md`: from this width up, the menu is always shown and the toggler hidden */
+function createWideScreen() {
+    const query = window.matchMedia("(min-width: 768px)");
+    const [wide, setWide] = createSignal(query.matches);
+    const onChange = () => setWide(query.matches);
+    query.addEventListener("change", onChange);
+    onCleanup(() => query.removeEventListener("change", onChange));
+    return wide;
 }
 
 function Navbar() {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = createSignal(false);
+    const wide = createWideScreen();
     const mySlug = config.get("profile")?.slug;
 
     return (
         <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-            <Collapsible class="container" open={menuOpen()} onOpenChange={setMenuOpen} forceMount>
+            <Collapsible class="container" open={wide() || menuOpen()} onOpenChange={setMenuOpen}>
                 <a class="btn btn-outline-success btn-play my-2 my-sm-0" href="/">{t("index-play-survevio")}</a>
-                <Collapsible.Trigger class="navbar-toggler" aria-label="Toggle navigation">
+                <CollapsibleTrigger class="navbar-toggler" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
-                </Collapsible.Trigger>
+                </CollapsibleTrigger>
 
-                <Collapsible.Content
-                    id="navbarSupportedContent"
-                    class={["collapse", "navbar-collapse", "ml-lg-2", { show: menuOpen() }]}
-                >
+                <CollapsiblePanel id="navbarSupportedContent" class="collapse show navbar-collapse ml-lg-2">
                     <ul class="navbar-nav mr-auto">
                         <li class="nav-item m-lg-auto m-1">
                             <a class="nav-link-bright" href="/stats/" link>{t("index-leaderboards")}</a>
@@ -88,7 +94,7 @@ function Navbar() {
                             {t("index-go")}
                         </button>
                     </form>
-                </Collapsible.Content>
+                </CollapsiblePanel>
             </Collapsible>
         </nav>
     );
