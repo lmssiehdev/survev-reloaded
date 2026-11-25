@@ -14,7 +14,6 @@
     "@solidjs/web": "2.0.3",
     "@survev/game": "workspace:*",
     "@survev/shared": "workspace:*",
-    "@taufik-nurrohman/color-picker": "1.4.2",
     "@ui-sdk/core": "0.1.0-beta.14",
     "@ui-sdk/solid": "0.1.0-beta.14",
     "better-auth": "^1.7.8",

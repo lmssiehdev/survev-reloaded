@@ -1,3 +1,11 @@
+import {
+    ColorPicker,
+    ColorPickerArea,
+    ColorPickerAreaThumb,
+    ColorPickerInput,
+    ColorPickerSlider,
+    ColorPickerSliderThumb,
+} from "@ui-sdk/solid/color-picker";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/solid/tabs";
 import { For, Show } from "solid-js";
 import { accountView } from "../../account.ts";
@@ -121,19 +129,22 @@ function CrosshairPanel(props: { menu: LoadoutMenu }) {
                     />
                 </div>
                 <div id="customize-crosshair-sliders">
-                    <div class="crosshair-hex-outer">
-                        <span>#</span>
-                        <input
-                            type="text"
-                            id="color-picker-hex"
-                            value={loadoutView.crosshairHex}
-                            onInput={(e) => props.menu.onHexInput(e.currentTarget.value)}
-                            onKeyUp={(e) => props.menu.onHexInput(e.currentTarget.value)}
-                            onCut={(e) => props.menu.onHexInput(e.currentTarget.value)}
-                            onPaste={(e) => props.menu.onHexInput(e.currentTarget.value)}
-                        />
-                    </div>
-                    <section id="color-picker" ref={(el) => (props.menu.dom.picker = el)} />
+                    <ColorPicker
+                        id="color-picker"
+                        aria-label={t("loadout-crosshair-color")}
+                        value={`#${loadoutView.crosshairHex || "ffffff"}`}
+                        onValueChange={(color) => props.menu.onCrosshairColor(color)}
+                    >
+                        <ColorPickerInput id="color-picker-hex" aria-label={t("loadout-hex")} />
+                        <div class="crosshair-color-pads">
+                            <ColorPickerArea class="crosshair-color-area">
+                                <ColorPickerAreaThumb class="crosshair-color-area-thumb" />
+                            </ColorPickerArea>
+                            <ColorPickerSlider channel="hue" orientation="vertical" class="crosshair-color-hue">
+                                <ColorPickerSliderThumb class="crosshair-color-hue-thumb" />
+                            </ColorPickerSlider>
+                        </div>
+                    </ColorPicker>
                     <div class="crosshair-slider-container">
                         <p>{t("loadout-size")}</p>{" "}
                         <RangeSlider

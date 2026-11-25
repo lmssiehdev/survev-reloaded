@@ -4582,15 +4582,6 @@ input [type="image"]:focus {
     width: 25%;
 }
 
-.crosshair-hex-outer {
-    text-align: center;
-}
-
-.crosshair-hex-outer > span {
-    font-size: 20px;
-    margin-right: 4px;
-}
-
 #color-picker-hex {
     border: 2px solid #006400;
     border-radius: 2px;
@@ -4600,10 +4591,61 @@ input [type="image"]:focus {
     border: 2px solid #4bc800;
 }
 
+/* the crosshair color: a ui-sdk ColorPicker, a saturation/brightness square beside a hue bar */
 #color-picker {
     margin-bottom: 8px;
     margin-top: 8px;
     text-align: center;
+}
+
+.crosshair-color-pads {
+    background: #000000;
+    box-shadow: 1px 5px 10px rgba(0, 0, 0, 0.5);
+    display: flex;
+    gap: 1px;
+    margin: 8px auto 0;
+    padding: 1px;
+    width: max-content;
+}
+
+.crosshair-color-area, .crosshair-color-hue {
+    cursor: pointer;
+    height: 120px;
+    position: relative;
+    touch-action: none;
+    user-select: none;
+}
+
+.crosshair-color-area {
+    background: var(--color-area-background);
+    width: 120px;
+}
+
+.crosshair-color-hue {
+    background: var(--color-slider-background);
+    cursor: ns-resize;
+    width: 18px;
+}
+
+.crosshair-color-area-thumb {
+    border: 1px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px #000000;
+    height: 10px;
+    translate: -50% -50%;
+    width: 10px;
+}
+
+.crosshair-color-hue-thumb {
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 1px #000000;
+    height: 6px;
+    inset-inline: 0;
+    translate: 0 -50%;
+}
+
+.crosshair-color-area-thumb:focus-visible, .crosshair-color-hue-thumb:focus-visible {
+    outline: 2px solid #4bc800;
 }
 
 .crosshair-slider-container {
@@ -4637,182 +4679,6 @@ input [type="image"]:focus {
 
 .crosshair-slider:hover {
     opacity: 1;
-}
-
-.color-checkbox-container > input[type="checkbox"] {
-    cursor: pointer;
-    height: 18px;
-    margin-left: 8px;
-    transform: scale(2);
-    width: 18px;
-}
-
-.color-slider:hover {
-    opacity: 1;
-}
-
-.color-picker,
-.color-picker::before,
-.color-picker::after,
-.color-picker *,
-.color-picker *::before,
-.color-picker *::after {
-    box-sizing: border-box;
-}
-
-.color-picker {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 9999;
-}
-
-.color-picker-container {
-    background: #000000;
-    color: #000000;
-    padding: 1px;
-    box-shadow: 1px 5px 10px rgba(0, 0, 0, 0.5);
-    width: calc(11.5em + 3px);
-}
-
-.color-picker-container *, .color-picker-container *::before, .color-picker-container *::after {
-    border-color: inherit;
-}
-
-.color-picker-container::after {
-    content: "";
-    display: table;
-    clear: both;
-}
-
-.color-picker i {
-    font: inherit;
-    font-size: 12px;
-}
-
-.color-picker-h {
-    position: relative;
-    width: 1.5em;
-    height: 10em;
-    float: right;
-    cursor: ns-resize;
-    /* url(./css/color-picker-h.png) */
-    background: transparent no-repeat 50% 50%;
-    background-image: linear-gradient(
-        to top,
-        #ff0000 0%,
-        #ffff00 17%,
-        #00ff00 33%,
-        #00ffff 50%,
-        #0000ff 67%,
-        #ff00ff 83%,
-        #ff0000 100%
-    );
-    background-size: 100% 100%;
-    overflow: hidden;
-}
-
-.color-picker-h i {
-    position: absolute;
-    top: -0.25em;
-    right: 0;
-    left: 0;
-    z-index: 3;
-    display: block;
-    height: 0.5em;
-}
-
-.color-picker-h i::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: block;
-    border: 0.25em solid;
-    border-color: inherit;
-    border-top-color: transparent;
-    border-bottom-color: transparent;
-}
-
-.color-picker-sv {
-    position: relative;
-    width: 10em;
-    height: 10em;
-    float: left;
-    margin-right: 1px;
-    /* url(./css/color-picker-sv.png) */
-    background: transparent no-repeat 50% 50%;
-    background-image:
-        linear-gradient(to top, #000000, rgba(0, 0, 0, 0)),
-        linear-gradient(to right, #ffffff, rgba(255, 255, 255, 0));
-    background-size: 100% 100%;
-    cursor: pointer;
-}
-
-.color-picker-sv i {
-    position: absolute;
-    top: -0.4em;
-    right: -0.4em;
-    z-index: 3;
-    display: block;
-    width: 0.8em;
-    height: 0.8em;
-}
-
-.color-picker-sv i::before, .color-picker-sv i::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: block;
-    border: 1px solid;
-    border-color: inherit;
-    border-radius: 100%;
-}
-
-.color-picker-sv i::before {
-    top: -1px;
-    right: -1px;
-    bottom: -1px;
-    left: -1px;
-    border-color: #ffffff;
-}
-
-.color-picker-h, .color-picker-sv {
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.color-picker.static {
-    display: inline-block !important;
-    position: static !important;
-    top: 0 !important;
-    left: 0 !important;
-}
-
-.color-code {
-    display: block;
-    float: left;
-    width: 100%;
-    height: 2em;
-    margin: 1px 0 0;
-    padding: 0 0.5em;
-    background: #ffffaa;
-    border: 0;
-    font: normal normal 13px / 2em "Phantom Guardians", sans-serif;
-    color: #000000;
-    box-sizing: border-box;
-    clear: both;
-}
-
-.color-code:invalid {
-    color: red;
 }
 
 #modal-customize-cat-title {
