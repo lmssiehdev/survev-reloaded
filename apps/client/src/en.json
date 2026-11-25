@@ -201,6 +201,8 @@
   "loadout-subcat": "Category",
   "loadout-sort": "Sort",
   "loadout-categories": "Loadout categories",
+  "loadout-crosshair-color": "Crosshair color",
+  "loadout-hex": "Hex color",
   "loadout-size": "Size",
   "loadout-stroked": "Stroked",
   "loadout-stroke": "Stroke",

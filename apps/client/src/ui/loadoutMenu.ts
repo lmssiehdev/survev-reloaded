@@ -1,5 +1,3 @@
-import "@taufik-nurrohman/color-picker";
-
 import type { GameObjectDef } from "@survev/shared/defs/gameObjectDefs.ts";
 import { EmoteCategory, type EmoteDef } from "@survev/shared/defs/gameObjects/emoteDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
@@ -133,20 +131,9 @@ interface SelectedItem {
 /** a grid tile (by LoadoutItemView.key) or an emote slot */
 export type ItemRef = { key: number } | { slot: number };
 
-/** the parts of @taufik-nurrohman/color-picker in use */
-interface ColorPicker {
-    self: HTMLElement;
-    set(color: string): unknown;
-    fire(event: string, args: unknown[]): unknown;
-    on(event: string, fn: (color: string) => void): unknown;
-    enter(): unknown;
-    exit(): unknown;
-}
-
 /** elements the controller measures or drives directly; components/Loadout.tsx fills it */
 export interface LoadoutDom {
     list?: HTMLElement;
-    picker?: HTMLElement;
 }
 
 const RARITY_NAMES = ["stock", "common", "uncommon", "rare", "epic", "mythic"];
@@ -158,7 +145,6 @@ const RARITY_COLORS = ["#c5c5c5", "#c5c5c5", "#12ff00", "#00deff", "#f600ff", "#
  * renders it and calls back into the on* handlers here.
  */
 export class LoadoutMenu {
-    initialized = false;
     active = false;
     items: Item[] = [];
 
@@ -217,7 +203,6 @@ export class LoadoutMenu {
     itemSelected = false;
     highlightOpacityMin = 0.4;
 
-    picker: ColorPicker | null = null;
     crosshairInputs = { hex: "", size: 0.5, stroke: 0 };
     readonly dom: LoadoutDom = {};
 
@@ -271,25 +256,7 @@ export class LoadoutMenu {
         setLoadoutMenu(() => this);
     }
 
-    init() {
-        if (this.initialized) return;
-        const container = this.dom.picker;
-        if (container) {
-            const picker: ColorPicker = new window.CP(container, false, container);
-            picker.self.classList.add("static");
-            picker.on("change", (color: string) => {
-                this.setCrosshairInputs({ hex: color });
-                if (this.loadout?.crosshair) {
-                    this.updateLoadoutFromInputs();
-                }
-            });
-            this.picker = picker;
-        }
-        this.initialized = true;
-    }
-
     show() {
-        this.init();
         this.modal.show();
     }
 
@@ -496,7 +463,6 @@ export class LoadoutMenu {
     /** the crosshair panel shows the loadout's crosshair */
     syncCrosshairInputs() {
         const crosshairHex = util.intToHex(this.loadout.crosshair.color);
-        this.picker?.set(crosshairHex);
         this.setCrosshairInputs({
             hex: crosshairHex.slice(1),
             size: Number(this.loadout.crosshair.size),
@@ -564,18 +530,11 @@ export class LoadoutMenu {
         });
     }
 
-    onHexInput(value: string) {
-        this.setCrosshairInputs({ hex: value });
-        const picker = this.picker;
-        if (!picker || !value.length) return;
-        // Only accept 6 digit hex or 7 digit with a hash
-        if (value.length == 6) {
-            picker.set(`#${value}`);
-            picker.fire("change", [value]);
-        } else if (value.length == 7 && value[0] == "#") {
-            picker.set(value);
-            picker.fire("change", [value.slice(1)]);
-        }
+    /** a `#rrggbb` color from the crosshair color picker */
+    onCrosshairColor(color: string) {
+        if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+        this.setCrosshairInputs({ hex: color.slice(1) });
+        this.updateLoadoutFromInputs();
     }
 
     onCrosshairSize(value: number) {
@@ -721,12 +680,6 @@ export class LoadoutMenu {
             setLoadoutView((s) => {
                 s.crosshairPanel = !hasCursor;
             });
-            if (!hasCursor) {
-                // the picker measures itself when it enters: it has to be on screen
-                flush();
-                this.picker?.exit();
-                this.picker?.enter();
-            }
         }
 
         // Mark item as ackd
