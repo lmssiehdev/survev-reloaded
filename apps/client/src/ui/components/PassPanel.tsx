@@ -4,7 +4,8 @@ import type { HealEffectDef } from "@survev/shared/defs/gameObjects/healEffectDe
 import type { MeleeDef } from "@survev/shared/defs/gameObjects/meleeDefs.ts";
 import type { OutfitDef } from "@survev/shared/defs/gameObjects/outfitDefs.ts";
 import { GameObjectDefs } from "@survev/shared/defs/register.ts";
-import { createMemo, createSignal, For } from "solid-js";
+import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@ui-sdk/solid/tooltip";
+import { createMemo, For } from "solid-js";
 import { accountView } from "../../account.ts";
 import { helpers } from "../../helpers.ts";
 import { t, translate } from "../i18n.ts";
@@ -17,21 +18,6 @@ const QUEST_SLOTS = [0, 1];
 
 function display(visible: boolean) {
     return visible ? "block" : "none";
-}
-
-function UnlockTooltip(props: { title: string; desc: string; visible: boolean; hovered: boolean }) {
-    return (
-        <div
-            id="pass-unlock-tooltip"
-            style={{
-                display: display(props.hovered),
-                opacity: props.visible ? "1" : "0",
-            }}
-        >
-            <div class="tooltip-pass-title">{props.title}</div>
-            <div class="tooltip-pass-desc">{props.desc}</div>
-        </div>
-    );
 }
 
 function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelProps) {
@@ -123,8 +109,6 @@ function Quest(props: { idx: number; quest: QuestView | undefined } & PassPanelP
 }
 
 export function PassPanel(props: PassPanelProps) {
-    const [hovered, setHovered] = createSignal(false);
-
     const unlock = createMemo(() => {
         const item = passView.unlockItem;
         const def = GameObjectDefs.typeToDefSafe(item) as
@@ -146,12 +130,6 @@ export function PassPanel(props: PassPanelProps) {
 
     return (
         <>
-            <UnlockTooltip
-                title={unlock().title}
-                desc={unlock().def?.name ?? ""}
-                visible={!!unlock().def}
-                hovered={hovered()}
-            />
             <RightColumnToggle class="news-toggle">
                 <div class="account-alert" style={{ display: startMenu.newsUnread ? "block" : "none" }} />
             </RightColumnToggle>
@@ -186,42 +164,47 @@ export function PassPanel(props: PassPanelProps) {
                             <span id="pass-progress-xp-target">{passView.xpTarget}</span> <span>XP</span>
                         </div>
                     </div>
-                    <div
-                        id="pass-progress-unlock-wrapper"
-                        class={{
-                            "pass-unlock-pulse": passView.unlockPulse,
-                            "pass-unlock-hidden": passView.unlockHidden,
-                        }}
-                        onMouseEnter={() => setHovered(true)}
-                        onMouseLeave={() => setHovered(false)}
-                    >
-                        <div
-                            id="pass-progress-unlock"
-                            style={{ opacity: unlock().def ? "1" : "0.15", transform: unlock().transform }}
+                    <Tooltip delay={0} closeDelay={0} disabled={!unlock().def}>
+                        <TooltipTrigger
+                            id="pass-progress-unlock-wrapper"
+                            class={{
+                                "pass-unlock-pulse": passView.unlockPulse,
+                                "pass-unlock-hidden": passView.unlockHidden,
+                            }}
                         >
                             <div
-                                id="pass-progress-unlock-image"
-                                style={{
-                                    "background-image": unlock().image,
-                                    filter: unlock().filter || undefined,
-                                }}
-                            />
-                        </div>
-                        <div
-                            id="pass-progress-unlock-type-wrapper"
-                            style={{ display: display(!!unlock().def) }}
-                        >
-                            <div id="pass-progress-unlock-type-border">
+                                id="pass-progress-unlock"
+                                style={{ opacity: unlock().def ? "1" : "0.15", transform: unlock().transform }}
+                            >
                                 <div
-                                    id="pass-progress-unlock-type-image"
+                                    id="pass-progress-unlock-image"
                                     style={{
-                                        "background-image": unlock().typeImage || undefined,
+                                        "background-image": unlock().image,
+                                        filter: unlock().filter || undefined,
                                     }}
                                 />
                             </div>
-                            <div id="pass-progress-unlock-overlay" />
-                        </div>
-                    </div>
+                            <div
+                                id="pass-progress-unlock-type-wrapper"
+                                style={{ display: display(!!unlock().def) }}
+                            >
+                                <div id="pass-progress-unlock-type-border">
+                                    <div
+                                        id="pass-progress-unlock-type-image"
+                                        style={{
+                                            "background-image": unlock().typeImage || undefined,
+                                        }}
+                                    />
+                                </div>
+                                <div id="pass-progress-unlock-overlay" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent id="pass-unlock-tooltip" side="top" sideOffset={8}>
+                            <TooltipArrow class="pass-unlock-tooltip-arrow" />
+                            <div class="tooltip-pass-title">{unlock().title}</div>
+                            <div class="tooltip-pass-desc">{unlock().def?.name}</div>
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
                 <div id="pass-quest-wrapper">
                     <div id="pass-locked" style={{ display: display(passView.phase == "locked") }}>

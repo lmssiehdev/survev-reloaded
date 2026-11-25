@@ -731,7 +731,7 @@ export function StartTopLeft() {
                     <div class="streamer-list">
                         <For each={startMenu.streamers} keyed={(streamer) => streamer.name}>
                             {(streamer) => (
-                                <div class="featured-streamer streamer-tooltip">
+                                <div class="featured-streamer">
                                     <a
                                         href={streamer().url}
                                         target="_blank"

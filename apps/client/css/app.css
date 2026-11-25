@@ -2792,42 +2792,6 @@ a:active {
     max-width: 60%;
 }
 
-.mobile-announce-tooltip .tooltiptext {
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 6px;
-    color: #ffffff;
-    left: 100%;
-    margin-left: -60px;
-    opacity: 0.9;
-    padding: 5px 0;
-    position: absolute;
-    text-align: center;
-    bottom: 120%;
-    visibility: hidden;
-    width: 210px;
-    z-index: 1;
-}
-
-.mobile-announce-tooltip .tooltiptext > span {
-    color: #ffe400;
-    font-weight: 700;
-}
-
-.mobile-announce-tooltip .tooltiptext::after {
-    border-color: #000000 transparent transparent transparent;
-    border-style: solid;
-    border-width: 5px;
-    bottom: 100%;
-    content: " ";
-    left: 10%;
-    bottom: -10px;
-    position: absolute;
-}
-
-.mobile-announce-tooltip:hover .tooltiptext {
-    visibility: visible;
-}
-
 @keyframes snow-pulse {
     from {
         background-color: #acd5f3;
@@ -3471,7 +3435,11 @@ a:active {
     font-size: 14px;
 }
 
+/* a ui-sdk TooltipTrigger button */
 #pass-progress-unlock-wrapper {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
     background-image: url(/img/pass/pass-unlock-bg.svg);
     background-repeat: no-repeat;
     background-size: 128px;
@@ -3817,19 +3785,26 @@ a:active {
         opacity: 0;
     }
 }
+/* a ui-sdk TooltipContent in the top layer, placed over the pass unlock icon */
 #pass-unlock-tooltip {
     background-color: rgba(0, 0, 0, 0.95);
     border-radius: 6px;
     color: #ffffff;
-    display: none;
     min-width: 180px;
     padding: 5px;
-    position: absolute;
-    right: -18px;
     text-align: center;
-    top: -14px;
     white-space: nowrap;
-    z-index: 4;
+    font-family: inherit;
+}
+
+.pass-unlock-tooltip-arrow {
+    border-color: rgba(0, 0, 0, 0.95) transparent transparent transparent;
+    border-style: solid;
+    border-width: 5px;
+}
+
+.pass-unlock-tooltip-arrow[data-side="bottom"] {
+    rotate: 180deg;
 }
 
 .tooltip-pass-title {
@@ -3846,17 +3821,6 @@ a:active {
     line-height: 24px;
     padding: 4px 8px 8px;
     text-transform: capitalize;
-}
-
-#pass-unlock-tooltip::after {
-    content: " ";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: rgba(0, 0, 0, 0.95) transparent transparent transparent;
 }
 
 #start-top-left {
@@ -3970,29 +3934,6 @@ a:active {
 .featured-streamer {
     display: block;
     margin-top: 8px;
-}
-
-.streamer-tooltip .tooltiptext {
-    background-color: rgba(0, 0, 0, 0.8);
-    border-radius: 6px;
-    color: #ffffff;
-    opacity: 0.9;
-    padding: 5px 0;
-    position: absolute;
-    text-align: center;
-    bottom: -54px;
-    visibility: hidden;
-    width: 210px;
-    z-index: 1;
-}
-
-.streamer-tooltip .tooltiptext span {
-    color: #ffe400;
-    font-weight: 700;
-}
-
-.streamer-tooltip:hover .tooltiptext {
-    visibility: visible;
 }
 
 .btn-streamer {
@@ -5123,42 +5064,6 @@ input [type="image"]:focus {
     display: inline-block;
 }
 
-.customize-social-tooltip {
-    position: relative;
-    margin-right: 8px;
-}
-
-.customize-social-tooltip .tooltiptext {
-    background-color: #000000;
-    bottom: 100%;
-    border-radius: 6px;
-    color: #ffffff;
-    left: 50%;
-    opacity: 0.9;
-    padding: 5px;
-    position: absolute;
-    text-align: center;
-    transform: translateX(-50%);
-    width: 175px;
-    visibility: hidden;
-    z-index: 1;
-}
-
-.customize-social-tooltip .tooltiptext::after {
-    content: " ";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #000000 transparent transparent transparent;
-}
-
-.customize-social-tooltip:hover .tooltiptext {
-    visibility: visible;
-}
-
 #modal-customize-wrapper {
     animation-name: fadeIn;
     animation-duration: 0.2s;
@@ -5621,8 +5526,8 @@ input [type="image"]:focus {
     }
 
     #pass-unlock-tooltip {
-        right: -44px;
-        transform: scale(0.5);
+        scale: 0.5;
+        transform-origin: bottom center;
     }
 
     .right-column-toggle {
