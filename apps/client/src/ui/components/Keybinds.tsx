@@ -5,6 +5,7 @@ import { keybindModal } from "../appModals.ts";
 import { t, translate } from "../i18n.ts";
 import { keybinds, keybindUi } from "../keybinds.ts";
 import { showToast } from "../toast.ts";
+import { ModalDialog, ModalTitle } from "./Modal.tsx";
 
 /** one row per bind: click a name, then press the new key */
 function KeybindList(props: { id: string; height?: string }) {
@@ -54,16 +55,18 @@ export function KeybindModal() {
         helpers.copyTextToClipboard(keybinds.code);
     };
     return (
-        <div
+        <ModalDialog
+            modal={keybindModal}
             id="ui-modal-keybind"
-            class={["ui-modal-keybind modal", keybindModal.classes()]}
-            ref={(el) => keybindModal.attach(el)}
+            class="ui-modal-keybind"
+            // Escape while a key is being captured cancels the capture, not the modal
+            escapable={() => keybinds.capturing === null}
             onContextMenu={(e) => e.preventDefault()}
         >
             <div class="ui-modal-keybind-content modal-content modal-close">
                 <div id="ui-modal-keybind-header" class="modal-header">
                     <span id="ui-close-keybind" class="close close-corner" onClick={(e) => keybindModal.hide(e)} />
-                    <h2>{t("index-customize-keybinds")}</h2>
+                    <ModalTitle>{t("index-customize-keybinds")}</ModalTitle>
                 </div>
                 <div id="ui-modal-keybind-body" class="modal-body">
                     <KeybindList id="ui-modal-keybind-list" height={shareOpen() ? "275px" : "420px"} />
@@ -130,7 +133,7 @@ export function KeybindModal() {
                     </a>
                 </div>
             </div>
-        </div>
+        </ModalDialog>
     );
 }
 

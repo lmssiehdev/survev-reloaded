@@ -14,6 +14,7 @@ import { type MessageKey, t, translate } from "../i18n.ts";
 import type { ItemRef, LoadoutMenu } from "../loadoutMenu.ts";
 import { loadoutView, SORT_TYPES, type SortType } from "../loadoutView.ts";
 import { MenuSelect, RangeSlider } from "./Controls.tsx";
+import { ModalDialog, ModalTitle } from "./Modal.tsx";
 
 const SORT_LABELS: Record<SortType, MessageKey> = {
     newest: "loadout-newest",
@@ -300,10 +301,10 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
         return cat ? translate(`loadout-title-${cat.loadoutType}`).toUpperCase() : "";
     };
     return (
-        <div
+        <ModalDialog
+            modal={props.menu.modal}
             id="modal-customize"
-            class={["modal", props.menu.modal.classes()]}
-            ref={(el) => props.menu.modal.attach(el)}
+            label={t("index-loadout")}
             style={{ cursor: loadoutView.cursorReset ? "initial" : undefined }}
         >
             <div id="modal-customize-wrapper" class="modal-close">
@@ -371,7 +372,7 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                 <CrosshairPanel menu={props.menu} />
                 <EmotePanel menu={props.menu} />
             </div>
-        </div>
+        </ModalDialog>
     );
 }
 
@@ -384,10 +385,10 @@ export function ItemConfirmModal(props: { menu: LoadoutMenu }) {
             class={["fade", { faded: !loadoutView.screenBlock }]}
             style={{ "--fade": loadoutView.screenBlock ? "200ms" : "300ms" }}
         >
-            <div id="modal-item-confirm" class={["modal", modal.classes()]} ref={(el) => modal.attach(el)}>
+            <ModalDialog modal={modal} id="modal-item-confirm">
                 <div class="modal-content modal-close">
                     <div class="modal-header modal-header-name">
-                        <h2>You got a new item!</h2>
+                        <ModalTitle>You got a new item!</ModalTitle>
                     </div>
                     <div class="modal-body modal-body-name">
                         <div id="modal-item-confirm-image-outer">
@@ -411,7 +412,7 @@ export function ItemConfirmModal(props: { menu: LoadoutMenu }) {
                         </h3>
                     </div>
                 </div>
-            </div>
+            </ModalDialog>
         </div>
     );
 }

@@ -5,6 +5,8 @@ import { type Accessor, createSignal } from "solid-js";
  *
  * Views give their element(s) `class={modal.classes()}` (shown while open, fading out once
  * closed: `.menu-modal` in app.css) and `ref={(el) => modal.attach(el)}` for the click rule.
+ * A modal rendered by ModalDialog (components/Modal.tsx) is a ui-sdk Dialog instead, which
+ * handles outside presses and Escape itself.
  */
 export class MenuModal {
     checkSelector = true;
@@ -17,11 +19,17 @@ export class MenuModal {
     /** reactive, for views that change while the modal is open */
     readonly isOpen: Accessor<boolean>;
     private readonly setOpen: (open: boolean) => void;
+    /** false after show(true): an outside press or Escape doesn't close it */
+    readonly dismissible: Accessor<boolean>;
+    private readonly setDismissible: (dismissible: boolean) => void;
+    /** rendered by ModalDialog, which closes it on outside presses and Escape */
+    dialog = false;
 
     private elements: HTMLElement[] = [];
 
     constructor() {
         [this.isOpen, this.setOpen] = createSignal(false);
+        [this.dismissible, this.setDismissible] = createSignal(true);
     }
 
     /** the classes that show the modal's elements */
@@ -67,9 +75,10 @@ export class MenuModal {
     show(isModal?: boolean) {
         if (this.visible) return;
         this.visible = true;
+        this.setDismissible(!isModal);
         this.setOpen(true);
         this.onShowFn();
-        if (!isModal) {
+        if (!isModal && !this.dialog) {
             document.addEventListener("click", this.modalCloseListener);
             document.addEventListener("touchend", this.modalCloseListener);
         }

@@ -20,6 +20,7 @@ import {
     setNameModal,
     userSettingsModal,
 } from "../profile.ts";
+import { ModalDialog, ModalTitle } from "./Modal.tsx";
 
 /** the account modals' header X and body/footer layout (`.modal-account`) */
 function AccountModal(props: {
@@ -34,23 +35,19 @@ function AccountModal(props: {
     footer: JSX.Element;
 }) {
     return (
-        <div
-            id={props.id}
-            class={["modal modal-account", props.modal.classes()]}
-            ref={(el) => props.modal.attach(el)}
-        >
+        <ModalDialog modal={props.modal} id={props.id} class="modal-account">
             <div class="modal-content modal-close">
                 <div class={`modal-header modal-header-${props.layout}`}>
                     <span
                         class={["close close-corner", props.closeClass]}
                         onClick={(e) => props.modal.hide(e)}
                     />
-                    <h2 id={props.titleId}>{props.title}</h2>
+                    <ModalTitle id={props.titleId}>{props.title}</ModalTitle>
                 </div>
                 <div class={`modal-body modal-body-${props.layout}`}>{props.children}</div>
                 <div class={`modal-footer modal-footer-${props.layout} modal-footer-round`}>{props.footer}</div>
             </div>
-        </div>
+        </ModalDialog>
     );
 }
 
@@ -395,15 +392,11 @@ mobileAccountModal.onHide(() => userSettingsModal.hide());
 
 export function MobileAccountModal() {
     return (
-        <div
-            id="modal-mobile-account"
-            class={["modal", mobileAccountModal.classes()]}
-            ref={(el) => mobileAccountModal.attach(el)}
-        >
+        <ModalDialog modal={mobileAccountModal} id="modal-mobile-account">
             <div class="modal-content modal-close">
                 <div class="modal-header">
                     <span class="close close-corner" onClick={(e) => mobileAccountModal.hide(e)} />
-                    <h2>{t("index-account")}</h2>
+                    <ModalTitle>{t("index-account")}</ModalTitle>
                 </div>
                 <div id="modal-mobile-account-body">
                     <AccountSettings />
@@ -419,7 +412,7 @@ export function MobileAccountModal() {
                     </div>
                 </div>
             </div>
-        </div>
+        </ModalDialog>
     );
 }
 
