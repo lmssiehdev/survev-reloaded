@@ -1,3 +1,4 @@
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/solid/tabs";
 import { For, Show } from "solid-js";
 import { accountView } from "../../account.ts";
 import { device, layout } from "../../device.ts";
@@ -20,21 +21,22 @@ function display(visible: boolean) {
     return visible ? "block" : "none";
 }
 
-/** the category tabs above the item grid */
-function Categories(props: { menu: LoadoutMenu }) {
+/** the category tabs above the item grid; the open category's items are the `#modal-customize-body` panel */
+function Categories() {
     return (
-        <div id="modal-customize-header" class="modal-header">
+        <TabsList id="modal-customize-header" class="modal-header" aria-label={t("loadout-categories")}>
             <For each={loadoutView.categories}>
                 {(cat, idx) => {
                     const selected = () => loadoutView.catIdx === idx();
                     return (
-                        <div
+                        <TabsTab
+                            value={cat.loadoutType}
                             id={idx() === loadoutView.categories.length - 1
                                 ? "modal-customize-cat-standalone"
                                 : undefined}
-                            class={["modal-customize-cat", { "modal-customize-cat-selected": selected() }]}
+                            class="modal-customize-cat"
+                            aria-label={translate(`loadout-title-${cat.loadoutType}`)}
                             data-idx={idx()}
-                            onMouseUp={() => props.menu.onCategoryMouseUp(idx())}
                         >
                             <div
                                 class={["modal-customize-cat-image", {
@@ -48,11 +50,11 @@ function Categories(props: { menu: LoadoutMenu }) {
                                 }]}
                             />
                             <div class="account-alert account-alert-cat" style={{ display: display(cat.alert) }} />
-                        </div>
+                        </TabsTab>
                     );
                 }}
             </For>
-        </div>
+        </TabsList>
     );
 }
 
@@ -294,7 +296,15 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
             style={{ cursor: loadoutView.cursorReset ? "initial" : undefined }}
         >
             <div id="modal-customize-wrapper" class="modal-close">
-                <div id="modal-content-left" class="modal-content-shadow">
+                <Tabs
+                    id="modal-content-left"
+                    class="modal-content-shadow"
+                    value={category()}
+                    onValueChange={(type) => {
+                        const idx = loadoutView.categories.findIndex((cat) => cat.loadoutType === type);
+                        if (idx >= 0) props.menu.onCategorySelect(idx);
+                    }}
+                >
                     <div id="modal-customize-cat-title">{title()}</div>
                     <div id="modal-customize-sort-wrap">
                         <MenuSelect
@@ -310,11 +320,11 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                     <div id="modal-customize-close">
                         <span class="close close-corner" onClick={(e) => props.menu.modal.hide(e)} />
                     </div>
-                    <Categories menu={props.menu} />
+                    <Categories />
                     <div class="modal-disabled">
                         <div class="modal-disabled-message">The Edge browser does not support custom cursors.</div>
                     </div>
-                    <div id="modal-customize-body" class="modal-body">
+                    <TabsPanel id="modal-customize-body" class="modal-body" value={category() ?? ""}>
                         <div id="modal-customize-item-header">
                             <div
                                 id="modal-customize-item-name"
@@ -341,12 +351,12 @@ export function CustomizeModal(props: { menu: LoadoutMenu }) {
                             </div>
                         </div>
                         <ItemList menu={props.menu} />
-                    </div>
+                    </TabsPanel>
                     <div id="modal-customize-footer" class="modal-footer modal-footer-round">
                         <div id="modal-customize-item-source">{loadoutView.itemSource}</div>
                         <div id="modal-customize-item-lore">{loadoutView.itemLore}</div>
                     </div>
-                </div>
+                </Tabs>
                 <CrosshairPanel menu={props.menu} />
                 <EmotePanel menu={props.menu} />
             </div>

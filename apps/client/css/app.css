@@ -4906,13 +4906,18 @@ input [type="image"]:focus {
     border-bottom: solid 72px rgba(0, 0, 0, 0.5);
     content: "";
     cursor: default;
-    margin-left: -20px;
+    left: -20px;
     position: absolute;
+    top: 0;
     width: 8px;
 }
 
+/* a ui-sdk TabsTab button */
 .modal-customize-cat {
     background: rgba(0, 0, 0, 0.5);
+    border: 0;
+    padding: 0;
+    vertical-align: top;
     cursor: pointer;
     display: inline-block;
     height: 72px;
@@ -4944,8 +4949,8 @@ input [type="image"]:focus {
     width: 70px;
 }
 
-.modal-customize-cat-selected {
-    background: #82ad51 !important;
+.modal-customize-cat[data-selected] {
+    background: #82ad51;
 }
 
 .modal-customize-cat-image-selected {

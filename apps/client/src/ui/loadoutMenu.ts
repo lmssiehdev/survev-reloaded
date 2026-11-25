@@ -504,7 +504,7 @@ export class LoadoutMenu {
         });
     }
 
-    onCategoryMouseUp(catIdx: number) {
+    onCategorySelect(catIdx: number) {
         if (this.selectedCatIdx != catIdx) {
             this.selectCat(catIdx);
         }
